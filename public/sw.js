@@ -1,5 +1,7 @@
-const CACHE = "mes-courses-teo-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE = "mes-courses-teo-v2";
+const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const HOME = `${BASE}/`;
+const APP_SHELL = [HOME, `${BASE}/manifest.webmanifest`, `${BASE}/favicon.svg`, `${BASE}/icons/icon-192.png`, `${BASE}/icons/icon-512.png`];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)));
   self.skipWaiting();
@@ -16,9 +18,9 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then((response) => {
       const copy = response.clone();
-      caches.open(CACHE).then((cache) => cache.put("/", copy));
+      caches.open(CACHE).then((cache) => cache.put(HOME, copy));
       return response;
-    }).catch(() => caches.match("/")));
+    }).catch(() => caches.match(HOME)));
     return;
   }
   event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
