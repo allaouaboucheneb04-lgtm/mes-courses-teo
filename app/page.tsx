@@ -479,7 +479,14 @@ export default function Home() {
       payStart = dateKey(firstDay);
       payEnd = dateKey(lastDay);
     }
-    const rows = payRows.map((row) => {
+    const rows: Array<
+      PayRow & {
+        status: "missing-app" | "ok" | "different" | "missing-pay";
+        appAmount: number | null;
+        appTip: number | null;
+        courseId: string | null;
+      }
+    > = payRows.map((row) => {
       const candidates = courses.filter(
         (c) =>
           !used.has(c.id) &&
@@ -714,7 +721,7 @@ export default function Home() {
     setPayFile(file.name);
     try {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/pdf.worker.min.mjs`;
       const doc = await pdfjs.getDocument({
         data: new Uint8Array(await file.arrayBuffer()),
       }).promise;
