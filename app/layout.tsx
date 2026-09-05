@@ -2,17 +2,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 import PwaRegister from "./pwa-register";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export const metadata: Metadata = {
   title: "Mes courses Téo",
   description: "Calcul des revenus de taxi et de transport adapté.",
-  manifest: "/manifest.webmanifest",
+  manifest: `${basePath}/manifest.webmanifest`,
   applicationName: "Mes courses Téo",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Mes courses" },
   formatDetection: { telephone: false },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/icons/apple-touch-icon.png",
+    icon: `${basePath}/favicon.svg`,
+    shortcut: `${basePath}/favicon.svg`,
+    apple: `${basePath}/icons/apple-touch-icon.png`,
   },
 };
 
