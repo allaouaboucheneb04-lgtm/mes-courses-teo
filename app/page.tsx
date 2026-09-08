@@ -68,6 +68,14 @@ type AppSettings = {
   dailyGoals: number[];
   companyFee: number;
 };
+type PhotoCourse = {
+  id: string;
+  date: string;
+  total: string;
+  tip: string;
+  category: "centre-ville" | "aeroport";
+  selected: boolean;
+};
 const DEFAULT_SETTINGS: AppSettings = {
   cardFee: 5.51,
   machineFee: 2.5,
@@ -215,6 +223,10 @@ export default function Home() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [photoCourses, setPhotoCourses] = useState<PhotoCourse[]>([]);
+  const [photoReading, setPhotoReading] = useState(false);
+  const [photoProgress, setPhotoProgress] = useState(0);
+  const [photoMessage, setPhotoMessage] = useState("");
   useEffect(() => {
     return onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -856,6 +868,112 @@ export default function Home() {
     setTaxi({ ...taxi, amount: "", tip: "" });
     flash(wasEditing ? "Course taxi modifiée." : "Course taxi ajoutée.");
   }
+
+  const parseTabletPhoto = (rawText: string) => {
+    const text = rawText
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\r/g, "\n");
+    const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*\$?/g;
+    const matches = [...text.matchAll(amountPattern)];
+    const detected: PhotoCourse[] = [];
+    matches.forEach((match, index) => {
+      const start = match.index || 0;
+      const end = matches[index + 1]?.index ?? text.length;
+      const segment = text.slice(start, end).toUpperCase();
+      if (!/\bCARTE\b/.test(segment) || /\bCOMPTANT\b/.test(segment)) return;
+      const dateMatch = segment.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/);
+      if (!dateMatch) return;
+      const [, day, month, year] = dateMatch;
+      const date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      const total = Number(match[1].replace(",", "."));
+      if (!Number.isFinite(total) || total <= 0) return;
+      detected.push({
+        id: `photo-${Date.now()}-${index}`,
+        date,
+        total: total.toFixed(2).replace(".", ","),
+        tip: "",
+        category: /AEROPORT|AIRPORT|\bYUL\b/.test(segment) ? "aeroport" : "centre-ville",
+        selected: true,
+      });
+    });
+    return detected;
+  };
+
+  const readTabletPhotos = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setPhotoReading(true);
+    setPhotoProgress(0);
+    setPhotoMessage("Lecture des photos…");
+    try {
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("fra", undefined, {
+        logger: (message) => {
+          if (message.status === "recognizing text")
+            setPhotoProgress(Math.round((message.progress || 0) * 100));
+        },
+      });
+      const allDetected: PhotoCourse[] = [];
+      for (let index = 0; index < files.length; index += 1) {
+        setPhotoMessage(`Lecture de la photo ${index + 1} sur ${files.length}…`);
+        const result = await worker.recognize(files[index]);
+        allDetected.push(...parseTabletPhoto(result.data.text));
+      }
+      await worker.terminate();
+      const unique = allDetected.filter((item, index, list) =>
+        list.findIndex((other) => other.date === item.date && other.total === item.total) === index,
+      );
+      setPhotoCourses(unique);
+      setPhotoMessage(
+        unique.length
+          ? `${unique.length} course${unique.length > 1 ? "s" : ""} par carte détectée${unique.length > 1 ? "s" : ""}. Ajoutez le pourboire de chaque course.`
+          : "Aucune course par carte reconnue. Essayez une photo plus droite et sans reflet.",
+      );
+    } catch (error) {
+      console.error(error);
+      setPhotoMessage("La photo n’a pas pu être analysée. Essayez une image plus nette.");
+    } finally {
+      setPhotoReading(false);
+      setPhotoProgress(0);
+    }
+  };
+
+  const savePhotoCourses = () => {
+    const selected = photoCourses.filter((item) => item.selected);
+    if (!selected.length) { setPhotoMessage("Sélectionnez au moins une course."); return; }
+    if (selected.some((item) => item.tip === "")) {
+      setPhotoMessage("Insérez le pourboire de chaque course sélectionnée, même s’il est de 0,00 $. ");
+      return;
+    }
+    const existingOrAdded = [...courses];
+    let added = 0;
+    let duplicates = 0;
+    selected.forEach((item, index) => {
+      const total = parseMoneyInput(item.total);
+      const tip = parseMoneyInput(item.tip);
+      if (tip > total) return;
+      const duplicate = existingOrAdded.some((course) =>
+        course.type === "taxi" &&
+        isCardPayment(course.payment) &&
+        course.date === item.date &&
+        Math.abs(course.amount + course.tip - total) < 0.02,
+      );
+      if (duplicate) { duplicates += 1; return; }
+      existingOrAdded.unshift({
+        id: `${Date.now()}-photo-${index}`,
+        type: "taxi",
+        date: item.date,
+        amount: round2(total - tip),
+        tip: round2(tip),
+        payment: "Téo / carte",
+        taxiCategory: settings.airportEnabled ? item.category : "centre-ville",
+      });
+      added += 1;
+    });
+    setCourses(existingOrAdded);
+    setPhotoCourses([]);
+    setPhotoMessage(`${added} course${added !== 1 ? "s" : ""} ajoutée${added !== 1 ? "s" : ""}${duplicates ? ` · ${duplicates} doublon${duplicates > 1 ? "s" : ""} ignoré${duplicates > 1 ? "s" : ""}` : ""}.`);
+  };
   function addAdapted(e: React.FormEvent) {
     e.preventDefault();
     const hob = adapted.hob.toUpperCase().trim();
@@ -1091,6 +1209,58 @@ export default function Home() {
                 </div>
                 <span className="type-icon">$</span>
               </div>
+              {!editingId && (
+                <section className="photo-import">
+                  <div className="photo-import-head">
+                    <div>
+                      <b>Importer les courses de la tablette</b>
+                      <small>Seules les courses marquées « Carte » seront conservées.</small>
+                    </div>
+                    <span>▣</span>
+                  </div>
+                  <label className={`photo-upload ${photoReading ? "disabled" : ""}`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      disabled={photoReading}
+                      onChange={(event) => {
+                        readTabletPhotos(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                    {photoReading ? `Analyse en cours${photoProgress ? ` · ${photoProgress} %` : ""}` : "Prendre ou choisir des photos"}
+                  </label>
+                  {photoMessage && <p className="photo-message" role="status">{photoMessage}</p>}
+                  {photoCourses.length > 0 && (
+                    <div className="photo-results">
+                      {photoCourses.map((item) => {
+                        const total = parseMoneyInput(item.total);
+                        const tip = parseMoneyInput(item.tip);
+                        return (
+                          <article className={!item.selected ? "unselected" : ""} key={item.id}>
+                            <div className="photo-row-title">
+                              <label>
+                                <input type="checkbox" checked={item.selected} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, selected: event.target.checked } : course))} />
+                                Course par carte
+                              </label>
+                              <button type="button" aria-label="Supprimer cette course" onClick={() => setPhotoCourses((current) => current.filter((course) => course.id !== item.id))}>×</button>
+                            </div>
+                            <div className="photo-fields">
+                              <label>Date<input type="date" value={item.date} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, date: event.target.value } : course))} /></label>
+                              <label>Total tablette<input inputMode="decimal" value={item.total} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, total: autoCommaMoneyInput(event.target.value) } : course))} /></label>
+                              <label>Pourboire à saisir<input inputMode="decimal" required={item.selected} placeholder="0,00" value={item.tip} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, tip: autoCommaMoneyInput(event.target.value) } : course))} /></label>
+                              {settings.airportEnabled && <label>Type<select value={item.category} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, category: event.target.value as PhotoCourse["category"] } : course))}><option value="centre-ville">Centre-ville</option><option value="aeroport">Aéroport</option></select></label>}
+                            </div>
+                            <small className="photo-calculation">Course sans pourboire : <b>{money(Math.max(0, total - tip))}</b> · Pourboire : <b>{item.tip === "" ? "à saisir" : money(tip)}</b></small>
+                          </article>
+                        );
+                      })}
+                      <button type="button" className="primary photo-save" onClick={savePhotoCourses}>Enregistrer les courses sélectionnées</button>
+                    </div>
+                  )}
+                </section>
+              )}
               <label>
                 Date
                 <input
