@@ -874,20 +874,38 @@ export default function Home() {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\r/g, "\n");
-    const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*\$?/g;
-    const matches = [...text.matchAll(amountPattern)];
+    // On reflective tablet photos, Tesseract commonly reads 45,60 $ as
+    // "4560$" and 167,88 $ as "167885" (the final 5 is the $ sign).
+    const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*\$?|(?:^|\n)[^\d\n]{0,16}(\d{4,6})\s*\$?/gm;
+    const matches = [...text.matchAll(amountPattern)].filter((match) => {
+      const value = match[1] || match[2] || "";
+      return !value.includes("/") && !/^20\d{2}$/.test(value);
+    });
     const detected: PhotoCourse[] = [];
     matches.forEach((match, index) => {
       const start = match.index || 0;
       const end = matches[index + 1]?.index ?? text.length;
       const segment = text.slice(start, end).toUpperCase();
-      if (!/\bCARTE\b/.test(segment) || /\bCOMPTANT\b/.test(segment)) return;
+      // Never import a row that OCR positively identifies as cash. If glare
+      // erased the word "Carte", keep the candidate so the driver can verify
+      // it instead of silently losing a paid ride.
+      if (/\bCOMPTANT\b/.test(segment)) return;
       const dateMatch = segment.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/);
       if (!dateMatch) return;
       const [, day, month, year] = dateMatch;
       const date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-      const total = Number(match[1].replace(",", "."));
-      if (!Number.isFinite(total) || total <= 0) return;
+      let recognizedAmount = match[1] || match[2] || "";
+      let total: number;
+      if (/[,.]/.test(recognizedAmount)) {
+        total = Number(recognizedAmount.replace(",", "."));
+      } else {
+        // A six-digit compact value ending in 5 is usually "16788" + a
+        // dollar sign misread as 5.
+        if (recognizedAmount.length === 6 && recognizedAmount.endsWith("5"))
+          recognizedAmount = recognizedAmount.slice(0, -1);
+        total = Number(recognizedAmount) / 100;
+      }
+      if (!Number.isFinite(total) || total <= 0 || total > 1000) return;
       detected.push({
         id: `photo-${Date.now()}-${index}`,
         date,
