@@ -13,7 +13,9 @@ export default function PwaRegister() {
   useEffect(() => {
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register(`${basePath}/sw.js`, { scope: `${basePath}/` }).catch((error) => console.error("Service worker non enregistré", error));
+      navigator.serviceWorker.register(`${basePath}/sw.js`, { scope: `${basePath}/`, updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch((error) => console.error("Service worker non enregistré", error));
     }
     const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone;
     if (!standalone) setShowInstall(true);
