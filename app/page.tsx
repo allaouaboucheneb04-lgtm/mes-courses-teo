@@ -915,6 +915,41 @@ export default function Home() {
         selected: true,
       });
     });
+
+    // Second, card-first pass. Some Android phones return OCR blocks in a
+    // different order: the payment label is present, but falls outside the
+    // amount segment above. Attach every visible "Carte" label to the closest
+    // preceding amount and nearby date.
+    for (const cardMatch of text.matchAll(/\bCARTE\b/gi)) {
+      const cardIndex = cardMatch.index || 0;
+      const preceding = matches
+        .filter((match) => (match.index || 0) < cardIndex && cardIndex - (match.index || 0) < 260)
+        .at(-1);
+      if (!preceding) continue;
+      const nearby = text.slice(Math.max(0, (preceding.index || 0) - 20), Math.min(text.length, cardIndex + 180));
+      if (/\bCOMPTANT\b/i.test(nearby.slice(0, Math.max(0, cardIndex - (preceding.index || 0))))) continue;
+      const dateMatch = nearby.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/);
+      if (!dateMatch) continue;
+      let recognizedAmount = preceding[1] || preceding[2] || "";
+      let total: number;
+      if (/[,.]/.test(recognizedAmount)) total = Number(recognizedAmount.replace(",", "."));
+      else {
+        if (recognizedAmount.length === 6 && recognizedAmount.endsWith("5")) recognizedAmount = recognizedAmount.slice(0, -1);
+        total = Number(recognizedAmount) / 100;
+      }
+      if (!Number.isFinite(total) || total <= 0 || total > 1000) continue;
+      const [, day, month, year] = dateMatch;
+      const date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      if (detected.some((item) => item.date === date && parseMoneyInput(item.total) === total)) continue;
+      detected.push({
+        id: `photo-card-${Date.now()}-${cardIndex}`,
+        date,
+        total: total.toFixed(2).replace(".", ","),
+        tip: "",
+        category: /AEROPORT|AIRPORT|\bYUL\b/i.test(nearby) ? "aeroport" : "centre-ville",
+        selected: true,
+      });
+    }
     return detected;
   };
 
