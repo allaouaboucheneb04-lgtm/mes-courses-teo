@@ -728,41 +728,51 @@ export default function Home() {
             .map((item) => item.str || "")
             .join(" ") + "\n";
       }
+      text = text
+        .replace(/\u00a0/g, " ")
+        .replace(/[‐‑‒–—]/g, "-")
+        .replace(/\s+/g, " ");
       const tips = new Map<string, number>(),
-        tipRows = /\[TIPC\][\s\S]*?\((\d+A) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)/g;
+        tipRows = /\[?\s*TIPC\s*\]?[\s\S]*?\((\d+\s*A)\s+to[^)]*\)[\s\S]{0,260}?\b1\s+([\d\s]+[,.]\d{2})/gi;
       let match: RegExpExecArray | null;
-      while ((match = tipRows.exec(text)))
-        tips.set(match[1], Number(match[2].replace(",", ".")));
+      while ((match = tipRows.exec(text))) {
+        const key = match[1].replace(/\s/g, "").toUpperCase();
+        tips.set(key, Number(match[2].replace(/\s/g, "").replace(",", ".")));
+      }
       const rows: PayRow[] = [],
         regular =
-          /\[CRD\][\s\S]*?\((\d+A) to[^)]*\)\s+Date:\s+(\d{2})\/(\d{2})\/(\d{4})\s+\d{2}:\d{2}:\d{2}\s+1\s+([\d,]+)/g;
-      while ((match = regular.exec(text)))
+          /\[?\s*CRD\s*\]?[\s\S]*?\((\d+\s*A)\s+to[^)]*\)[\s\S]{0,320}?Date\s*:?\s*(\d{2})[\/.\-](\d{2})[\/.\-](\d{4})(?:\s+\d{2}:\d{2}(?::\d{2})?)?[\s\S]{0,220}?\b1\s+([\d\s]+[,.]\d{2})/gi;
+      while ((match = regular.exec(text))) {
+        const key = match[1].replace(/\s/g, "").toUpperCase();
         rows.push({
-          key: match[1],
+          key,
           type: "taxi",
           date: `${match[4]}-${match[3]}-${match[2]}`,
-          amount: Number(match[5].replace(",", ".")),
-          tip: tips.get(match[1]) || 0,
+          amount: Number(match[5].replace(/\s/g, "").replace(",", ".")),
+          tip: tips.get(key) || 0,
         });
+      }
       const adaptedRows =
-        /\[PTR\][\s\S]*?\((HOB\d{4})_(\d{2})\/(\d{2})\/(\d{4}) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)\s+TPS/g;
+        /\[?\s*PTR\s*\]?[\s\S]*?\((HOB\s*\d{4})[\s_\-]+(\d{2})[\/.\-](\d{2})[\/.\-](\d{4})\s+to[^)]*\)[\s\S]{0,320}?\b1\s+([\d\s]+[,.]\d{2})(?=\s+(?:TPS|TVQ|\$|CAD))/gi;
       while ((match = adaptedRows.exec(text)))
         rows.push({
-          key: match[1],
+          key: match[1].replace(/\s/g, "").toUpperCase(),
           type: "adapte",
           date: `${match[4]}-${match[3]}-${match[2]}`,
-          amount: Number(match[5].replace(",", ".")),
+          amount: Number(match[5].replace(/\s/g, "").replace(",", ".")),
           tip: 0,
         });
-      if (!rows.length) throw new Error("Aucune course reconnue");
+      if (!rows.length)
+        throw new Error("Aucune ligne CRD ou PTR reconnue dans cette fiche Téo.");
       const valueAfter = (label: RegExp) => {
         const found = text.match(label);
         return found
           ? Number(found[1].replace(/\s/g, "").replace(",", "."))
           : 0;
       };
-      const billId = text.match(/Facture fournisseur\s+(BILL\d+)/i)?.[1];
-      if (!billId) throw new Error("Numéro BILL introuvable");
+      const billMatch = text.match(/\bBILL[\s\-_]*(\d{5,})\b/i);
+      const billId = billMatch ? `BILL${billMatch[1]}` : "";
+      if (!billId) throw new Error("Numéro BILL introuvable dans la fiche.");
       const invoiceDate =
         text.match(
           /Date de la facture[\s\S]{0,180}?(\d{4}-\d{2}-\d{2})/i,
@@ -820,9 +830,12 @@ export default function Home() {
         });
       });
       flash(`Fiche ${billId} enregistrée avec tous ses détails.`);
-    } catch {
+    } catch (error) {
+      console.error(error);
       setPayError(
-        "Impossible de lire cette fiche. Vérifiez qu’il s’agit d’un relevé PDF Téo.",
+        error instanceof Error
+          ? error.message
+          : "Impossible de lire cette fiche PDF Téo.",
       );
     } finally {
       setPayLoading(false);
