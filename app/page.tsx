@@ -820,10 +820,11 @@ export default function Home() {
         });
       });
       flash(`Fiche ${billId} enregistrée avec tous ses détails.`);
-    } catch {
-      setPayError(
-        "Impossible de lire cette fiche. Vérifiez qu’il s’agit d’un relevé PDF Téo.",
-      );
+    } catch (error) {
+      console.error(error);
+      const reason =
+        error instanceof Error ? error.message : "Erreur de lecture inconnue";
+      setPayError(`Impossible de lire cette fiche : ${reason}`);
     } finally {
       setPayLoading(false);
     }
