@@ -716,7 +716,10 @@ export default function Home() {
     setPayFile(file.name);
     try {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/pdf.worker.min.mjs`;
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "./pdf.worker.min.mjs",
+        document.baseURI,
+      ).href;
       const doc = await pdfjs.getDocument({
         data: new Uint8Array(await file.arrayBuffer()),
       }).promise;
