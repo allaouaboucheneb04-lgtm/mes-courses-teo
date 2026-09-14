@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { getPayrollCourseDates } from "@/lib/payroll-dates";
 type Course = {
   id: string;
   type: "taxi" | "adapte";
@@ -480,7 +481,7 @@ export default function Home() {
     : 0;
   const comparisons = useMemo(() => {
     const used = new Set<string>();
-    const payDates = payRows.map((row) => row.date);
+    const payDates = new Set(getPayrollCourseDates(payRows));
     const rows: Array<
       PayRow & {
         status: "missing-app" | "ok" | "different" | "missing-pay";
@@ -526,7 +527,7 @@ export default function Home() {
     });
     for (const c of courses) {
       if (
-        !payDates.includes(c.date) ||
+        !payDates.has(c.date) ||
         used.has(c.id) ||
         !(c.type === "adapte" || isCardPayment(c.payment))
       )
@@ -549,8 +550,8 @@ export default function Home() {
   const statementWarnings = useMemo(() => {
     const warnings: Record<string, number> = {};
     for (const statement of payStatements) {
-      const dates = statement.rows.map((row) => row.date);
-      if (!dates.length) {
+      const dates = new Set(getPayrollCourseDates(statement.rows));
+      if (!dates.size) {
         warnings[statement.id] = 0;
         continue;
       }
@@ -558,7 +559,7 @@ export default function Home() {
       let missing = 0;
       for (const course of courses.filter(
         (item) =>
-          dates.includes(item.date) &&
+          dates.has(item.date) &&
           (item.type === "adapte" || isCardPayment(item.payment)),
       )) {
         const candidate = statement.rows
@@ -773,7 +774,7 @@ export default function Home() {
       const paid = text.match(
         /Payé le\s+(\d{4}-\d{2}-\d{2})\s+([\d\s]+,\d{2})\s*\$/i,
       );
-      const dates = rows.map((row) => row.date).sort();
+      const dates = getPayrollCourseDates(rows);
       const statement: PayStatement = {
         id: billId,
         fileName: file.name,
@@ -1533,6 +1534,10 @@ export default function Home() {
                 </div>
                 <span className="type-icon">✓</span>
               </div>
+              <p className="pay-scope-note">
+                Seules les dates inscrites sur les lignes de courses du PDF
+                sont vérifiées. Les autres jours de la semaine sont ignorés.
+              </p>
               <label className="upload">
                 <input
                   type="file"
@@ -1577,9 +1582,9 @@ export default function Home() {
                         <span>
                           <b>{statement.id}</b>
                           <small>
-                            {statement.invoiceDate ||
-                              statement.importedAt.slice(0, 10)}{" "}
-                            · {statement.rows.length} lignes
+                            Courses :{" "}
+                            {getPayrollCourseDates(statement.rows).join(" · ")} ·{" "}
+                            {statement.rows.length} lignes
                           </small>
                           {Boolean(statementWarnings[statement.id]) && (
                             <em className="statement-warning">
@@ -1607,10 +1612,11 @@ export default function Home() {
                                 <b>{statement.invoiceDate || "—"}</b>
                               </div>
                               <div>
-                                <span>Période des courses</span>
+                                <span>Dates des courses vérifiées</span>
                                 <b>
-                                  {statement.periodStart} au{" "}
-                                  {statement.periodEnd}
+                                  {getPayrollCourseDates(statement.rows).join(
+                                    " · ",
+                                  ) || "—"}
                                 </b>
                               </div>
                               <div>

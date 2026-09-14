@@ -783,6 +783,15 @@ select:focus {
   color: var(--teal);
   overflow: hidden;
 }
+.pay-scope-note {
+  margin: -2px 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eef8f7;
+  color: var(--teal-dark);
+  font-size: 12px;
+  line-height: 1.45;
+}
 .upload input {
   position: absolute;
   inset: 0;
