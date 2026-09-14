@@ -480,7 +480,7 @@ export default function Home() {
     : 0;
   const comparisons = useMemo(() => {
     const used = new Set<string>();
-    const payDates = new Set(payRows.map((row) => row.date));
+    const payDates = payRows.map((row) => row.date);
     const rows: Array<
       PayRow & {
         status: "missing-app" | "ok" | "different" | "missing-pay";
@@ -526,7 +526,7 @@ export default function Home() {
     });
     for (const c of courses) {
       if (
-        !payDates.has(c.date) ||
+        !payDates.includes(c.date) ||
         used.has(c.id) ||
         !(c.type === "adapte" || isCardPayment(c.payment))
       )
@@ -549,8 +549,8 @@ export default function Home() {
   const statementWarnings = useMemo(() => {
     const warnings: Record<string, number> = {};
     for (const statement of payStatements) {
-      const dates = new Set(statement.rows.map((row) => row.date));
-      if (!dates.size) {
+      const dates = statement.rows.map((row) => row.date);
+      if (!dates.length) {
         warnings[statement.id] = 0;
         continue;
       }
@@ -558,7 +558,7 @@ export default function Home() {
       let missing = 0;
       for (const course of courses.filter(
         (item) =>
-          dates.has(item.date) &&
+          dates.includes(item.date) &&
           (item.type === "adapte" || isCardPayment(item.payment)),
       )) {
         const candidate = statement.rows
@@ -728,51 +728,41 @@ export default function Home() {
             .map((item) => item.str || "")
             .join(" ") + "\n";
       }
-      text = text
-        .replace(/\u00a0/g, " ")
-        .replace(/[‐‑‒–—]/g, "-")
-        .replace(/\s+/g, " ");
       const tips = new Map<string, number>(),
-        tipRows = /\[?\s*TIPC\s*\]?[\s\S]*?\((\d+\s*A)\s+to[^)]*\)[\s\S]{0,260}?\b1\s+([\d\s]+[,.]\d{2})/gi;
+        tipRows = /\[TIPC\][\s\S]*?\((\d+A) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)/g;
       let match: RegExpExecArray | null;
-      while ((match = tipRows.exec(text))) {
-        const key = match[1].replace(/\s/g, "").toUpperCase();
-        tips.set(key, Number(match[2].replace(/\s/g, "").replace(",", ".")));
-      }
+      while ((match = tipRows.exec(text)))
+        tips.set(match[1], Number(match[2].replace(",", ".")));
       const rows: PayRow[] = [],
         regular =
-          /\[?\s*CRD\s*\]?[\s\S]*?\((\d+\s*A)\s+to[^)]*\)[\s\S]{0,320}?Date\s*:?\s*(\d{2})[\/.\-](\d{2})[\/.\-](\d{4})(?:\s+\d{2}:\d{2}(?::\d{2})?)?[\s\S]{0,220}?\b1\s+([\d\s]+[,.]\d{2})/gi;
-      while ((match = regular.exec(text))) {
-        const key = match[1].replace(/\s/g, "").toUpperCase();
+          /\[CRD\][\s\S]*?\((\d+A) to[^)]*\)\s+Date:\s+(\d{2})\/(\d{2})\/(\d{4})\s+\d{2}:\d{2}:\d{2}\s+1\s+([\d,]+)/g;
+      while ((match = regular.exec(text)))
         rows.push({
-          key,
+          key: match[1],
           type: "taxi",
           date: `${match[4]}-${match[3]}-${match[2]}`,
-          amount: Number(match[5].replace(/\s/g, "").replace(",", ".")),
-          tip: tips.get(key) || 0,
+          amount: Number(match[5].replace(",", ".")),
+          tip: tips.get(match[1]) || 0,
         });
-      }
       const adaptedRows =
-        /\[?\s*PTR\s*\]?[\s\S]*?\((HOB\s*\d{4})[\s_\-]+(\d{2})[\/.\-](\d{2})[\/.\-](\d{4})\s+to[^)]*\)[\s\S]{0,320}?\b1\s+([\d\s]+[,.]\d{2})(?=\s+(?:TPS|TVQ|\$|CAD))/gi;
+        /\[PTR\][\s\S]*?\((HOB\d{4})_(\d{2})\/(\d{2})\/(\d{4}) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)\s+TPS/g;
       while ((match = adaptedRows.exec(text)))
         rows.push({
-          key: match[1].replace(/\s/g, "").toUpperCase(),
+          key: match[1],
           type: "adapte",
           date: `${match[4]}-${match[3]}-${match[2]}`,
-          amount: Number(match[5].replace(/\s/g, "").replace(",", ".")),
+          amount: Number(match[5].replace(",", ".")),
           tip: 0,
         });
-      if (!rows.length)
-        throw new Error("Aucune ligne CRD ou PTR reconnue dans cette fiche Téo.");
+      if (!rows.length) throw new Error("Aucune course reconnue");
       const valueAfter = (label: RegExp) => {
         const found = text.match(label);
         return found
           ? Number(found[1].replace(/\s/g, "").replace(",", "."))
           : 0;
       };
-      const billMatch = text.match(/\bBILL[\s\-_]*(\d{5,})\b/i);
-      const billId = billMatch ? `BILL${billMatch[1]}` : "";
-      if (!billId) throw new Error("Numéro BILL introuvable dans la fiche.");
+      const billId = text.match(/Facture fournisseur\s+(BILL\d+)/i)?.[1];
+      if (!billId) throw new Error("Numéro BILL introuvable");
       const invoiceDate =
         text.match(
           /Date de la facture[\s\S]{0,180}?(\d{4}-\d{2}-\d{2})/i,
@@ -830,12 +820,9 @@ export default function Home() {
         });
       });
       flash(`Fiche ${billId} enregistrée avec tous ses détails.`);
-    } catch (error) {
-      console.error(error);
+    } catch {
       setPayError(
-        error instanceof Error
-          ? error.message
-          : "Impossible de lire cette fiche PDF Téo.",
+        "Impossible de lire cette fiche. Vérifiez qu’il s’agit d’un relevé PDF Téo.",
       );
     } finally {
       setPayLoading(false);
