@@ -480,17 +480,7 @@ export default function Home() {
     : 0;
   const comparisons = useMemo(() => {
     const used = new Set<string>();
-    const payDates = payRows.map((row) => row.date).sort();
-    let payStart = payDates[0];
-    let payEnd = payDates[payDates.length - 1];
-    if (payStart && payEnd) {
-      const firstDay = new Date(`${payStart}T12:00`);
-      firstDay.setDate(firstDay.getDate() - ((firstDay.getDay() - 2 + 7) % 7));
-      const lastDay = new Date(`${payEnd}T12:00`);
-      lastDay.setDate(lastDay.getDate() + ((1 - lastDay.getDay() + 7) % 7));
-      payStart = dateKey(firstDay);
-      payEnd = dateKey(lastDay);
-    }
+    const payDates = new Set(payRows.map((row) => row.date));
     const rows: Array<
       PayRow & {
         status: "missing-app" | "ok" | "different" | "missing-pay";
@@ -536,9 +526,7 @@ export default function Home() {
     });
     for (const c of courses) {
       if (
-        !payStart ||
-        c.date < payStart ||
-        c.date > payEnd ||
+        !payDates.has(c.date) ||
         used.has(c.id) ||
         !(c.type === "adapte" || isCardPayment(c.payment))
       )
@@ -561,21 +549,16 @@ export default function Home() {
   const statementWarnings = useMemo(() => {
     const warnings: Record<string, number> = {};
     for (const statement of payStatements) {
-      const dates = statement.rows.map((row) => row.date).sort();
-      if (!dates.length) {
+      const dates = new Set(statement.rows.map((row) => row.date));
+      if (!dates.size) {
         warnings[statement.id] = 0;
         continue;
       }
-      const start = new Date(`${dates[0]}T12:00`);
-      start.setDate(start.getDate() - ((start.getDay() - 2 + 7) % 7));
-      const end = new Date(`${dates[dates.length - 1]}T12:00`);
-      end.setDate(end.getDate() + ((1 - end.getDay() + 7) % 7));
       const usedRows = new Set<number>();
       let missing = 0;
       for (const course of courses.filter(
         (item) =>
-          item.date >= dateKey(start) &&
-          item.date <= dateKey(end) &&
+          dates.has(item.date) &&
           (item.type === "adapte" || isCardPayment(item.payment)),
       )) {
         const candidate = statement.rows
