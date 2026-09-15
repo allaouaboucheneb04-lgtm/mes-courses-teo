@@ -48,6 +48,23 @@ type Course = {
   verifiedBillId?: string;
   verifiedAt?: string;
 };
+type TaxiExpense = {
+  id: string;
+  date: string;
+  category:
+    | "Essence"
+    | "Lavage"
+    | "Entretien et réparation"
+    | "Assurance"
+    | "Location ou financement"
+    | "Stationnement"
+    | "Permis et immatriculation"
+    | "Repas"
+    | "Autre";
+  amount: number;
+  payment: "Carte" | "Espèces" | "Compte bancaire";
+  note?: string;
+};
 type PayRow = {
   key: string;
   type: "taxi" | "adapte";
@@ -122,6 +139,28 @@ const COUPON_STATUS_LABELS: Record<CouponStatus, string> = {
   deposited: "Déposé dans l’app Téo",
   pending: "Non déposé",
   fuel: "Utilisé pour l’essence",
+};
+const EXPENSE_CATEGORIES: TaxiExpense["category"][] = [
+  "Essence",
+  "Lavage",
+  "Entretien et réparation",
+  "Assurance",
+  "Location ou financement",
+  "Stationnement",
+  "Permis et immatriculation",
+  "Repas",
+  "Autre",
+];
+const EXPENSE_ICONS: Record<TaxiExpense["category"], string> = {
+  Essence: "⛽",
+  Lavage: "🧽",
+  "Entretien et réparation": "🔧",
+  Assurance: "🛡️",
+  "Location ou financement": "🚘",
+  Stationnement: "🅿️",
+  "Permis et immatriculation": "📄",
+  Repas: "🍽️",
+  Autre: "🧾",
 };
 const money = (v: number) =>
   new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(
@@ -288,6 +327,7 @@ export default function Home() {
       "taxi",
     ),
     [courses, setCourses] = useState<Course[]>([]),
+    [expenses, setExpenses] = useState<TaxiExpense[]>([]),
     [loaded, setLoaded] = useState(false),
     [notice, setNotice] = useState("");
   const [payRows, setPayRows] = useState<PayRow[]>([]),
@@ -310,8 +350,17 @@ export default function Home() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [mobilePage, setMobilePage] = useState<
-    "add" | "history" | "pay" | "settings"
+    "add" | "history" | "expenses" | "pay" | "settings"
   >("add");
+  const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
+  const [expensePeriod, setExpensePeriod] = useState<"week" | "month" | "all">("week");
+  const [expenseForm, setExpenseForm] = useState({
+    date: today(),
+    category: "Essence" as TaxiExpense["category"],
+    amount: "",
+    payment: "Carte" as TaxiExpense["payment"],
+    note: "",
+  });
   const [taxi, setTaxi] = useState({
     date: today(),
     amount: "",
@@ -369,6 +418,7 @@ export default function Home() {
         if (snapshot.exists()) {
           const remote = snapshot.data();
           setCourses(Array.isArray(remote.courses) ? remote.courses : []);
+          setExpenses(Array.isArray(remote.expenses) ? remote.expenses : []);
           setSettings({ ...DEFAULT_SETTINGS, ...(remote.settings || {}) });
           setPayStatements(Array.isArray(remote.payStatements) ? remote.payStatements : []);
         } else {
@@ -377,7 +427,7 @@ export default function Home() {
           const localStatements = JSON.parse(localStorage.getItem("teo-pay-statements") || "[]") as PayStatement[];
           const migratedSettings = { ...DEFAULT_SETTINGS, ...localSettings };
           setCourses(localCourses); setSettings(migratedSettings); setPayStatements(localStatements);
-          await setDoc(stateRef, { courses: localCourses, settings: migratedSettings, payStatements: localStatements, ownerEmail: user.email || "", updatedAt: serverTimestamp() });
+          await setDoc(stateRef, { courses: localCourses, expenses: [], settings: migratedSettings, payStatements: localStatements, ownerEmail: user.email || "", updatedAt: serverTimestamp() });
           localStorage.removeItem("teo-courses"); localStorage.removeItem("teo-settings"); localStorage.removeItem("teo-pay-statements");
         }
         if (!cancelled) { setLoaded(true); setSyncState("saved"); }
@@ -394,12 +444,12 @@ export default function Home() {
     setSyncState("saving");
     const timer = window.setTimeout(async () => {
       try {
-        await setDoc(doc(db, "drivers", user.uid, "data", "app"), { courses, settings, payStatements, ownerEmail: user.email || "", updatedAt: serverTimestamp() }, { merge: true });
+        await setDoc(doc(db, "drivers", user.uid, "data", "app"), { courses, expenses, settings, payStatements, ownerEmail: user.email || "", updatedAt: serverTimestamp() }, { merge: true });
         setSyncState("saved");
       } catch (error) { console.error(error); setSyncState("error"); }
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [courses, settings, payStatements, loaded, user]);
+  }, [courses, expenses, settings, payStatements, loaded, user]);
   useEffect(() => {
     if (!settings.adaptedEnabled && tab === "adapte") setTab("taxi");
     if (!settings.airportEnabled && taxi.category === "aeroport")
@@ -454,7 +504,11 @@ export default function Home() {
     });
   }, [loaded, payStatements]);
   const selectedDate =
-    (tab === "adapte" ? adapted.date : taxi.date) || today();
+    (mobilePage === "expenses"
+      ? expenseForm.date
+      : tab === "adapte"
+        ? adapted.date
+        : taxi.date) || today();
   const week = tuesdayWeekForDate(selectedDate);
   const weeklyCourses = useMemo(
     () => courses.filter((c) => c.date >= week.start && c.date <= week.end),
@@ -476,6 +530,13 @@ export default function Home() {
     weeklyAirportCourses.length * settings.airportFee,
   );
   const weeklyCompanyFee = round2(settings.companyFee);
+  const weeklyExpenses = useMemo(
+    () => expenses.filter((expense) => expense.date >= week.start && expense.date <= week.end),
+    [expenses, week.start, week.end],
+  );
+  const weeklyExpenseTotal = round2(
+    weeklyExpenses.reduce((sum, expense) => sum + expense.amount, 0),
+  );
   const totals = useMemo(
     () =>
       weeklyCourses.reduce(
@@ -653,6 +714,21 @@ export default function Home() {
   const dailyGoalProgress = dailyGoal
     ? Math.min(100, Math.max(0, (dailyGoalNet / dailyGoal) * 100))
     : 0;
+  const filteredExpenses = useMemo(() => {
+    if (expensePeriod === "all") return [...expenses].sort((a, b) => b.date.localeCompare(a.date));
+    if (expensePeriod === "week")
+      return expenses
+        .filter((expense) => expense.date >= week.start && expense.date <= week.end)
+        .sort((a, b) => b.date.localeCompare(a.date));
+    const selected = new Date(`${expenseForm.date || today()}T12:00:00`);
+    const month = `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, "0")}`;
+    return expenses
+      .filter((expense) => expense.date.startsWith(month))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [expenses, expensePeriod, week.start, week.end, expenseForm.date]);
+  const filteredExpenseTotal = round2(
+    filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
+  );
   const comparisons = useMemo(() => {
     const used = new Set<string>();
     const payDates = new Set(getPayrollCourseDates(payRows));
@@ -854,6 +930,56 @@ export default function Home() {
     setNotice(t);
     window.setTimeout(() => setNotice(""), 2400);
   };
+  function resetExpenseForm(date = expenseForm.date || today()) {
+    setExpenseEditingId(null);
+    setExpenseForm({
+      date,
+      category: "Essence",
+      amount: "",
+      payment: "Carte",
+      note: "",
+    });
+  }
+  function saveExpense(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const amount = parseMoneyInput(expenseForm.amount);
+    if (!expenseForm.date || amount <= 0) {
+      flash("Inscrivez une date et un montant valide.");
+      return;
+    }
+    const expense: TaxiExpense = {
+      id: expenseEditingId || crypto.randomUUID(),
+      date: expenseForm.date,
+      category: expenseForm.category,
+      amount,
+      payment: expenseForm.payment,
+      note: expenseForm.note.trim(),
+    };
+    setExpenses((current) =>
+      expenseEditingId
+        ? current.map((item) => (item.id === expenseEditingId ? expense : item))
+        : [expense, ...current],
+    );
+    resetExpenseForm(expense.date);
+    flash(expenseEditingId ? "Dépense modifiée." : "Dépense ajoutée.");
+  }
+  function editExpense(expense: TaxiExpense) {
+    setExpenseEditingId(expense.id);
+    setExpenseForm({
+      date: expense.date,
+      category: expense.category,
+      amount: formatMoneyInput(expense.amount),
+      payment: expense.payment,
+      note: expense.note || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function deleteExpense(expenseId: string) {
+    if (!window.confirm("Supprimer cette dépense?")) return;
+    setExpenses((current) => current.filter((expense) => expense.id !== expenseId));
+    if (expenseEditingId === expenseId) resetExpenseForm();
+    flash("Dépense supprimée.");
+  }
   function changeCoursePayment(courseId: string, payment: string) {
     setCourses((current) =>
       current.map((course) => {
@@ -1616,6 +1742,16 @@ export default function Home() {
             <p>Téo Taxi · Montréal</p>
           </div>
         </div>
+        <button
+          className="expense-desktop-launch"
+          type="button"
+          onClick={() => {
+            setMobilePage(mobilePage === "expenses" ? "add" : "expenses");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          {mobilePage === "expenses" ? "← Retour aux courses" : "🧾 Dépenses taxi"}
+        </button>
         <div className="account-pill" title={user.email || "Compte chauffeur"}>
           <span>{(user.displayName || user.email || "C").charAt(0).toUpperCase()}</span>
           <div><b>{user.displayName || "Chauffeur"}</b><small>{syncState === "saving" ? "Enregistrement…" : syncState === "error" ? "Erreur de sauvegarde" : "Données enregistrées"}</small></div>
@@ -1630,7 +1766,8 @@ export default function Home() {
                 totals.gross -
                   totals.deductions -
                   airportFeeTotal -
-                  weeklyCompanyFee,
+                  weeklyCompanyFee -
+                  weeklyExpenseTotal,
               )}
             </strong>
             <small>
@@ -1682,12 +1819,15 @@ export default function Home() {
           <div className="mini fee">
             <span>Frais et perceptions</span>
             <b>
-              − {money(totals.deductions + airportFeeTotal + weeklyCompanyFee)}
+              − {money(totals.deductions + airportFeeTotal + weeklyCompanyFee + weeklyExpenseTotal)}
             </b>
             {weeklyCompanyFee > 0 && (
               <small>
                 dont {money(weeklyCompanyFee)} de frais de compagnie
               </small>
+            )}
+            {weeklyExpenseTotal > 0 && (
+              <small>dont {money(weeklyExpenseTotal)} de dépenses taxi</small>
             )}
           </div>
         </section>
@@ -3275,6 +3415,141 @@ export default function Home() {
             </div>
           )}
         </section>
+        {mobilePage === "expenses" && (
+          <section className="expenses-page" id="expenses">
+            <div className="expenses-heading">
+              <div>
+                <span className="expenses-kicker">🚕 Gestion des coûts</span>
+                <h2>Dépenses taxi</h2>
+                <p>Enregistrez vos dépenses et suivez leur effet sur votre revenu net.</p>
+              </div>
+              <div className="expenses-total-card">
+                <span>Total affiché</span>
+                <b>− {money(filteredExpenseTotal)}</b>
+                <small>{filteredExpenses.length} dépense{filteredExpenses.length !== 1 ? "s" : ""}</small>
+              </div>
+            </div>
+
+            <form className="expense-form" onSubmit={saveExpense}>
+              <div className="form-title">
+                <div>
+                  <h3>{expenseEditingId ? "Modifier la dépense" : "Nouvelle dépense"}</h3>
+                  <p>Le montant sera déduit de la semaine correspondant à la date.</p>
+                </div>
+                <span className="type-icon">🧾</span>
+              </div>
+              <div className="two">
+                <label>
+                  Date
+                  <input
+                    required
+                    type="date"
+                    value={expenseForm.date}
+                    onChange={(event) => setExpenseForm({ ...expenseForm, date: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Catégorie
+                  <select
+                    value={expenseForm.category}
+                    onChange={(event) => setExpenseForm({ ...expenseForm, category: event.target.value as TaxiExpense["category"] })}
+                  >
+                    {EXPENSE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>{EXPENSE_ICONS[category]} {category}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="two">
+                <label>
+                  Montant
+                  <div className="money-input">
+                    <span>$</span>
+                    <input
+                      required
+                      inputMode="numeric"
+                      placeholder="0,00"
+                      value={expenseForm.amount}
+                      onChange={(event) => setExpenseForm({ ...expenseForm, amount: autoCommaMoneyInput(event.target.value) })}
+                    />
+                    <em>CAD</em>
+                  </div>
+                </label>
+                <label>
+                  Payé avec
+                  <select
+                    value={expenseForm.payment}
+                    onChange={(event) => setExpenseForm({ ...expenseForm, payment: event.target.value as TaxiExpense["payment"] })}
+                  >
+                    <option value="Carte">💳 Carte</option>
+                    <option value="Espèces">💵 Espèces</option>
+                    <option value="Compte bancaire">🏦 Compte bancaire</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                Note <small>(facultatif)</small>
+                <input
+                  maxLength={120}
+                  placeholder="Ex. plein d’essence, changement d’huile…"
+                  value={expenseForm.note}
+                  onChange={(event) => setExpenseForm({ ...expenseForm, note: event.target.value })}
+                />
+              </label>
+              <button className="primary" type="submit">
+                {expenseEditingId ? "Enregistrer la modification" : "Ajouter la dépense"}
+              </button>
+              {expenseEditingId && (
+                <button className="cancel-edit" type="button" onClick={() => resetExpenseForm()}>
+                  Annuler la modification
+                </button>
+              )}
+            </form>
+
+            <section className="expense-history">
+              <div className="section-head">
+                <div>
+                  <h3>Historique des dépenses</h3>
+                  <p>Choisissez la période à afficher.</p>
+                </div>
+                <select
+                  aria-label="Période des dépenses"
+                  value={expensePeriod}
+                  onChange={(event) => setExpensePeriod(event.target.value as typeof expensePeriod)}
+                >
+                  <option value="week">Cette semaine</option>
+                  <option value="month">Ce mois-ci</option>
+                  <option value="all">Toutes</option>
+                </select>
+              </div>
+              {filteredExpenses.length === 0 ? (
+                <div className="empty compact">
+                  <span>🧾</span>
+                  <h3>Aucune dépense</h3>
+                  <p>Les dépenses de cette période apparaîtront ici.</p>
+                </div>
+              ) : (
+                <div className="expense-list">
+                  {filteredExpenses.map((expense) => (
+                    <article className="expense-item" key={expense.id}>
+                      <span className="expense-icon" aria-hidden="true">{EXPENSE_ICONS[expense.category]}</span>
+                      <div className="expense-info">
+                        <b>{expense.category}</b>
+                        <span>{new Date(`${expense.date}T12:00:00`).toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long" })} · {expense.payment}</span>
+                        {expense.note && <small>{expense.note}</small>}
+                      </div>
+                      <strong>− {money(expense.amount)}</strong>
+                      <div className="course-actions">
+                        <button aria-label="Modifier la dépense" className="edit" type="button" onClick={() => editExpense(expense)}>✎</button>
+                        <button aria-label="Supprimer la dépense" className="delete" type="button" onClick={() => deleteExpense(expense.id)}>×</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </section>
+        )}
         {tab !== "settings" && (
           <section className="daily-courses">
             <div className="section-head">
@@ -3834,6 +4109,16 @@ export default function Home() {
           }}
         >
           ▤<span>Historique</span>
+        </button>
+        <button
+          className={mobilePage === "expenses" ? "selected" : ""}
+          onClick={() => {
+            setMobilePage("expenses");
+            setEditingId(null);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          🧾<span>Dépenses</span>
         </button>
         <button
           className={mobilePage === "pay" ? "selected" : ""}
