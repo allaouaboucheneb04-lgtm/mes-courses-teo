@@ -14,6 +14,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
+type CouponStatus = "deposited" | "pending" | "fuel";
 type Course = {
   id: string;
   type: "taxi" | "adapte";
@@ -29,6 +30,7 @@ type Course = {
   end?: string;
   teoId?: string;
   taxiCategory?: "centre-ville" | "aeroport";
+  couponStatus?: CouponStatus;
   verified?: boolean;
   verifiedBillId?: string;
   verifiedAt?: string;
@@ -100,6 +102,11 @@ const GOAL_DAYS = [
   "Samedi",
   "Dimanche",
 ];
+const COUPON_STATUS_LABELS: Record<CouponStatus, string> = {
+  deposited: "Déposé dans l’app Téo",
+  pending: "Non déposé",
+  fuel: "Utilisé pour l’essence",
+};
 const money = (v: number) =>
   new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(
     v || 0,
@@ -143,6 +150,10 @@ const courseEmoji = (course: Course) => {
     return "🧾";
   return "🚕";
 };
+const couponStatusOf = (course: Course): CouponStatus =>
+  course.couponStatus === "deposited" || course.couponStatus === "fuel"
+    ? course.couponStatus
+    : "pending";
 const normalizeHob = (value?: string) =>
   (value || "").trim().toUpperCase().replace(/\s+/g, "");
 const round2 = (value: number) =>
@@ -152,7 +163,8 @@ const serviceFee = (course: Course, settings: AppSettings) => {
   if (course.type === "adapte")
     return round2((course.amount * settings.adaptedFee) / 100);
   let fee = 0;
-  if (isCardPayment(course.payment)) fee = (gross * settings.cardFee) / 100;
+  if (isCardPayment(course.payment) || course.payment === "Coupon")
+    fee = (gross * settings.cardFee) / 100;
   else if (course.payment === "Machine crédit" || course.payment === "Autre")
     fee = (gross * settings.machineFee) / 100;
   return round2(fee);
@@ -229,6 +241,7 @@ export default function Home() {
     amount: "",
     tip: "",
     payment: "Téo / carte",
+    couponStatus: "pending" as CouponStatus,
     category: "centre-ville" as "centre-ville" | "aeroport",
   });
   const [adapted, setAdapted] = useState({
@@ -463,6 +476,33 @@ export default function Home() {
       ),
     [filteredHistory, settings],
   );
+  const historyCouponSummary = useMemo(() => {
+    const summary: Record<
+      CouponStatus,
+      { count: number; amount: number }
+    > = {
+      deposited: { count: 0, amount: 0 },
+      pending: { count: 0, amount: 0 },
+      fuel: { count: 0, amount: 0 },
+    };
+
+    for (const course of filteredHistory) {
+      if (course.type !== "taxi" || course.payment !== "Coupon") continue;
+      const status = couponStatusOf(course);
+      summary[status].count += 1;
+      summary[status].amount += course.amount + course.tip;
+    }
+
+    return summary;
+  }, [filteredHistory]);
+  const historyCouponCount =
+    historyCouponSummary.deposited.count +
+    historyCouponSummary.pending.count +
+    historyCouponSummary.fuel.count;
+  const historyCouponAmount =
+    historyCouponSummary.deposited.amount +
+    historyCouponSummary.pending.amount +
+    historyCouponSummary.fuel.amount;
   const historyAirportFeeTotal = useMemo(
     () =>
       round2(
@@ -740,9 +780,14 @@ export default function Home() {
   };
   function changeCoursePayment(courseId: string, payment: string) {
     setCourses((current) =>
-      current.map((course) =>
-        course.id === courseId ? { ...course, payment } : course,
-      ),
+      current.map((course) => {
+        if (course.id !== courseId) return course;
+        const updated: Course = { ...course, payment };
+        if (payment === "Coupon")
+          updated.couponStatus = course.couponStatus || "pending";
+        else delete updated.couponStatus;
+        return updated;
+      }),
     );
     flash("Mode de paiement modifié.");
   }
@@ -806,6 +851,7 @@ export default function Home() {
         amount: formatMoneyInput(round2(course.amount + course.tip)),
         tip: formatMoneyInput(course.tip),
         payment: isCardPayment(course.payment) ? "Téo / carte" : course.payment,
+        couponStatus: course.couponStatus || "pending",
         category: course.taxiCategory || "centre-ville",
       });
       setTab("taxi");
@@ -837,6 +883,7 @@ export default function Home() {
       amount: "",
       tip: "",
       payment: "Téo / carte",
+      couponStatus: "pending",
       category: "centre-ville",
     });
     setAdapted({
@@ -990,6 +1037,9 @@ export default function Home() {
       amount: round2(total - tip),
       tip: round2(tip),
       payment: taxi.payment,
+      ...(taxi.payment === "Coupon"
+        ? { couponStatus: taxi.couponStatus }
+        : {}),
       taxiCategory: taxi.category,
     };
     setCourses(
@@ -1363,6 +1413,7 @@ export default function Home() {
                   </option>
                   <option value="Téo / carte">Téo / carte</option>
                   <option value="Espèces">Espèces</option>
+                  <option value="Coupon">Coupon</option>
                   <option value="Machine crédit">Machine crédit</option>
                 </select>
                 <button
@@ -1694,6 +1745,31 @@ export default function Home() {
                   <option>Machine crédit</option>
                 </select>
               </label>
+              {taxi.payment === "Coupon" && (
+                <label className="coupon-status-field">
+                  Statut du coupon
+                  <select
+                    value={taxi.couponStatus}
+                    onChange={(e) =>
+                      setTaxi({
+                        ...taxi,
+                        couponStatus: e.target.value as CouponStatus,
+                      })
+                    }
+                  >
+                    <option value="pending">Non déposé</option>
+                    <option value="deposited">Déposé dans l’app Téo</option>
+                    <option value="fuel">Utilisé pour l’essence</option>
+                  </select>
+                  <small>
+                    Frais appliqués : le même taux que Téo, soit{" "}
+                    {settings.cardFee.toLocaleString("fr-CA", {
+                      maximumFractionDigits: 3,
+                    })}
+                    &nbsp;%.
+                  </small>
+                </label>
+              )}
               {taxi.category === "aeroport" && (
                 <div className="airport-fee-note">
                   Redevance de <b>{money(settings.airportFee)}</b> comptabilisée
@@ -3052,6 +3128,13 @@ export default function Home() {
                           ? `${payment}${c.taxiCategory === "aeroport" ? " · Aéroport" : ""}`
                           : "Transport adapté"}
                       </small>
+                      {c.payment === "Coupon" && (
+                        <small
+                          className={`coupon-course-status ${couponStatusOf(c)}`}
+                        >
+                          {COUPON_STATUS_LABELS[couponStatusOf(c)]}
+                        </small>
+                      )}
                       <div className="daily-details">
                         <span>
                           <em>Total avec pourboire</em>
@@ -3250,6 +3333,45 @@ export default function Home() {
                   </b>
                 </div>
               </div>
+              <section className="coupon-history-card">
+                <header>
+                  <span aria-hidden="true">🎟️</span>
+                  <div>
+                    <b>Suivi des coupons</b>
+                    <small>
+                      {historyCouponCount} coupon
+                      {historyCouponCount !== 1 ? "s" : ""} ·{" "}
+                      {money(historyCouponAmount)}
+                    </small>
+                  </div>
+                </header>
+                <div className="coupon-history-grid">
+                  <div className="deposited">
+                    <span>✓ Déposés dans Téo</span>
+                    <b>{money(historyCouponSummary.deposited.amount)}</b>
+                    <small>
+                      {historyCouponSummary.deposited.count} coupon
+                      {historyCouponSummary.deposited.count !== 1 ? "s" : ""}
+                    </small>
+                  </div>
+                  <div className="pending">
+                    <span>◷ Non déposés</span>
+                    <b>{money(historyCouponSummary.pending.amount)}</b>
+                    <small>
+                      {historyCouponSummary.pending.count} coupon
+                      {historyCouponSummary.pending.count !== 1 ? "s" : ""}
+                    </small>
+                  </div>
+                  <div className="fuel">
+                    <span>⛽ Essence</span>
+                    <b>{money(historyCouponSummary.fuel.amount)}</b>
+                    <small>
+                      {historyCouponSummary.fuel.count} coupon
+                      {historyCouponSummary.fuel.count !== 1 ? "s" : ""}
+                    </small>
+                  </div>
+                </div>
+              </section>
               <div
                 className={`verification-count ${
                   unverifiedHistoryCount === 0 ? "complete" : "pending"
@@ -3329,6 +3451,13 @@ export default function Home() {
                               ? `${payment}${c.taxiCategory === "aeroport" ? " · Aéroport" : ""}`
                               : `${c.duration?.toFixed(2)} h réelles · ${(c.billedDuration || Math.max(c.duration || 0, settings.adaptedMinimum)).toFixed(2)} h payées`}
                           </span>
+                          {c.payment === "Coupon" && (
+                            <span
+                              className={`coupon-course-status ${couponStatusOf(c)}`}
+                            >
+                              {COUPON_STATUS_LABELS[couponStatusOf(c)]}
+                            </span>
+                          )}
                           {c.verified && (
                             <span className="verified-course">
                               ✓ Vérifiée
