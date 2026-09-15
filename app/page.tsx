@@ -1404,7 +1404,7 @@ export default function Home() {
           <div><b>{user.displayName || "Chauffeur"}</b><small>{syncState === "saving" ? "Enregistrement…" : syncState === "error" ? "Erreur de sauvegarde" : "Données enregistrées"}</small></div>
         </div>
       </header>
-      <div className={`shell page-${mobilePage}`}>
+      <div className={`shell page-${mobilePage} tab-${tab}`}>
         <section className="summary">
           <div>
             <span>Revenu net de la semaine</span>
@@ -2569,34 +2569,45 @@ export default function Home() {
             </div>
           ) : (
             <div className="form-card settings-card">
-              <div className="form-title">
+              <div className="form-title settings-page-head">
                 <div>
                   <h2>Réglages</h2>
-                  <p>Taux utilisés automatiquement dans les calculs.</p>
+                  <p>Personnalisez les services, objectifs et frais.</p>
                 </div>
                 <span className="type-icon">⚙</span>
               </div>
-              <div className="account-settings">
-                <div><b>{user.displayName || "Compte chauffeur"}</b><small>{user.email}</small></div>
-                <button type="button" onClick={() => signOut(auth)}>Se déconnecter</button>
-              </div>
-              <div className="service-options">
-                <label>
-                  <span>
-                    <b>Objectif quotidien</b>
-                    <small>Afficher la progression dans le cadre coloré</small>
+              <section className="settings-section settings-account-section">
+                <div className="settings-section-heading">
+                  <span>👤</span>
+                  <div>
+                    <h3>Mon compte</h3>
+                    <p>Vos données sont enregistrées dans ce compte.</p>
+                  </div>
+                </div>
+                <div className="account-settings">
+                  <span className="settings-avatar">
+                    {(user.displayName || user.email || "C")
+                      .charAt(0)
+                      .toUpperCase()}
                   </span>
-                  <input
-                    type="checkbox"
-                    checked={settings.dailyGoalEnabled}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        dailyGoalEnabled: e.target.checked,
-                      })
-                    }
-                  />
-                </label>
+                  <div>
+                    <b>{user.displayName || "Compte chauffeur"}</b>
+                    <small>{user.email}</small>
+                  </div>
+                  <button type="button" onClick={() => signOut(auth)}>
+                    Se déconnecter
+                  </button>
+                </div>
+              </section>
+              <section className="settings-section">
+                <div className="settings-section-heading">
+                  <span>🚕</span>
+                  <div>
+                    <h3>Services utilisés</h3>
+                    <p>Affichez uniquement les services que vous conduisez.</p>
+                  </div>
+                </div>
+                <div className="service-options">
                 <label>
                   <span>
                     <b>Courses Aéroport</b>
@@ -2629,7 +2640,31 @@ export default function Home() {
                     }
                   />
                 </label>
-              </div>
+                </div>
+              </section>
+              <section className="settings-section settings-goal-section">
+                <div className="settings-toggle-heading">
+                  <div className="settings-section-heading">
+                    <span>🎯</span>
+                    <div>
+                      <h3>Objectif quotidien</h3>
+                      <p>Suivez votre progression dans le résumé.</p>
+                    </div>
+                  </div>
+                  <label className="settings-master-switch">
+                    <input
+                      type="checkbox"
+                      checked={settings.dailyGoalEnabled}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          dailyGoalEnabled: e.target.checked,
+                        })
+                      }
+                    />
+                    <span>{settings.dailyGoalEnabled ? "Activé" : "Désactivé"}</span>
+                  </label>
+                </div>
               {settings.dailyGoalEnabled && (
                 <div className="goal-settings">
                   <b>Montant de l’objectif</b>
@@ -2696,148 +2731,238 @@ export default function Home() {
                   )}
                 </div>
               )}
-              <div className="settings-grid">
-                <label>
-                  Frais Téo / carte (%)
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={settings.cardFee}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        cardFee: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Frais machine crédit (%)
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={settings.machineFee}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        machineFee: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Frais de compagnie par semaine ($)
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={settings.companyFee}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        companyFee: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                {settings.airportEnabled && (
-                  <label>
-                    Redevance par course aéroport ($)
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={settings.airportFee}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          airportFee: Number(e.target.value),
-                        })
-                      }
-                    />
+              </section>
+              <section className="settings-section">
+                <div className="settings-section-heading">
+                  <span>%</span>
+                  <div>
+                    <h3>Frais taxi</h3>
+                    <p>Taux déduits automatiquement de vos revenus.</p>
+                  </div>
+                </div>
+                <div className="settings-grid">
+                  <label className="setting-field">
+                    <span>
+                      <b>Frais Téo / carte</b>
+                      <small>Pour les paiements Téo et par carte</small>
+                    </span>
+                    <div className="setting-number">
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={settings.cardFee}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            cardFee: Number(e.target.value),
+                          })
+                        }
+                      />
+                      <em>%</em>
+                    </div>
                   </label>
-                )}
-                <label>
-                  Taux transport adapté ($/h)
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={settings.adaptedRate}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        adaptedRate: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Minimum payé (heures)
-                  <input
-                    type="number"
-                    step="0.25"
-                    min="0"
-                    value={settings.adaptedMinimum}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        adaptedMinimum: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Frais Téo adapté (%)
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    value={settings.adaptedFee}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        adaptedFee: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
+                  <label className="setting-field">
+                    <span>
+                      <b>Machine crédit</b>
+                      <small>Frais du terminal de paiement externe</small>
+                    </span>
+                    <div className="setting-number">
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={settings.machineFee}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            machineFee: Number(e.target.value),
+                          })
+                        }
+                      />
+                      <em>%</em>
+                    </div>
+                  </label>
+                  <label className="setting-field">
+                    <span>
+                      <b>Frais de compagnie</b>
+                      <small>Prélevés une fois chaque mardi</small>
+                    </span>
+                    <div className="setting-number">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={settings.companyFee}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            companyFee: Number(e.target.value),
+                          })
+                        }
+                      />
+                      <em>$</em>
+                    </div>
+                  </label>
+                  {settings.airportEnabled && (
+                    <label className="setting-field">
+                      <span>
+                        <b>Redevance aéroport</b>
+                        <small>Montant déduit par course aéroport</small>
+                      </span>
+                      <div className="setting-number">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={settings.airportFee}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              airportFee: Number(e.target.value),
+                            })
+                          }
+                        />
+                        <em>$</em>
+                      </div>
+                    </label>
+                  )}
+                </div>
+              </section>
+              {settings.adaptedEnabled && (
+                <section className="settings-section">
+                  <div className="settings-section-heading">
+                    <span>♿</span>
+                    <div>
+                      <h3>Transport adapté</h3>
+                      <p>Tarif horaire, minimum payé et frais Téo.</p>
+                    </div>
+                  </div>
+                  <div className="settings-grid adapted-settings-grid">
+                    <label className="setting-field">
+                      <span>
+                        <b>Taux horaire</b>
+                        <small>Montant brut avant les frais</small>
+                      </span>
+                      <div className="setting-number">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={settings.adaptedRate}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              adaptedRate: Number(e.target.value),
+                            })
+                          }
+                        />
+                        <em>$/h</em>
+                      </div>
+                    </label>
+                    <label className="setting-field">
+                      <span>
+                        <b>Minimum payé</b>
+                        <small>Même si la tournée dure moins longtemps</small>
+                      </span>
+                      <div className="setting-number">
+                        <input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          value={settings.adaptedMinimum}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              adaptedMinimum: Number(e.target.value),
+                            })
+                          }
+                        />
+                        <em>h</em>
+                      </div>
+                    </label>
+                    <label className="setting-field">
+                      <span>
+                        <b>Frais Téo adapté</b>
+                        <small>Pourcentage retiré de la tournée</small>
+                      </span>
+                      <div className="setting-number">
+                        <input
+                          type="number"
+                          step="0.001"
+                          min="0"
+                          value={settings.adaptedFee}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              adaptedFee: Number(e.target.value),
+                            })
+                          }
+                        />
+                        <em>%</em>
+                      </div>
+                    </label>
+                  </div>
+                </section>
+              )}
+              <section className="settings-section settings-calendar-section">
+                <div className="settings-section-heading">
+                  <span>📅</span>
+                  <div>
+                    <h3>Calendrier des calculs</h3>
+                    <p>Jours utilisés automatiquement par l’application.</p>
+                  </div>
+                </div>
+                <div className="settings-schedule">
+                  <div className="setting-row">
+                    <div>
+                      <b>Semaine de revenus</b>
+                      <span>Calcul du revenu hebdomadaire</span>
+                    </div>
+                    <strong>Mardi au lundi</strong>
+                  </div>
+                  <div className="setting-row">
+                    <div>
+                      <b>Frais de compagnie</b>
+                      <span>Déduits une fois au début de la semaine</span>
+                    </div>
+                    <strong>Chaque mardi</strong>
+                  </div>
+                  {settings.airportEnabled && (
+                    <div className="setting-row">
+                      <div>
+                        <b>Redevance aéroport</b>
+                        <span>Facture de redevance envoyée le lundi</span>
+                      </div>
+                      <strong>Lundi au dimanche</strong>
+                    </div>
+                  )}
+                </div>
+              </section>
+              <div className={`settings-saved ${syncState}`}>
+                <span>{syncState === "error" ? "!" : "✓"}</span>
+                <div className="settings-save-copy">
+                  <b>
+                    {syncState === "saving"
+                      ? "Enregistrement en cours…"
+                      : syncState === "error"
+                        ? "Erreur d’enregistrement"
+                        : "Réglages enregistrés"}
+                  </b>
+                  <small>
+                    {syncState === "error"
+                      ? "Vérifiez votre connexion puis réessayez."
+                      : "Les changements sont sauvegardés automatiquement."}
+                  </small>
+                </div>
               </div>
-              <p className="settings-saved">
-                ✓ Les changements sont enregistrés automatiquement.
-              </p>
               <button
                 type="button"
-                className="cancel-edit"
+                className="reset-settings"
                 onClick={() => setSettings(DEFAULT_SETTINGS)}
               >
-                Rétablir les taux d’origine
+                Rétablir tous les réglages d’origine
               </button>
-              <div className="setting-row">
-                <div>
-                  <b>Début de semaine</b>
-                  <span>Mardi au lundi</span>
-                </div>
-                <strong>Mardi</strong>
-              </div>
-              <div className="setting-row">
-                <div>
-                  <b>Frais de compagnie</b>
-                  <span>Déduit une fois au début de chaque semaine</span>
-                </div>
-                <strong>Chaque mardi</strong>
-              </div>
-              {settings.airportEnabled && (
-                <div className="setting-row">
-                  <div>
-                    <b>Période redevance aéroport</b>
-                    <span>Facture envoyée chaque lundi</span>
-                  </div>
-                  <strong>Lundi au dimanche</strong>
-                </div>
-              )}
             </div>
           )}
         </section>
