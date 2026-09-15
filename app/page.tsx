@@ -189,6 +189,10 @@ export default function Home() {
     [payError, setPayError] = useState(""),
     [payStatements, setPayStatements] = useState<PayStatement[]>([]),
     [selectedStatementId, setSelectedStatementId] = useState("");
+  const [billSearch, setBillSearch] = useState(""),
+    [billStatus, setBillStatus] = useState<"all" | "issues" | "clear">(
+      "all",
+    );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [mobilePage, setMobilePage] = useState<
@@ -596,6 +600,26 @@ export default function Home() {
     }
     return warnings;
   }, [payStatements, courses]);
+  const filteredPayStatements = useMemo(() => {
+    const query = billSearch.trim().toLowerCase();
+
+    return payStatements.filter((statement) => {
+      const courseDates = getPayrollCourseDates(statement.rows);
+      const matchesSearch =
+        !query ||
+        statement.id.toLowerCase().includes(query) ||
+        statement.fileName.toLowerCase().includes(query) ||
+        statement.invoiceDate.includes(query) ||
+        courseDates.some((date) => date.includes(query));
+      const hasIssues = (statementWarnings[statement.id] || 0) > 0;
+      const matchesStatus =
+        billStatus === "all" ||
+        (billStatus === "issues" && hasIssues) ||
+        (billStatus === "clear" && !hasIssues);
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [billSearch, billStatus, payStatements, statementWarnings]);
   const flash = (t: string) => {
     setNotice(t);
     window.setTimeout(() => setNotice(""), 2400);
@@ -1552,7 +1576,44 @@ export default function Home() {
               {payStatements.length > 0 && (
                 <section className="saved-statements">
                   <h3>Fiches de paie enregistrées</h3>
-                  {payStatements.map((statement) => (
+                  <div className="bill-filters">
+                    <label>
+                      <span>Rechercher une fiche</span>
+                      <input
+                        type="search"
+                        value={billSearch}
+                        onChange={(event) => setBillSearch(event.target.value)}
+                        placeholder="No BILL ou date"
+                      />
+                    </label>
+                    <label>
+                      <span>État</span>
+                      <select
+                        value={billStatus}
+                        onChange={(event) =>
+                          setBillStatus(
+                            event.target.value as "all" | "issues" | "clear",
+                          )
+                        }
+                      >
+                        <option value="all">Toutes</option>
+                        <option value="issues">À vérifier</option>
+                        <option value="clear">Sans anomalie</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p className="bill-filter-count">
+                    {filteredPayStatements.length} fiche
+                    {filteredPayStatements.length > 1 ? "s" : ""} affichée
+                    {filteredPayStatements.length > 1 ? "s" : ""} sur {" "}
+                    {payStatements.length}
+                  </p>
+                  {filteredPayStatements.length === 0 && (
+                    <p className="bill-filter-empty">
+                      Aucune fiche ne correspond à ce filtre.
+                    </p>
+                  )}
+                  {filteredPayStatements.map((statement) => (
                     <div
                       className={`saved-statement ${
                         statement.id === selectedStatementId ? "open" : ""

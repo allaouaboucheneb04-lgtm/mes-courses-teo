@@ -1013,6 +1013,40 @@ select:focus {
   margin: 0 0 8px;
   font-size: 16px;
 }
+.bill-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d9e8e7;
+  border-radius: 12px;
+  background: #f7fbfb;
+}
+.bill-filters label span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.bill-filters input,
+.bill-filters select {
+  height: 44px;
+  margin: 0;
+}
+.bill-filter-count {
+  margin: 8px 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.bill-filter-empty {
+  margin: 12px 0 0;
+  padding: 16px;
+  border-radius: 11px;
+  background: #f5f8f8;
+  color: var(--muted);
+  text-align: center;
+}
 .saved-statements button {
   width: 100%;
   display: flex;
@@ -1491,6 +1525,9 @@ select:focus {
     align-items: start;
   }
   .statement-grid {
+    grid-template-columns: 1fr;
+  }
+  .bill-filters {
     grid-template-columns: 1fr;
   }
   .statement-details.inline {
