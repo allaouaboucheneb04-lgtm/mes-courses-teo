@@ -14,7 +14,18 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
+import {
+  extractCouponPayrollRows,
+  normalizeCouponReference,
+} from "@/lib/coupon-payroll";
 type CouponStatus = "deposited" | "pending" | "fuel";
+type HistoryPaymentFilter =
+  | "all"
+  | "teo-card"
+  | "cash"
+  | "coupon"
+  | "machine"
+  | "adapted";
 type Course = {
   id: string;
   type: "taxi" | "adapte";
@@ -31,6 +42,8 @@ type Course = {
   teoId?: string;
   taxiCategory?: "centre-ville" | "aeroport";
   couponStatus?: CouponStatus;
+  couponNumber?: string;
+  couponAccount?: string;
   verified?: boolean;
   verifiedBillId?: string;
   verifiedAt?: string;
@@ -41,6 +54,9 @@ type PayRow = {
   date: string;
   amount: number;
   tip: number;
+  paymentKind?: "card" | "coupon";
+  couponNumber?: string;
+  couponAccount?: string;
 };
 type PayStatement = {
   id: string;
@@ -156,6 +172,66 @@ const couponStatusOf = (course: Course): CouponStatus =>
     : "pending";
 const normalizeHob = (value?: string) =>
   (value || "").trim().toUpperCase().replace(/\s+/g, "");
+const isCouponPayRow = (row: PayRow) =>
+  row.type === "taxi" && row.paymentKind === "coupon";
+const isDepositedCoupon = (course: Course) =>
+  course.type === "taxi" &&
+  course.payment === "Coupon" &&
+  couponStatusOf(course) === "deposited";
+const isPayrollCourse = (course: Course) =>
+  course.type === "adapte" ||
+  isCardPayment(course.payment) ||
+  isDepositedCoupon(course);
+const payRowTitle = (row: PayRow) => {
+  if (row.type === "adapte") return row.key;
+  if (isCouponPayRow(row))
+    return `Coupon ${row.couponNumber || row.key || "sans numéro"}`;
+  return row.key === "Course carte"
+    ? "Course Téo / carte"
+    : `Course Téo ${row.key}`;
+};
+const payrollCourseMatchesRow = (course: Course, row: PayRow) => {
+  if (course.type !== row.type || course.date !== row.date) return false;
+  if (row.type === "adapte")
+    return normalizeHob(row.key) === normalizeHob(course.hob);
+  if (isCouponPayRow(row)) {
+    if (!isDepositedCoupon(course)) return false;
+    const rowCoupon = normalizeCouponReference(row.couponNumber || row.key);
+    const rowAccount = normalizeCouponReference(row.couponAccount);
+    const courseCoupon = normalizeCouponReference(course.couponNumber);
+    const courseAccount = normalizeCouponReference(course.couponAccount);
+    if (!rowCoupon && !rowAccount) return false;
+    return (
+      (!rowCoupon || rowCoupon === courseCoupon) &&
+      (!rowAccount || rowAccount === courseAccount)
+    );
+  }
+  return (
+    isCardPayment(course.payment) &&
+    (!course.teoId || course.teoId === row.key)
+  );
+};
+const payrollDifference = (course: Course, row: PayRow) => {
+  if (row.type === "adapte") return Math.abs(course.amount - row.amount);
+  if (isCouponPayRow(row))
+    return Math.abs(course.amount + course.tip - (row.amount + row.tip));
+  return (
+    Math.abs(course.amount - row.amount) + Math.abs(course.tip - row.tip)
+  );
+};
+const matchesHistoryPayment = (
+  course: Course,
+  filter: HistoryPaymentFilter,
+) => {
+  if (filter === "all") return true;
+  if (filter === "adapted") return course.type === "adapte";
+  if (course.type !== "taxi") return false;
+  if (filter === "teo-card") return isCardPayment(course.payment);
+  if (filter === "cash")
+    return course.payment === "Espèces" || course.payment === "Comptant";
+  if (filter === "coupon") return course.payment === "Coupon";
+  return course.payment === "Machine crédit" || course.payment === "Autre";
+};
 const round2 = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
 const serviceFee = (course: Course, settings: AppSettings) => {
@@ -242,6 +318,8 @@ export default function Home() {
     tip: "",
     payment: "Téo / carte",
     couponStatus: "pending" as CouponStatus,
+    couponNumber: "",
+    couponAccount: "",
     category: "centre-ville" as "centre-ville" | "aeroport",
   });
   const [adapted, setAdapted] = useState({
@@ -258,6 +336,8 @@ export default function Home() {
       "week" | "last-week" | "month" | "last-month" | "custom" | "all"
     >("week"),
     [historySearch, setHistorySearch] = useState(""),
+    [historyPayment, setHistoryPayment] =
+      useState<HistoryPaymentFilter>("all"),
     [customStart, setCustomStart] = useState(currentTuesdayWeek().start),
     [customEnd, setCustomEnd] = useState(today());
   const [user, setUser] = useState<User | null>(null);
@@ -335,13 +415,8 @@ export default function Home() {
         for (const statement of payStatements) {
           const row = statement.rows.find(
             (item) =>
-              item.type === course.type &&
-              item.date === course.date &&
-              (course.type === "adapte"
-                ? normalizeHob(item.key) === normalizeHob(course.hob)
-                : !course.teoId || item.key === course.teoId) &&
-              Math.abs(item.amount - course.amount) < 0.02 &&
-              Math.abs(item.tip - course.tip) < 0.02,
+              payrollCourseMatchesRow(course, item) &&
+              payrollDifference(course, item) < 0.02,
           );
           if (row) {
             matchedStatement = statement;
@@ -353,13 +428,23 @@ export default function Home() {
         if (
           course.verified &&
           course.verifiedBillId === matchedStatement.id &&
-          (course.type !== "taxi" || course.teoId === matchedRow.key)
+          payrollCourseMatchesRow(course, matchedRow)
         )
           return course;
         changed = true;
         return {
           ...course,
-          teoId: course.type === "taxi" ? matchedRow.key : course.teoId,
+          ...(course.type === "taxi" && !isCouponPayRow(matchedRow)
+            ? { teoId: matchedRow.key }
+            : {}),
+          ...(isCouponPayRow(matchedRow)
+            ? {
+                couponNumber:
+                  matchedRow.couponNumber || course.couponNumber || "",
+                couponAccount:
+                  matchedRow.couponAccount || course.couponAccount || "",
+              }
+            : {}),
           verified: true,
           verifiedBillId: matchedStatement.id,
           verifiedAt: course.verifiedAt || matchedStatement.importedAt,
@@ -434,9 +519,12 @@ export default function Home() {
         (c) =>
           (!bounds || (c.date >= bounds[0] && c.date <= bounds[1])) &&
           (historyType === "all" || c.type === historyType) &&
+          matchesHistoryPayment(c, historyPayment) &&
           (!query ||
             c.hob?.toUpperCase().includes(query) ||
             c.teoId?.toUpperCase().includes(query) ||
+            c.couponNumber?.toUpperCase().includes(query) ||
+            c.couponAccount?.toUpperCase().includes(query) ||
             c.payment.toUpperCase().includes(query) ||
             c.taxiCategory?.toUpperCase().includes(query)),
       )
@@ -445,6 +533,7 @@ export default function Home() {
     courses,
     historyPeriod,
     historyType,
+    historyPayment,
     historySearch,
     week,
     customStart,
@@ -524,9 +613,7 @@ export default function Home() {
   const unverifiedHistoryCount = useMemo(
     () =>
       filteredHistory.filter(
-        (course) =>
-          !course.verified &&
-          (course.type === "adapte" || isCardPayment(course.payment)),
+        (course) => !course.verified && isPayrollCourse(course),
       ).length,
     [filteredHistory],
   );
@@ -578,19 +665,9 @@ export default function Home() {
       }
     > = payRows.map((row) => {
       const candidates = courses.filter(
-        (c) =>
-          !used.has(c.id) &&
-          (row.type === "adapte"
-            ? c.type === "adapte" &&
-              normalizeHob(c.hob) === normalizeHob(row.key) &&
-              c.date === row.date
-            : c.type === "taxi" &&
-              isCardPayment(c.payment) &&
-              (c.teoId === row.key || (!c.teoId && c.date === row.date))),
+        (c) => !used.has(c.id) && payrollCourseMatchesRow(c, row),
       );
-      const difference = (c: Course) =>
-        Math.abs(c.amount - row.amount) +
-        (row.type === "taxi" ? Math.abs(c.tip - row.tip) : 0);
+      const difference = (c: Course) => payrollDifference(c, row);
       let course = candidates.find((c) => difference(c) < 0.02);
       if (!course && candidates.length)
         course = candidates.sort((a, b) => difference(a) - difference(b))[0];
@@ -616,16 +693,30 @@ export default function Home() {
       if (
         !payDates.has(c.date) ||
         used.has(c.id) ||
-        !(c.type === "adapte" || isCardPayment(c.payment))
+        !isPayrollCourse(c)
       )
         continue;
+      const coupon = isDepositedCoupon(c);
       rows.push({
         key:
-          c.type === "adapte" ? c.hob || "Sans HOB" : c.teoId || "Course carte",
+          c.type === "adapte"
+            ? c.hob || "Sans HOB"
+            : coupon
+              ? c.couponNumber || "Coupon sans numéro"
+              : c.teoId || "Course carte",
         type: c.type,
         date: c.date,
         amount: 0,
         tip: 0,
+        ...(coupon
+          ? {
+              paymentKind: "coupon" as const,
+              couponNumber: c.couponNumber || "",
+              couponAccount: c.couponAccount || "",
+            }
+          : c.type === "taxi"
+            ? { paymentKind: "card" as const }
+            : {}),
         status: "missing-pay" as const,
         appAmount: c.amount,
         appTip: c.tip,
@@ -645,38 +736,23 @@ export default function Home() {
       const usedRows = new Set<number>();
       let missing = 0;
       for (const course of courses.filter(
-        (item) =>
-          dates.has(item.date) &&
-          (item.type === "adapte" || isCardPayment(item.payment)),
+        (item) => dates.has(item.date) && isPayrollCourse(item),
       )) {
         const candidate = statement.rows
           .map((row, index) => ({ row, index }))
           .filter(
             ({ row, index }) =>
               !usedRows.has(index) &&
-              row.type === course.type &&
-              row.date === course.date &&
-              (course.type === "taxi"
-                ? !course.teoId || row.key === course.teoId
-                : normalizeHob(row.key) === normalizeHob(course.hob)),
+              payrollCourseMatchesRow(course, row),
           )
           .sort(
             (a, b) =>
-              Math.abs(a.row.amount - course.amount) +
-              Math.abs(a.row.tip - course.tip) -
-              (Math.abs(b.row.amount - course.amount) +
-                Math.abs(b.row.tip - course.tip)),
+              payrollDifference(course, a.row) -
+              payrollDifference(course, b.row),
           )[0];
         if (candidate) {
           usedRows.add(candidate.index);
-          const amountDifference = Math.abs(
-            candidate.row.amount - course.amount,
-          );
-          const tipDifference =
-            course.type === "taxi"
-              ? Math.abs(candidate.row.tip - course.tip)
-              : 0;
-          if (amountDifference + tipDifference >= 0.02) missing++;
+          if (payrollDifference(course, candidate.row) >= 0.02) missing++;
         } else missing++;
       }
       missing += statement.rows.filter(
@@ -783,9 +859,13 @@ export default function Home() {
       current.map((course) => {
         if (course.id !== courseId) return course;
         const updated: Course = { ...course, payment };
-        if (payment === "Coupon")
+        if (payment === "Coupon") {
           updated.couponStatus = course.couponStatus || "pending";
-        else delete updated.couponStatus;
+        } else {
+          delete updated.couponStatus;
+          delete updated.couponNumber;
+          delete updated.couponAccount;
+        }
         return updated;
       }),
     );
@@ -794,19 +874,27 @@ export default function Home() {
   function correctFromTeo(row: (typeof comparisons)[number]) {
     if (!row.courseId || row.status !== "different") return;
     setCourses((current) =>
-      current.map((course) =>
-        course.id === row.courseId
-          ? {
-              ...course,
-              amount: row.amount,
-              tip: row.tip,
-              teoId: row.type === "taxi" ? row.key : course.teoId,
-              verified: true,
-              verifiedBillId: selectedStatementId,
-              verifiedAt: new Date().toISOString(),
-            }
-          : course,
-      ),
+      current.map((course) => {
+        if (course.id !== row.courseId) return course;
+        const coupon = isCouponPayRow(row);
+        return {
+          ...course,
+          amount: coupon
+            ? round2(Math.max(0, row.amount + row.tip - course.tip))
+            : row.amount,
+          tip: coupon ? course.tip : row.tip,
+          ...(row.type === "taxi" && !coupon ? { teoId: row.key } : {}),
+          ...(coupon
+            ? {
+                couponNumber: row.couponNumber || course.couponNumber || "",
+                couponAccount: row.couponAccount || course.couponAccount || "",
+              }
+            : {}),
+          verified: true,
+          verifiedBillId: selectedStatementId,
+          verifiedAt: new Date().toISOString(),
+        };
+      }),
     );
     flash("Course corrigée selon la fiche Téo.");
   }
@@ -816,6 +904,7 @@ export default function Home() {
     flash("Course supprimée.");
   }
   function savePayRow(row: PayRow) {
+    const coupon = isCouponPayRow(row);
     const billedDuration =
       row.type === "adapte"
         ? Math.max(row.amount / settings.adaptedRate, settings.adaptedMinimum)
@@ -826,21 +915,35 @@ export default function Home() {
       date: row.date,
       amount: row.amount,
       tip: row.tip,
-      payment: row.type === "taxi" ? "Téo / carte" : "Transport adapté",
-      teoId: row.type === "taxi" ? row.key : undefined,
-      taxiCategory: row.type === "taxi" ? "centre-ville" : undefined,
-      hob: row.type === "adapte" ? row.key : undefined,
-      duration: billedDuration,
-      billedDuration,
+      payment:
+        row.type === "adapte"
+          ? "Transport adapté"
+          : coupon
+            ? "Coupon"
+            : "Téo / carte",
+      ...(row.type === "taxi" && !coupon ? { teoId: row.key } : {}),
+      ...(row.type === "taxi" ? { taxiCategory: "centre-ville" as const } : {}),
+      ...(coupon
+        ? {
+            couponStatus: "deposited" as const,
+            couponNumber: row.couponNumber || row.key,
+            couponAccount: row.couponAccount || "",
+          }
+        : {}),
+      ...(row.type === "adapte"
+        ? {
+            hob: row.key,
+            duration: billedDuration,
+            billedDuration,
+          }
+        : {}),
       perception: 0,
       verified: true,
       verifiedBillId: selectedStatementId,
       verifiedAt: new Date().toISOString(),
     };
     setCourses([course, ...courses]);
-    flash(
-      `${row.type === "taxi" ? "Course" : "Tournée"} ${row.key} enregistrée.`,
-    );
+    flash(`${payRowTitle(row)} enregistré${row.type === "adapte" ? "e" : ""}.`);
   }
   function editCourse(course: Course) {
     setEditingId(course.id);
@@ -852,6 +955,8 @@ export default function Home() {
         tip: formatMoneyInput(course.tip),
         payment: isCardPayment(course.payment) ? "Téo / carte" : course.payment,
         couponStatus: course.couponStatus || "pending",
+        couponNumber: course.couponNumber || "",
+        couponAccount: course.couponAccount || "",
         category: course.taxiCategory || "centre-ville",
       });
       setTab("taxi");
@@ -884,6 +989,8 @@ export default function Home() {
       tip: "",
       payment: "Téo / carte",
       couponStatus: "pending",
+      couponNumber: "",
+      couponAccount: "",
       category: "centre-ville",
     });
     setAdapted({
@@ -929,6 +1036,7 @@ export default function Home() {
           date: `${match[4]}-${match[3]}-${match[2]}`,
           amount: Number(match[5].replace(",", ".")),
           tip: tips.get(match[1]) || 0,
+          paymentKind: "card",
         });
       const adaptedRows =
         /\[PTR\][\s\S]*?\((HOB\d{4})_(\d{2})\/(\d{2})\/(\d{4}) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)\s+TPS/g;
@@ -939,6 +1047,20 @@ export default function Home() {
           date: `${match[4]}-${match[3]}-${match[2]}`,
           amount: Number(match[5].replace(",", ".")),
           tip: 0,
+        });
+      for (const coupon of extractCouponPayrollRows(text))
+        rows.push({
+          key:
+            coupon.couponNumber ||
+            coupon.couponAccount ||
+            `Coupon-${coupon.date}`,
+          type: "taxi",
+          date: coupon.date,
+          amount: coupon.amount,
+          tip: coupon.tip,
+          paymentKind: "coupon",
+          couponNumber: coupon.couponNumber,
+          couponAccount: coupon.couponAccount,
         });
       if (!rows.length) throw new Error("Aucune course reconnue");
       const valueAfter = (label: RegExp) => {
@@ -981,24 +1103,30 @@ export default function Home() {
         ...current.filter((item) => item.id !== billId),
       ]);
       setCourses((current) => {
-        const linked = new Set<string>();
+        const linked = new Set<number>();
         return current.map((course) => {
-          const row = rows.find(
-            (item) =>
-              item.type === course.type &&
-              !linked.has(`${item.type}-${item.key}`) &&
-              item.date === course.date &&
-              (course.type === "adapte"
-                ? item.key === course.hob
-                : !course.teoId || item.key === course.teoId) &&
-              Math.abs(item.amount - course.amount) < 0.02 &&
-              Math.abs(item.tip - course.tip) < 0.02,
-          );
-          if (!row) return course;
-          linked.add(`${row.type}-${row.key}`);
+          const matched = rows
+            .map((item, index) => ({ item, index }))
+            .find(
+              ({ item, index }) =>
+                !linked.has(index) &&
+                payrollCourseMatchesRow(course, item) &&
+                payrollDifference(course, item) < 0.02,
+            );
+          if (!matched) return course;
+          const row = matched.item;
+          linked.add(matched.index);
           return {
             ...course,
-            teoId: row.type === "taxi" ? row.key : course.teoId,
+            ...(row.type === "taxi" && !isCouponPayRow(row)
+              ? { teoId: row.key }
+              : {}),
+            ...(isCouponPayRow(row)
+              ? {
+                  couponNumber: row.couponNumber || course.couponNumber || "",
+                  couponAccount: row.couponAccount || course.couponAccount || "",
+                }
+              : {}),
             verified: true,
             verifiedBillId: billId,
             verifiedAt: new Date().toISOString(),
@@ -1030,6 +1158,16 @@ export default function Home() {
       return flash("Entrez le pourboire, même s’il est de 0,00 $.");
     if (tip > total)
       return flash("Le pourboire ne peut pas dépasser le montant total.");
+    if (
+      taxi.payment === "Coupon" &&
+      !normalizeCouponReference(taxi.couponNumber)
+    )
+      return flash("Entrez le numéro du coupon.");
+    if (
+      taxi.payment === "Coupon" &&
+      !normalizeCouponReference(taxi.couponAccount)
+    )
+      return flash("Entrez le numéro de compte du coupon.");
     const updated: Course = {
       id: editingId || crypto.randomUUID(),
       type: "taxi",
@@ -1038,7 +1176,11 @@ export default function Home() {
       tip: round2(tip),
       payment: taxi.payment,
       ...(taxi.payment === "Coupon"
-        ? { couponStatus: taxi.couponStatus }
+        ? {
+            couponStatus: taxi.couponStatus,
+            couponNumber: taxi.couponNumber.trim().toUpperCase(),
+            couponAccount: taxi.couponAccount.trim().toUpperCase(),
+          }
         : {}),
       taxiCategory: taxi.category,
     };
@@ -1049,7 +1191,13 @@ export default function Home() {
     );
     const wasEditing = Boolean(editingId);
     setEditingId(null);
-    setTaxi({ ...taxi, amount: "", tip: "" });
+    setTaxi({
+      ...taxi,
+      amount: "",
+      tip: "",
+      couponNumber: "",
+      couponAccount: "",
+    });
     flash(wasEditing ? "Course taxi modifiée." : "Course taxi ajoutée.");
   }
 
@@ -1307,12 +1455,7 @@ export default function Home() {
         : row.appAmount + (row.appTip || 0);
     const teoTotal =
       row.status === "missing-pay" ? null : row.amount + row.tip;
-    const title =
-      row.type === "adapte"
-        ? row.key
-        : row.key === "Course carte"
-          ? "Course Téo / carte"
-          : `Course Téo ${row.key}`;
+    const title = payRowTitle(row);
     const statusLabel =
       row.status === "ok"
         ? "Correspond"
@@ -1327,7 +1470,9 @@ export default function Home() {
         : row.status === "different"
           ? row.type === "adapte"
             ? "La date et le numéro HOB correspondent, mais le montant est différent."
-            : "Le montant de la course ou le pourboire est différent."
+            : isCouponPayRow(row)
+              ? "La date, le coupon et le compte correspondent, mais le total est différent."
+              : "Le montant de la course ou le pourboire est différent."
           : row.status === "missing-app"
             ? "Cette course apparaît sur la fiche Téo, mais pas dans l’application."
             : "Cette course est dans l’application, mais elle n’apparaît pas sur la fiche Téo.";
@@ -1348,6 +1493,11 @@ export default function Home() {
                 month: "short",
               })}
             </small>
+            {isCouponPayRow(row) && (
+              <small>
+                Compte {row.couponAccount || "non lu dans le PDF"}
+              </small>
+            )}
           </div>
           <em>{statusLabel}</em>
         </header>
@@ -1361,7 +1511,7 @@ export default function Home() {
             <span>Total fiche Téo</span>
             <b>{teoTotal === null ? "—" : money(teoTotal)}</b>
           </div>
-          {row.type === "taxi" && (
+          {row.type === "taxi" && !isCouponPayRow(row) && (
             <>
               <div>
                 <span>Pourboire application</span>
@@ -1376,6 +1526,12 @@ export default function Home() {
                 </b>
               </div>
             </>
+          )}
+          {isCouponPayRow(row) && row.appTip !== null && (
+            <div>
+              <span>Pourboire saisi manuellement</span>
+              <b>{money(row.appTip || 0)}</b>
+            </div>
           )}
         </div>
         {row.status !== "ok" && (
@@ -1746,29 +1902,70 @@ export default function Home() {
                 </select>
               </label>
               {taxi.payment === "Coupon" && (
-                <label className="coupon-status-field">
-                  Statut du coupon
-                  <select
-                    value={taxi.couponStatus}
-                    onChange={(e) =>
-                      setTaxi({
-                        ...taxi,
-                        couponStatus: e.target.value as CouponStatus,
-                      })
-                    }
-                  >
-                    <option value="pending">Non déposé</option>
-                    <option value="deposited">Déposé dans l’app Téo</option>
-                    <option value="fuel">Utilisé pour l’essence</option>
-                  </select>
+                <section className="coupon-fields">
+                  <div className="two coupon-identifiers">
+                    <label>
+                      Numéro du coupon
+                      <input
+                        type="text"
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        maxLength={40}
+                        placeholder="Ex. CP-001245"
+                        value={taxi.couponNumber}
+                        onChange={(e) =>
+                          setTaxi({
+                            ...taxi,
+                            couponNumber: e.target.value.toUpperCase(),
+                          })
+                        }
+                        required
+                      />
+                    </label>
+                    <label>
+                      Numéro de compte
+                      <input
+                        type="text"
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        maxLength={40}
+                        placeholder="Ex. CH-407"
+                        value={taxi.couponAccount}
+                        onChange={(e) =>
+                          setTaxi({
+                            ...taxi,
+                            couponAccount: e.target.value.toUpperCase(),
+                          })
+                        }
+                        required
+                      />
+                    </label>
+                  </div>
+                  <label className="coupon-status-field">
+                    Statut du coupon
+                    <select
+                      value={taxi.couponStatus}
+                      onChange={(e) =>
+                        setTaxi({
+                          ...taxi,
+                          couponStatus: e.target.value as CouponStatus,
+                        })
+                      }
+                    >
+                      <option value="pending">Non déposé</option>
+                      <option value="deposited">Déposé dans l’app Téo</option>
+                      <option value="fuel">Utilisé pour l’essence</option>
+                    </select>
+                  </label>
                   <small>
-                    Frais appliqués : le même taux que Téo, soit{" "}
+                    Ces numéros servent à retrouver le coupon déposé dans la
+                    fiche de paie. Frais appliqués : le même taux que Téo, soit{" "}
                     {settings.cardFee.toLocaleString("fr-CA", {
                       maximumFractionDigits: 3,
                     })}
                     &nbsp;%.
                   </small>
-                </label>
+                </section>
               )}
               {taxi.category === "aeroport" && (
                 <div className="airport-fee-note">
@@ -1948,7 +2145,10 @@ export default function Home() {
                       ? "Lecture en cours…"
                       : "Choisir la fiche PDF Téo"}
                   </span>
-                  <small>{payFile || "Courses carte et tournées HOB"}</small>
+                  <small>
+                    {payFile ||
+                      "Courses carte, coupons déposés et tournées HOB"}
+                  </small>
                 </label>
                 {payError && <p className="error-box">{payError}</p>}
               </section>
@@ -2130,10 +2330,18 @@ export default function Home() {
                               <div className="statement-lines">
                                 {statement.rows.map((row, index) => (
                                   <div key={`${row.key}-${row.date}-${index}`}>
-                                    <b>{row.key}</b>
+                                    <b>{payRowTitle(row)}</b>
                                     <span>{row.date}</span>
-                                    <span>Course {money(row.amount)}</span>
-                                    <span>Pourboire {money(row.tip)}</span>
+                                    <span>
+                                      {isCouponPayRow(row)
+                                        ? `Compte ${row.couponAccount || "non lu"}`
+                                        : `Course ${money(row.amount)}`}
+                                    </span>
+                                    <span>
+                                      {isCouponPayRow(row)
+                                        ? "Coupon déposé"
+                                        : `Pourboire ${money(row.tip)}`}
+                                    </span>
                                     <strong>
                                       {money(row.amount + row.tip)}
                                     </strong>
@@ -2174,11 +2382,7 @@ export default function Home() {
                                     {row.status === "ok" ? "✓" : "!"}
                                   </span>
                                   <div className="bill-course-main">
-                                    <b>
-                                      {row.type === "adapte"
-                                        ? row.key
-                                        : `Course Téo ${row.key}`}
-                                    </b>
+                                    <b>{payRowTitle(row)}</b>
                                     <small>
                                       {new Date(
                                         row.date + "T12:00",
@@ -2189,7 +2393,9 @@ export default function Home() {
                                         : row.status === "different"
                                           ? row.type === "adapte"
                                             ? "Date et HOB trouvés · montant différent"
-                                            : "Montant ou pourboire différent"
+                                            : isCouponPayRow(row)
+                                              ? "Coupon et compte trouvés · total différent"
+                                              : "Montant ou pourboire différent"
                                           : row.status === "missing-app"
                                             ? "Absente de l’application"
                                             : "Absente de la fiche"}
@@ -2203,8 +2409,17 @@ export default function Home() {
                                           )}{" "}
                                       · Téo : {money(row.amount + row.tip)}
                                       {row.type === "taxi" &&
+                                        !isCouponPayRow(row) &&
                                         ` · Pourboire ${money(row.tip)}`}
                                     </small>
+                                    {isCouponPayRow(row) && (
+                                      <small>
+                                        Compte {row.couponAccount || "non lu"}
+                                        {row.appTip !== null
+                                          ? ` · Pourboire saisi ${money(row.appTip || 0)}`
+                                          : ""}
+                                      </small>
+                                    )}
                                     {row.status === "missing-app" && (
                                       <button
                                         type="button"
@@ -2406,10 +2621,18 @@ export default function Home() {
                     <div className="statement-lines">
                       {selectedPayStatement.rows.map((row, index) => (
                         <div key={`${row.key}-${row.date}-${index}`}>
-                          <b>{row.key}</b>
+                          <b>{payRowTitle(row)}</b>
                           <span>{row.date}</span>
-                          <span>Course {money(row.amount)}</span>
-                          <span>Pourboire {money(row.tip)}</span>
+                          <span>
+                            {isCouponPayRow(row)
+                              ? `Compte ${row.couponAccount || "non lu"}`
+                              : `Course ${money(row.amount)}`}
+                          </span>
+                          <span>
+                            {isCouponPayRow(row)
+                              ? "Coupon déposé"
+                              : `Pourboire ${money(row.tip)}`}
+                          </span>
                           <strong>{money(row.amount + row.tip)}</strong>
                         </div>
                       ))}
@@ -3129,11 +3352,17 @@ export default function Home() {
                           : "Transport adapté"}
                       </small>
                       {c.payment === "Coupon" && (
-                        <small
-                          className={`coupon-course-status ${couponStatusOf(c)}`}
-                        >
-                          {COUPON_STATUS_LABELS[couponStatusOf(c)]}
-                        </small>
+                        <>
+                          <small className="coupon-course-reference">
+                            Coupon {c.couponNumber || "sans numéro"} · Compte{" "}
+                            {c.couponAccount || "non indiqué"}
+                          </small>
+                          <small
+                            className={`coupon-course-status ${couponStatusOf(c)}`}
+                          >
+                            {COUPON_STATUS_LABELS[couponStatusOf(c)]}
+                          </small>
+                        </>
                       )}
                       <div className="daily-details">
                         <span>
@@ -3239,7 +3468,7 @@ export default function Home() {
                 <label className="history-search">
                   <span>Rechercher</span>
                   <input
-                    placeholder="HOB, ID ou paiement…"
+                    placeholder="HOB, ID, coupon ou compte…"
                     value={historySearch}
                     onChange={(e) => setHistorySearch(e.target.value)}
                   />
@@ -3255,6 +3484,24 @@ export default function Home() {
                     <option value="all">Toutes</option>
                     <option value="taxi">Taxi</option>
                     <option value="adapte">Adapté</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Mode de paiement</span>
+                  <select
+                    value={historyPayment}
+                    onChange={(e) =>
+                      setHistoryPayment(
+                        e.target.value as HistoryPaymentFilter,
+                      )
+                    }
+                  >
+                    <option value="all">Tous</option>
+                    <option value="teo-card">Téo / carte</option>
+                    <option value="cash">Espèces</option>
+                    <option value="coupon">Coupon</option>
+                    <option value="machine">Machine crédit</option>
+                    <option value="adapted">Transport adapté</option>
                   </select>
                 </label>
                 <label>
@@ -3432,20 +3679,30 @@ export default function Home() {
                               : `${c.duration?.toFixed(2)} h réelles · ${(c.billedDuration || Math.max(c.duration || 0, settings.adaptedMinimum)).toFixed(2)} h payées`}
                           </span>
                           {c.payment === "Coupon" && (
-                            <span
-                              className={`coupon-course-status ${couponStatusOf(c)}`}
-                            >
-                              {COUPON_STATUS_LABELS[couponStatusOf(c)]}
-                            </span>
+                            <>
+                              <span className="coupon-course-reference">
+                                Coupon {c.couponNumber || "sans numéro"} ·
+                                Compte {c.couponAccount || "non indiqué"}
+                              </span>
+                              <span
+                                className={`coupon-course-status ${couponStatusOf(c)}`}
+                              >
+                                {COUPON_STATUS_LABELS[couponStatusOf(c)]}
+                              </span>
+                            </>
                           )}
                           {c.verified && (
                             <span className="verified-course">
                               ✓ Vérifiée
-                              {c.type === "taxi" && c.teoId
-                                ? ` · ID ${c.teoId}`
-                                : c.hob
-                                  ? ` · ID ${c.hob}`
-                                  : ""}
+                              {c.type === "taxi" && c.payment === "Coupon"
+                                ? c.couponNumber
+                                  ? ` · Coupon ${c.couponNumber}`
+                                  : ""
+                                : c.type === "taxi" && c.teoId
+                                  ? ` · ID ${c.teoId}`
+                                  : c.hob
+                                    ? ` · ID ${c.hob}`
+                                    : ""}
                               {c.verifiedBillId
                                 ? ` · ${c.verifiedBillId}`
                                 : ""}

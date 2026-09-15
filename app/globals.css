@@ -1014,17 +1014,25 @@ select:focus {
   color: #8b5700;
   font-size: 13px;
 }
-.coupon-status-field {
+.coupon-fields {
+  margin-top: 16px;
   padding: 13px 14px;
   border: 1px solid #ead8a7;
   border-radius: 12px;
   background: #fffaf0;
   color: #674b00;
 }
-.coupon-status-field select {
+.coupon-fields label {
+  margin-top: 0;
+}
+.coupon-fields .coupon-status-field {
+  margin-top: 12px;
+}
+.coupon-fields input,
+.coupon-fields select {
   background: #fff;
 }
-.coupon-status-field small {
+.coupon-fields > small {
   display: block;
   margin-top: 8px;
   color: #7c6840;
@@ -1994,7 +2002,7 @@ select:focus {
 }
 .history-controls {
   display: grid;
-  grid-template-columns: 1.25fr 0.75fr 1fr;
+  grid-template-columns: 1.2fr 0.8fr 1fr 1fr;
   gap: 8px;
   align-items: end;
   margin-bottom: 12px;
@@ -2185,6 +2193,15 @@ select:focus {
 }
 .history-coupon-footer {
   margin: 26px 0 0;
+}
+.coupon-course-reference {
+  display: block;
+  width: fit-content;
+  margin-top: 6px;
+  color: #5d6670 !important;
+  font-size: 11px !important;
+  font-weight: 750;
+  overflow-wrap: anywhere;
 }
 .coupon-course-status {
   width: fit-content;
