@@ -517,14 +517,14 @@ export default function Home() {
       : 0;
   const selectedGoalDay = (new Date(selectedDate + "T12:00").getDay() + 6) % 7;
   const dailyGoal = settings.dailyGoals[selectedGoalDay] || 0;
-  const dailyNet = round2(
+  const dailyGoalNet = round2(
     selectedDayTotals.gross -
       selectedDayTotals.fees -
-      selectedDayAirportFeeTotal -
-      selectedDayCompanyFee,
+      selectedDayAirportFeeTotal,
   );
+  const dailyNet = round2(dailyGoalNet - selectedDayCompanyFee);
   const dailyGoalProgress = dailyGoal
-    ? Math.min(100, Math.max(0, (dailyNet / dailyGoal) * 100))
+    ? Math.min(100, Math.max(0, (dailyGoalNet / dailyGoal) * 100))
     : 0;
   const comparisons = useMemo(() => {
     const used = new Set<string>();
@@ -1447,7 +1447,7 @@ export default function Home() {
                     Objectif du {GOAL_DAYS[selectedGoalDay].toLowerCase()}
                   </span>
                   <b>
-                    {money(dailyNet)} / {money(dailyGoal)}
+                    {money(dailyGoalNet)} / {money(dailyGoal)}
                   </b>
                 </div>
                 <div
@@ -1461,9 +1461,9 @@ export default function Home() {
                   <i style={{ width: `${dailyGoalProgress}%` }} />
                 </div>
                 <small>
-                  {dailyGoal > 0 && dailyNet >= dailyGoal
+                  {dailyGoal > 0 && dailyGoalNet >= dailyGoal
                     ? "Objectif atteint ✓"
-                    : `${money(Math.max(0, dailyGoal - dailyNet))} restant`}
+                    : `${money(Math.max(0, dailyGoal - dailyGoalNet))} restant`}
                 </small>
               </div>
             )}
