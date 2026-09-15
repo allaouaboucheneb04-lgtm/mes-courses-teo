@@ -1,4 +1,4 @@
-const CACHE = "mes-courses-teo-v4";
+const CACHE = "mes-courses-teo-v5";
 const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const HOME = `${BASE}/`;
 const APP_SHELL = [
