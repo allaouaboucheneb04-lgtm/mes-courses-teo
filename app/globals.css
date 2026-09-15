@@ -553,6 +553,37 @@ select:focus {
   font-style: normal;
   font-size: 13px;
 }
+.taxi-breakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--mint);
+}
+.taxi-breakdown div {
+  display: grid;
+  gap: 3px;
+}
+.taxi-breakdown div + div {
+  padding-left: 12px;
+  border-left: 1px solid #bddbd9;
+}
+.taxi-breakdown span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.taxi-breakdown b {
+  color: var(--teal-dark);
+  font-size: 16px;
+}
+.taxi-breakdown.invalid {
+  background: #fff0e9;
+}
+.taxi-breakdown.invalid b {
+  color: #9d3b1f;
+}
 .primary {
   width: 100%;
   border: 0;

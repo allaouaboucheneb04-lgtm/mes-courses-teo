@@ -741,8 +741,8 @@ export default function Home() {
     if (course.type === "taxi") {
       setTaxi({
         date: course.date,
-        amount: formatMoneyInput(course.amount),
-        tip: course.tip ? formatMoneyInput(course.tip) : "",
+        amount: formatMoneyInput(round2(course.amount + course.tip)),
+        tip: formatMoneyInput(course.tip),
         payment: isCardPayment(course.payment) ? "Téo / carte" : course.payment,
         category: course.taxiCategory || "centre-ville",
       });
@@ -908,14 +908,20 @@ export default function Home() {
   }
   function addTaxi(e: React.FormEvent) {
     e.preventDefault();
-    const amount = parseMoneyInput(taxi.amount);
-    if (!amount || amount < 0) return flash("Entrez un montant valide.");
+    const total = parseMoneyInput(taxi.amount);
+    const tip = parseMoneyInput(taxi.tip);
+    if (!total || total < 0)
+      return flash("Entrez un montant total valide.");
+    if (taxi.tip === "")
+      return flash("Entrez le pourboire, même s’il est de 0,00 $.");
+    if (tip > total)
+      return flash("Le pourboire ne peut pas dépasser le montant total.");
     const updated: Course = {
       id: editingId || crypto.randomUUID(),
       type: "taxi",
       date: taxi.date,
-      amount,
-      tip: parseMoneyInput(taxi.tip),
+      amount: round2(total - tip),
+      tip: round2(tip),
       payment: taxi.payment,
       taxiCategory: taxi.category,
     };
@@ -1057,6 +1063,17 @@ export default function Home() {
     if (!selected.length) { setPhotoMessage("Sélectionnez au moins une course."); return; }
     if (selected.some((item) => item.tip === "")) {
       setPhotoMessage("Insérez le pourboire de chaque course sélectionnée, même s’il est de 0,00 $. ");
+      return;
+    }
+    if (
+      selected.some(
+        (item) =>
+          parseMoneyInput(item.tip) > parseMoneyInput(item.total),
+      )
+    ) {
+      setPhotoMessage(
+        "Le pourboire ne peut pas dépasser le montant total de la course.",
+      );
       return;
     }
     const existingOrAdded = [...courses];
@@ -1319,7 +1336,7 @@ export default function Home() {
                       ? "Modifier la course taxi"
                       : "Nouvelle course taxi"}
                   </h2>
-                  <p>Ajoutez les montants affichés dans Téo.</p>
+                  <p>Saisissez le total affiché dans Téo et le pourboire.</p>
                 </div>
                 <span className="type-icon">$</span>
               </div>
@@ -1362,8 +1379,8 @@ export default function Home() {
                             </div>
                             <div className="photo-fields">
                               <label>Date<input type="date" value={item.date} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, date: event.target.value } : course))} /></label>
-                              <label>Total tablette<input inputMode="decimal" value={item.total} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, total: autoCommaMoneyInput(event.target.value) } : course))} /></label>
-                              <label>Pourboire à saisir<input inputMode="decimal" required={item.selected} placeholder="0,00" value={item.tip} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, tip: autoCommaMoneyInput(event.target.value) } : course))} /></label>
+                              <label>Total tablette, pourboire inclus<input inputMode="decimal" value={item.total} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, total: autoCommaMoneyInput(event.target.value) } : course))} /></label>
+                              <label>Pourboire inclus<input inputMode="decimal" required={item.selected} placeholder="0,00" value={item.tip} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, tip: autoCommaMoneyInput(event.target.value) } : course))} /></label>
                               {settings.airportEnabled && <label>Type<select value={item.category} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, category: event.target.value as PhotoCourse["category"] } : course))}><option value="centre-ville">Centre-ville</option><option value="aeroport">Aéroport</option></select></label>}
                             </div>
                             <small className="photo-calculation">Course sans pourboire : <b>{money(Math.max(0, total - tip))}</b> · Pourboire : <b>{item.tip === "" ? "à saisir" : money(tip)}</b></small>
@@ -1403,13 +1420,14 @@ export default function Home() {
               )}
               <div className="two">
                 <label>
-                  Montant de la course
+                  Montant total, pourboire inclus
                   <div className="money-input">
                     <span>$</span>
                     <input
                       inputMode="decimal"
                       placeholder="0,00"
                       value={taxi.amount}
+                      required
                       onChange={(e) =>
                         setTaxi({
                           ...taxi,
@@ -1420,13 +1438,14 @@ export default function Home() {
                   </div>
                 </label>
                 <label>
-                  Pourboire
+                  Pourboire inclus dans le total
                   <div className="money-input">
                     <span>$</span>
                     <input
                       inputMode="decimal"
                       placeholder="0,00"
                       value={taxi.tip}
+                      required
                       onChange={(e) =>
                         setTaxi({
                           ...taxi,
@@ -1436,6 +1455,30 @@ export default function Home() {
                     />
                   </div>
                 </label>
+              </div>
+              <div
+                className={`taxi-breakdown ${
+                  parseMoneyInput(taxi.tip) > parseMoneyInput(taxi.amount)
+                    ? "invalid"
+                    : ""
+                }`}
+              >
+                <div>
+                  <span>Course sans pourboire</span>
+                  <b>
+                    {money(
+                      Math.max(
+                        0,
+                        parseMoneyInput(taxi.amount) -
+                          parseMoneyInput(taxi.tip),
+                      ),
+                    )}
+                  </b>
+                </div>
+                <div>
+                  <span>Pourboire</span>
+                  <b>{money(parseMoneyInput(taxi.tip))}</b>
+                </div>
               </div>
               <label>
                 Mode de paiement
