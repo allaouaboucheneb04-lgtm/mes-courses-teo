@@ -133,6 +133,16 @@ const isCardPayment = (payment: string) =>
   payment === "Carte" ||
   payment === "Téo / compte" ||
   payment === "Téo / carte";
+const courseEmoji = (course: Course) => {
+  if (course.type === "adapte") return "♿";
+  if (isCardPayment(course.payment)) return "💳";
+  if (course.payment === "Espèces" || course.payment === "Comptant")
+    return "💵";
+  if (course.payment === "Coupon") return "🎟️";
+  if (course.payment === "Machine crédit" || course.payment === "Autre")
+    return "🧾";
+  return "🚕";
+};
 const normalizeHob = (value?: string) =>
   (value || "").trim().toUpperCase().replace(/\s+/g, "");
 const round2 = (value: number) =>
@@ -2510,7 +2520,7 @@ export default function Home() {
             </div>
             <div className="history-summary">
               <div>
-                <span>Brut</span>
+                <span>Total avec pourboires</span>
                 <b>{money(selectedDayTotals.gross)}</b>
               </div>
               <div>
@@ -2551,8 +2561,11 @@ export default function Home() {
                     : c.payment;
                 return (
                   <div className="daily-row" key={c.id}>
-                    <span className={`course-icon ${c.type}`}>
-                      {c.type === "taxi" ? "T" : "⏱"}
+                    <span
+                      className={`course-icon ${c.type}`}
+                      aria-hidden="true"
+                    >
+                      {courseEmoji(c)}
                     </span>
                     <div className="daily-info">
                       <b>
@@ -2569,8 +2582,8 @@ export default function Home() {
                       </small>
                       <div className="daily-details">
                         <span>
-                          <em>Course brute</em>
-                          <b>{money(c.amount)}</b>
+                          <em>Total avec pourboire</em>
+                          <b>{money(c.amount + c.tip)}</b>
                         </span>
                         {c.type === "taxi" ? (
                           <span>
@@ -2804,8 +2817,11 @@ export default function Home() {
                     </h3>
                   )}
                   <article className="course">
-                    <div className={`course-icon ${c.type}`}>
-                      {c.type === "taxi" ? "T" : "⏱"}
+                    <div
+                      className={`course-icon ${c.type}`}
+                      aria-hidden="true"
+                    >
+                      {courseEmoji(c)}
                     </div>
                     <div className="course-info">
                       <b>
@@ -2843,7 +2859,7 @@ export default function Home() {
                     <div className="course-money">
                       <b>{money(c.amount + c.tip - deductions)}</b>
                       <span>
-                        Brut {money(c.amount + c.tip)}
+                        Total avec pourboire {money(c.amount + c.tip)}
                         {c.tip > 0 ? ` · tip ${money(c.tip)}` : ""}
                         {deductions > 0 ? ` · frais ${money(deductions)}` : ""}
                       </span>
