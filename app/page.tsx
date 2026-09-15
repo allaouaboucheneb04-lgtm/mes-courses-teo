@@ -1393,7 +1393,7 @@ export default function Home() {
                               <label>Pourboire inclus<input inputMode="decimal" required={item.selected} placeholder="0,00" value={item.tip} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, tip: autoCommaMoneyInput(event.target.value) } : course))} /></label>
                               {settings.airportEnabled && <label>Type<select value={item.category} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, category: event.target.value as PhotoCourse["category"] } : course))}><option value="centre-ville">Centre-ville</option><option value="aeroport">Aéroport</option></select></label>}
                             </div>
-                            <small className="photo-calculation">Course sans pourboire : <b>{money(Math.max(0, total - tip))}</b> · Pourboire : <b>{item.tip === "" ? "à saisir" : money(tip)}</b></small>
+                            <small className="photo-calculation">Montant avant pourboire : <b>{money(Math.max(0, total - tip))}</b> · Pourboire : <b>{item.tip === "" ? "à saisir" : money(tip)}</b></small>
                           </article>
                         );
                       })}
@@ -1474,7 +1474,7 @@ export default function Home() {
                 }`}
               >
                 <div>
-                  <span>Course sans pourboire</span>
+                  <span>Montant avant pourboire</span>
                   <b>
                     {money(
                       Math.max(
@@ -2586,10 +2586,16 @@ export default function Home() {
                           <b>{money(c.amount + c.tip)}</b>
                         </span>
                         {c.type === "taxi" ? (
-                          <span>
-                            <em>Pourboire</em>
-                            <b>{money(c.tip)}</b>
-                          </span>
+                          <>
+                            <span>
+                              <em>Montant avant pourboire</em>
+                              <b>{money(c.amount)}</b>
+                            </span>
+                            <span>
+                              <em>Pourboire</em>
+                              <b>{money(c.tip)}</b>
+                            </span>
+                          </>
                         ) : (
                           <>
                             <span>
@@ -2860,6 +2866,9 @@ export default function Home() {
                       <b>{money(c.amount + c.tip - deductions)}</b>
                       <span>
                         Total avec pourboire {money(c.amount + c.tip)}
+                        {c.type === "taxi"
+                          ? ` · Avant pourboire ${money(c.amount)}`
+                          : ""}
                         {c.tip > 0 ? ` · tip ${money(c.tip)}` : ""}
                         {deductions > 0 ? ` · frais ${money(deductions)}` : ""}
                       </span>
