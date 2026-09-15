@@ -2041,6 +2041,33 @@ select:focus {
   margin-top: 5px;
   background: #fff;
 }
+.history-overview {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+.history-block-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+.history-block-heading b,
+.history-block-heading small {
+  display: block;
+}
+.history-block-heading b {
+  color: var(--ink);
+  font-size: 15px;
+}
+.history-block-heading small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .history-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
@@ -2067,6 +2094,23 @@ select:focus {
 .history-summary > div:last-child {
   background: var(--mint);
   color: var(--teal-dark);
+}
+.history-overview .history-summary {
+  margin-bottom: 10px;
+}
+.history-overview .verification-count {
+  margin: 0;
+}
+.history-results {
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+}
+.history-results-heading {
+  margin-bottom: 4px;
+}
+.history-results > .history-day-group:first-of-type {
+  margin-top: 12px;
 }
 .coupon-history-card {
   margin: 0 0 16px;
@@ -2138,6 +2182,9 @@ select:focus {
 }
 .coupon-history-grid .fuel span {
   color: #19669a;
+}
+.history-coupon-footer {
+  margin: 26px 0 0;
 }
 .coupon-course-status {
   width: fit-content;

@@ -3296,96 +3296,66 @@ export default function Home() {
                   </label>
                 </div>
               )}
-              <div className="history-summary">
-                <div>
-                  <span>Brut</span>
-                  <b>{money(historyTotals.gross)}</b>
-                </div>
-                <div>
-                  <span>Pourboires</span>
-                  <b>{money(historyTotals.tips)}</b>
-                </div>
-                <div>
-                  <span>Frais</span>
-                  <b>− {money(historyTotals.fees)}</b>
-                </div>
-                {historyAirportFeeTotal > 0 && (
+              <section className="history-overview">
+                <header className="history-block-heading">
                   <div>
-                    <span>Redevance aéroport</span>
-                    <b>− {money(historyAirportFeeTotal)}</b>
-                  </div>
-                )}
-                {historyCompanyFeeTotal > 0 && (
-                  <div>
-                    <span>Frais de compagnie</span>
-                    <b>− {money(historyCompanyFeeTotal)}</b>
-                  </div>
-                )}
-                <div>
-                  <span>Net</span>
-                  <b>
-                    {money(
-                      historyTotals.gross -
-                        historyTotals.fees -
-                        historyAirportFeeTotal -
-                        historyCompanyFeeTotal,
-                    )}
-                  </b>
-                </div>
-              </div>
-              <section className="coupon-history-card">
-                <header>
-                  <span aria-hidden="true">🎟️</span>
-                  <div>
-                    <b>Suivi des coupons</b>
-                    <small>
-                      {historyCouponCount} coupon
-                      {historyCouponCount !== 1 ? "s" : ""} ·{" "}
-                      {money(historyCouponAmount)}
-                    </small>
+                    <b>Résumé de la période</b>
+                    <small>Calculé avec les courses affichées</small>
                   </div>
                 </header>
-                <div className="coupon-history-grid">
-                  <div className="deposited">
-                    <span>✓ Déposés dans Téo</span>
-                    <b>{money(historyCouponSummary.deposited.amount)}</b>
-                    <small>
-                      {historyCouponSummary.deposited.count} coupon
-                      {historyCouponSummary.deposited.count !== 1 ? "s" : ""}
-                    </small>
+                <div className="history-summary">
+                  <div>
+                    <span>Brut</span>
+                    <b>{money(historyTotals.gross)}</b>
                   </div>
-                  <div className="pending">
-                    <span>◷ Non déposés</span>
-                    <b>{money(historyCouponSummary.pending.amount)}</b>
-                    <small>
-                      {historyCouponSummary.pending.count} coupon
-                      {historyCouponSummary.pending.count !== 1 ? "s" : ""}
-                    </small>
+                  <div>
+                    <span>Pourboires</span>
+                    <b>{money(historyTotals.tips)}</b>
                   </div>
-                  <div className="fuel">
-                    <span>⛽ Essence</span>
-                    <b>{money(historyCouponSummary.fuel.amount)}</b>
+                  <div>
+                    <span>Frais</span>
+                    <b>− {money(historyTotals.fees)}</b>
+                  </div>
+                  {historyAirportFeeTotal > 0 && (
+                    <div>
+                      <span>Redevance aéroport</span>
+                      <b>− {money(historyAirportFeeTotal)}</b>
+                    </div>
+                  )}
+                  {historyCompanyFeeTotal > 0 && (
+                    <div>
+                      <span>Frais de compagnie</span>
+                      <b>− {money(historyCompanyFeeTotal)}</b>
+                    </div>
+                  )}
+                  <div>
+                    <span>Net</span>
+                    <b>
+                      {money(
+                        historyTotals.gross -
+                          historyTotals.fees -
+                          historyAirportFeeTotal -
+                          historyCompanyFeeTotal,
+                      )}
+                    </b>
+                  </div>
+                </div>
+                <div
+                  className={`verification-count ${
+                    unverifiedHistoryCount === 0 ? "complete" : "pending"
+                  }`}
+                >
+                  <span>{unverifiedHistoryCount === 0 ? "✓" : "!"}</span>
+                  <div>
+                    <b>{unverifiedHistoryCount}</b>
                     <small>
-                      {historyCouponSummary.fuel.count} coupon
-                      {historyCouponSummary.fuel.count !== 1 ? "s" : ""}
+                      course{unverifiedHistoryCount !== 1 ? "s" : ""} non
+                      vérifiée{unverifiedHistoryCount !== 1 ? "s" : ""} dans
+                      cette période
                     </small>
                   </div>
                 </div>
               </section>
-              <div
-                className={`verification-count ${
-                  unverifiedHistoryCount === 0 ? "complete" : "pending"
-                }`}
-              >
-                <span>{unverifiedHistoryCount === 0 ? "✓" : "!"}</span>
-                <div>
-                  <b>{unverifiedHistoryCount}</b>
-                  <small>
-                    course{unverifiedHistoryCount !== 1 ? "s" : ""} non vérifiée
-                    {unverifiedHistoryCount !== 1 ? "s" : ""} dans cette période
-                  </small>
-                </div>
-              </div>
             </>
           )}
           {courses.length === 0 ? (
@@ -3401,8 +3371,18 @@ export default function Home() {
               <p>Modifiez la recherche ou les filtres.</p>
             </div>
           ) : (
-            historyGroups.map((group) => (
-              <section className="history-day-group" key={group.date}>
+            <section className="history-results">
+              <header className="history-block-heading history-results-heading">
+                <div>
+                  <b>Courses par date</b>
+                  <small>
+                    {filteredHistory.length} course
+                    {filteredHistory.length !== 1 ? "s" : ""} dans la période
+                  </small>
+                </div>
+              </header>
+              {historyGroups.map((group) => (
+                <section className="history-day-group" key={group.date}>
                 <header className="history-date">
                   <span>
                     {new Date(group.date + "T12:00").toLocaleDateString(
@@ -3530,8 +3510,50 @@ export default function Home() {
                     );
                   })}
                 </div>
-              </section>
-            ))
+                </section>
+              ))}
+            </section>
+          )}
+          {courses.length > 0 && (
+            <section className="coupon-history-card history-coupon-footer">
+              <header>
+                <span aria-hidden="true">🎟️</span>
+                <div>
+                  <b>Suivi des coupons</b>
+                  <small>
+                    {historyCouponCount} coupon
+                    {historyCouponCount !== 1 ? "s" : ""} ·{" "}
+                    {money(historyCouponAmount)} dans la période affichée
+                  </small>
+                </div>
+              </header>
+              <div className="coupon-history-grid">
+                <div className="deposited">
+                  <span>✓ Déposés dans Téo</span>
+                  <b>{money(historyCouponSummary.deposited.amount)}</b>
+                  <small>
+                    {historyCouponSummary.deposited.count} coupon
+                    {historyCouponSummary.deposited.count !== 1 ? "s" : ""}
+                  </small>
+                </div>
+                <div className="pending">
+                  <span>◷ Non déposés</span>
+                  <b>{money(historyCouponSummary.pending.amount)}</b>
+                  <small>
+                    {historyCouponSummary.pending.count} coupon
+                    {historyCouponSummary.pending.count !== 1 ? "s" : ""}
+                  </small>
+                </div>
+                <div className="fuel">
+                  <span>⛽ Essence</span>
+                  <b>{money(historyCouponSummary.fuel.amount)}</b>
+                  <small>
+                    {historyCouponSummary.fuel.count} coupon
+                    {historyCouponSummary.fuel.count !== 1 ? "s" : ""}
+                  </small>
+                </div>
+              </div>
+            </section>
           )}
         </section>
       </div>
