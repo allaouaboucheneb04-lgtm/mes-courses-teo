@@ -830,6 +830,50 @@ select:focus {
   font-size: 12px;
   line-height: 1.45;
 }
+.pay-page-head {
+  margin-bottom: 16px;
+}
+.pay-import-section {
+  padding: 15px;
+  border: 1px solid #c8dddd;
+  border-radius: 16px;
+  background: #f3f9f9;
+}
+.pay-section-title {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.pay-section-title > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+}
+.pay-section-title h3,
+.pay-section-title p {
+  margin: 0;
+}
+.pay-section-title h3 {
+  font-size: 17px;
+}
+.pay-section-title p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.pay-import-section .upload {
+  display: block;
+  margin-top: 14px;
+  background: #fff;
+}
 .upload input {
   position: absolute;
   inset: 0;
@@ -1045,11 +1089,27 @@ select:focus {
   font-size: 12px;
 }
 .saved-statements {
-  margin: 18px 0;
+  margin: 22px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
 }
 .saved-statements h3 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 16px;
+}
+.statement-list-title {
+  margin-bottom: 12px;
+}
+.statement-list-title > strong {
+  min-width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--teal-dark);
+  font-size: 14px;
 }
 .bill-filters {
   display: grid;
@@ -1059,6 +1119,10 @@ select:focus {
   border: 1px solid #d9e8e7;
   border-radius: 12px;
   background: #f7fbfb;
+}
+.bill-filters label {
+  min-width: 0;
+  margin: 0;
 }
 .bill-filters label span {
   display: block;
@@ -1101,22 +1165,30 @@ select:focus {
   background: #fff;
   text-align: left;
 }
+.saved-statements button > span:first-child {
+  min-width: 0;
+}
+.saved-statements button > span:first-child b {
+  overflow-wrap: anywhere;
+}
 .saved-statements button.active {
   border-color: var(--teal);
-  border-radius: 11px 11px 0 0;
+  border-radius: 11px;
   background: var(--mint);
 }
 .saved-statement.open {
   margin-top: 7px;
-  overflow: hidden;
-  border: 1px solid var(--teal);
-  border-radius: 15px;
+  overflow: visible;
+  border: 0;
 }
 .saved-statement.open > button.active {
   margin-top: 0;
-  border: 0;
-  border-bottom: 1px solid var(--teal);
-  border-radius: 0;
+  border: 1px solid var(--teal);
+  border-radius: 11px;
+}
+.saved-statement > .statement-details,
+.saved-statement > .bill-comparison {
+  display: none;
 }
 .statement-total {
   text-align: right;
@@ -1145,8 +1217,316 @@ select:focus {
   font-style: normal;
   font-weight: 800;
 }
+.statement-clear {
+  display: block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: #e1f5e9;
+  color: #08753d;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
 .saved-statements strong {
   white-space: nowrap;
+}
+.pay-analysis {
+  scroll-margin-top: 16px;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid #9cc9c6;
+  border-radius: 17px;
+  background: #f6fbfb;
+  box-shadow: 0 10px 24px #1445480d;
+}
+.analysis-title {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #d5e7e6;
+}
+.analysis-title > span {
+  background: var(--teal-dark);
+}
+.pay-analysis-close {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #bad5d4;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--teal-dark);
+  font-size: 24px;
+  line-height: 1;
+}
+.pay-check-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.pay-check-summary > div {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #e0e8e9;
+  border-radius: 11px;
+  background: #fff;
+}
+.pay-check-summary span,
+.pay-check-summary b {
+  display: block;
+}
+.pay-check-summary span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.pay-check-summary b {
+  margin-top: 5px;
+  font-size: 18px;
+}
+.pay-check-summary .matching {
+  border-color: #bee3ce;
+  background: #eaf8f0;
+  color: #08753d;
+}
+.pay-check-summary .warning {
+  border-color: #f0c3b4;
+  background: #fff0ea;
+  color: #9b3b20;
+}
+.pay-check-summary .total {
+  background: var(--mint);
+  color: var(--teal-dark);
+}
+.pay-detail-group {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid #d5e3e4;
+  border-radius: 12px;
+  background: #fff;
+}
+.pay-detail-group > summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 42px 13px 13px;
+  cursor: pointer;
+  list-style: none;
+}
+.pay-detail-group > summary::-webkit-details-marker {
+  display: none;
+}
+.pay-detail-group > summary::after {
+  content: "+";
+  position: absolute;
+  right: 14px;
+  color: var(--teal);
+  font-size: 20px;
+  font-weight: 800;
+}
+.pay-detail-group[open] > summary::after {
+  content: "−";
+}
+.pay-detail-group > summary > span {
+  color: var(--teal-dark);
+  font-size: 14px;
+  font-weight: 800;
+}
+.pay-detail-group > summary > small {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+.pay-statement-grid {
+  margin: 0;
+  padding: 0 12px 12px;
+}
+.pay-statement-grid > div {
+  border: 1px solid #e2e9ea;
+  background: var(--paper);
+}
+.pay-issues-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px solid var(--teal);
+}
+.pay-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.pay-group-head h4,
+.pay-group-head p {
+  margin: 0;
+}
+.pay-group-head h4 {
+  font-size: 16px;
+}
+.pay-group-head p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.pay-group-head > span {
+  min-width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #ffe1d6;
+  color: #993b1d;
+  font-weight: 900;
+}
+.pay-all-clear {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid #bfe3cf;
+  border-radius: 12px;
+  background: #eaf8f0;
+  color: #08753d;
+}
+.pay-all-clear > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #caeed9;
+  font-weight: 900;
+}
+.pay-all-clear b,
+.pay-all-clear small {
+  display: block;
+}
+.pay-all-clear small {
+  margin-top: 2px;
+  color: #367b59;
+  font-size: 12px;
+}
+.pay-course-list {
+  display: grid;
+  gap: 9px;
+}
+.pay-course-card {
+  padding: 12px;
+  border: 1px solid #e0e7e8;
+  border-radius: 12px;
+  background: #fff;
+}
+.pay-course-card.different,
+.pay-course-card.missing-app,
+.pay-course-card.missing-pay {
+  border-color: #efc7ba;
+  background: #fffaf8;
+}
+.pay-course-card.ok {
+  border-color: #cbe4d6;
+}
+.pay-course-head {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+.pay-course-head > div {
+  min-width: 0;
+}
+.pay-course-head b,
+.pay-course-head small {
+  display: block;
+}
+.pay-course-head b {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.pay-course-head small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.pay-course-head em {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: #ffe2d7;
+  color: #9d3b1f;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.pay-course-card.ok .pay-course-head em {
+  background: #e1f5e9;
+  color: #08753d;
+}
+.pay-course-status {
+  margin: 9px 0 0 35px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.pay-course-amounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+.pay-course-amounts > div {
+  min-width: 0;
+  padding: 9px;
+  border-radius: 9px;
+  background: var(--paper);
+}
+.pay-course-amounts span,
+.pay-course-amounts b {
+  display: block;
+}
+.pay-course-amounts span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.pay-course-amounts b {
+  margin-top: 4px;
+  font-size: 14px;
+}
+.pay-course-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+.pay-course-actions button,
+.pay-course-actions select {
+  width: auto;
+  min-height: 38px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.pay-course-actions select {
+  flex: 1 1 150px;
+}
+.pay-course-actions button {
+  flex: 1 1 130px;
+}
+.pay-matches-group .pay-course-list,
+.pay-pdf-group .statement-lines {
+  padding: 0 12px 12px;
 }
 .check-summary {
   display: grid;
@@ -1647,7 +2027,27 @@ select:focus {
     grid-template-columns: 1fr;
   }
   .bill-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .bill-filters label:first-child {
+    grid-column: 1 / -1;
+  }
+  .pay-analysis {
+    padding: 14px;
+  }
+  .pay-check-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pay-statement-grid {
     grid-template-columns: 1fr;
+  }
+  .pay-course-head {
+    align-items: start;
+  }
+  .pay-course-head em {
+    max-width: 105px;
+    white-space: normal;
+    text-align: center;
   }
   .statement-details.inline {
     padding: 10px 14px 13px;

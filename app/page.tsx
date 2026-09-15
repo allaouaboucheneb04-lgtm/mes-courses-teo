@@ -629,6 +629,9 @@ export default function Home() {
           if (amountDifference + tipDifference >= 0.02) missing++;
         } else missing++;
       }
+      missing += statement.rows.filter(
+        (_row, index) => !usedRows.has(index),
+      ).length;
       warnings[statement.id] = missing;
     }
     return warnings;
@@ -693,10 +696,33 @@ export default function Home() {
     payStatements,
     statementWarnings,
   ]);
+  const selectedPayStatement =
+    payStatements.find((statement) => statement.id === selectedStatementId) ||
+    null;
+  const comparisonIssues = selectedPayStatement
+    ? comparisons.filter((row) => row.status !== "ok")
+    : [];
+  const comparisonMatches = selectedPayStatement
+    ? comparisons.filter((row) => row.status === "ok")
+    : [];
   function closeSelectedPayStatement() {
     setSelectedStatementId("");
     setPayRows([]);
     setPayFile("");
+  }
+  function togglePayStatement(statement: PayStatement) {
+    if (statement.id === selectedStatementId) {
+      closeSelectedPayStatement();
+      return;
+    }
+    setSelectedStatementId(statement.id);
+    setPayRows(statement.rows);
+    setPayFile(statement.fileName);
+    window.setTimeout(() => {
+      document
+        .getElementById("pay-statement-analysis")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   }
   const flash = (t: string) => {
     setNotice(t);
@@ -923,6 +949,11 @@ export default function Home() {
         });
       });
       flash(`Fiche ${billId} enregistrée avec tous ses détails.`);
+      window.setTimeout(() => {
+        document
+          .getElementById("pay-statement-analysis")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
     } catch (error) {
       console.error(error);
       const reason =
@@ -1204,6 +1235,139 @@ export default function Home() {
     try { await sendPasswordResetEmail(auth, authForm.email.trim()); setAuthMessage("Le courriel de réinitialisation a été envoyé."); }
     catch (error) { setAuthMessage(firebaseErrorMessage(error)); }
     finally { setAuthBusy(false); }
+  };
+  const renderPayComparison = (
+    row: (typeof comparisons)[number],
+    index: number,
+    group: string,
+  ) => {
+    const appTotal =
+      row.appAmount === null
+        ? null
+        : row.appAmount + (row.appTip || 0);
+    const teoTotal =
+      row.status === "missing-pay" ? null : row.amount + row.tip;
+    const title =
+      row.type === "adapte"
+        ? row.key
+        : row.key === "Course carte"
+          ? "Course Téo / carte"
+          : `Course Téo ${row.key}`;
+    const statusLabel =
+      row.status === "ok"
+        ? "Correspond"
+        : row.status === "different"
+          ? "Montant différent"
+          : row.status === "missing-app"
+            ? "À enregistrer"
+            : "Absente du PDF";
+    const statusText =
+      row.status === "ok"
+        ? "Les montants de l’application et de la fiche sont identiques."
+        : row.status === "different"
+          ? row.type === "adapte"
+            ? "La date et le numéro HOB correspondent, mais le montant est différent."
+            : "Le montant de la course ou le pourboire est différent."
+          : row.status === "missing-app"
+            ? "Cette course apparaît sur la fiche Téo, mais pas dans l’application."
+            : "Cette course est dans l’application, mais elle n’apparaît pas sur la fiche Téo.";
+
+    return (
+      <article
+        className={`pay-course-card ${row.status}`}
+        key={`${group}-${row.key}-${row.date}-${index}`}
+      >
+        <header className="pay-course-head">
+          <span className="status-dot">{row.status === "ok" ? "✓" : "!"}</span>
+          <div>
+            <b>{title}</b>
+            <small>
+              {new Date(row.date + "T12:00").toLocaleDateString("fr-CA", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              })}
+            </small>
+          </div>
+          <em>{statusLabel}</em>
+        </header>
+        <p className="pay-course-status">{statusText}</p>
+        <div className="pay-course-amounts">
+          <div>
+            <span>Total application</span>
+            <b>{appTotal === null ? "—" : money(appTotal)}</b>
+          </div>
+          <div>
+            <span>Total fiche Téo</span>
+            <b>{teoTotal === null ? "—" : money(teoTotal)}</b>
+          </div>
+          {row.type === "taxi" && (
+            <>
+              <div>
+                <span>Pourboire application</span>
+                <b>
+                  {row.appTip === null ? "—" : money(row.appTip || 0)}
+                </b>
+              </div>
+              <div>
+                <span>Pourboire fiche Téo</span>
+                <b>
+                  {row.status === "missing-pay" ? "—" : money(row.tip)}
+                </b>
+              </div>
+            </>
+          )}
+        </div>
+        {row.status !== "ok" && (
+          <div className="pay-course-actions">
+            {row.status === "missing-app" && (
+              <button
+                type="button"
+                className="correct-teo"
+                onClick={() => savePayRow(row)}
+              >
+                Enregistrer dans l’application
+              </button>
+            )}
+            {row.status === "different" && row.courseId && (
+              <button
+                type="button"
+                className="correct-teo"
+                onClick={() => correctFromTeo(row)}
+              >
+                Corriger selon Téo
+              </button>
+            )}
+            {row.courseId && (
+              <>
+                <select
+                  aria-label={`Changer le mode de paiement de ${title}`}
+                  defaultValue=""
+                  onChange={(event) => {
+                    if (event.target.value)
+                      changeCoursePayment(row.courseId!, event.target.value);
+                  }}
+                >
+                  <option value="" disabled>
+                    Changer paiement
+                  </option>
+                  <option value="Téo / carte">Téo / carte</option>
+                  <option value="Espèces">Espèces</option>
+                  <option value="Machine crédit">Machine crédit</option>
+                </select>
+                <button
+                  type="button"
+                  className="check-delete"
+                  onClick={() => deleteCheckedCourse(row.courseId!)}
+                >
+                  Supprimer
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </article>
+    );
   };
   if (!authReady) return <main className="auth-page"><div className="auth-loader">Chargement…</div></main>;
   if (!user) return (
@@ -1669,34 +1833,49 @@ export default function Home() {
             </form>
           ) : tab === "paie" ? (
             <div className="form-card reconcile">
-              <div className="form-title">
+              <div className="form-title pay-page-head">
                 <div>
-                  <h2>Vérifier une fiche de paie</h2>
-                  <p>Le PDF est analysé seulement sur votre appareil.</p>
+                  <h2>Vérifier paie</h2>
+                  <p>Comparez chaque fiche Téo avec vos courses.</p>
                 </div>
-                <span className="type-icon">✓</span>
+                <span className="type-icon">📄</span>
               </div>
-              <p className="pay-scope-note">
-                Seules les dates inscrites sur les lignes de courses du PDF
-                sont vérifiées. Les autres jours de la semaine sont ignorés.
-              </p>
-              <label className="upload">
-                <input
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={(e) => importPayPdf(e.target.files?.[0])}
-                />
-                <span>
-                  {payLoading
-                    ? "Lecture en cours…"
-                    : "Choisir la fiche PDF Téo"}
-                </span>
-                <small>{payFile || "Courses carte et tournées HOB"}</small>
-              </label>
-              {payError && <p className="error-box">{payError}</p>}
+              <section className="pay-import-section">
+                <div className="pay-section-title">
+                  <span>1</span>
+                  <div>
+                    <h3>Importer une fiche</h3>
+                    <p>
+                      Seules les dates de courses inscrites dans le PDF sont
+                      vérifiées.
+                    </p>
+                  </div>
+                </div>
+                <label className="upload">
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => importPayPdf(e.target.files?.[0])}
+                  />
+                  <span>
+                    {payLoading
+                      ? "Lecture en cours…"
+                      : "Choisir la fiche PDF Téo"}
+                  </span>
+                  <small>{payFile || "Courses carte et tournées HOB"}</small>
+                </label>
+                {payError && <p className="error-box">{payError}</p>}
+              </section>
               {payStatements.length > 0 && (
                 <section className="saved-statements">
-                  <h3>Fiches de paie enregistrées</h3>
+                  <div className="pay-section-title statement-list-title">
+                    <span>2</span>
+                    <div>
+                      <h3>Fiches enregistrées</h3>
+                      <p>Choisissez une fiche pour voir son analyse.</p>
+                    </div>
+                    <strong>{payStatements.length}</strong>
+                  </div>
                   <div className="bill-filters">
                     <label>
                       <span>Rechercher une fiche</span>
@@ -1793,15 +1972,7 @@ export default function Home() {
                         className={
                           statement.id === selectedStatementId ? "active" : ""
                         }
-                        onClick={() => {
-                          if (statement.id === selectedStatementId) {
-                            closeSelectedPayStatement();
-                          } else {
-                            setSelectedStatementId(statement.id);
-                            setPayRows(statement.rows);
-                            setPayFile(statement.fileName);
-                          }
-                        }}
+                        onClick={() => togglePayStatement(statement)}
                       >
                         <span>
                           <b>{statement.id}</b>
@@ -1817,13 +1988,18 @@ export default function Home() {
                               vérifier
                             </em>
                           )}
+                          {!statementWarnings[statement.id] && (
+                            <em className="statement-clear">
+                              ✓ Sans anomalie
+                            </em>
+                          )}
                         </span>
                         <span className="statement-total">
                           <strong>{money(statement.total)}</strong>
                           <small>
                             {statement.id === selectedStatementId
                               ? "Fermer ▲"
-                              : "Ouvrir ▼"}
+                              : "Analyser ›"}
                           </small>
                         </span>
                       </button>
@@ -2008,6 +2184,151 @@ export default function Home() {
                       )}
                     </div>
                   ))}
+                </section>
+              )}
+              {selectedPayStatement && (
+                <section
+                  className="pay-analysis"
+                  id="pay-statement-analysis"
+                >
+                  <div className="pay-section-title analysis-title">
+                    <span>3</span>
+                    <div>
+                      <h3>Analyse de {selectedPayStatement.id}</h3>
+                      <p>
+                        Courses du {" "}
+                        {getPayrollCourseDates(selectedPayStatement.rows).join(
+                          " · ",
+                        ) || "—"}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="pay-analysis-close"
+                      onClick={closeSelectedPayStatement}
+                      aria-label="Fermer l’analyse de la fiche"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="pay-check-summary">
+                    <div className="matching">
+                      <span>Correspondent</span>
+                      <b>{comparisonMatches.length}</b>
+                    </div>
+                    <div className={comparisonIssues.length ? "warning" : "matching"}>
+                      <span>À vérifier</span>
+                      <b>{comparisonIssues.length}</b>
+                    </div>
+                    <div>
+                      <span>Lignes du PDF</span>
+                      <b>{selectedPayStatement.rows.length}</b>
+                    </div>
+                    <div className="total">
+                      <span>Total de la fiche</span>
+                      <b>{money(selectedPayStatement.total)}</b>
+                    </div>
+                  </div>
+
+                  <details className="pay-detail-group">
+                    <summary>
+                      <span>Détails du paiement</span>
+                      <small>Voir les montants et les dates</small>
+                    </summary>
+                    <div className="statement-grid pay-statement-grid">
+                      <div>
+                        <span>Date de la facture</span>
+                        <b>{selectedPayStatement.invoiceDate || "—"}</b>
+                      </div>
+                      <div>
+                        <span>Dates des courses vérifiées</span>
+                        <b>
+                          {getPayrollCourseDates(
+                            selectedPayStatement.rows,
+                          ).join(" · ") || "—"}
+                        </b>
+                      </div>
+                      <div>
+                        <span>Sous-total</span>
+                        <b>{money(selectedPayStatement.subtotal)}</b>
+                      </div>
+                      <div>
+                        <span>Date du paiement</span>
+                        <b>{selectedPayStatement.paidDate || "—"}</b>
+                      </div>
+                      <div>
+                        <span>Montant payé</span>
+                        <b>{money(selectedPayStatement.paidAmount)}</b>
+                      </div>
+                      <div>
+                        <span>Montant dû</span>
+                        <b>{money(selectedPayStatement.amountDue)}</b>
+                      </div>
+                    </div>
+                  </details>
+
+                  <section className="pay-issues-section">
+                    <div className="pay-group-head">
+                      <div>
+                        <h4>Courses à vérifier</h4>
+                        <p>Les différences à corriger sont affichées en premier.</p>
+                      </div>
+                      <span>{comparisonIssues.length}</span>
+                    </div>
+                    {comparisonIssues.length === 0 ? (
+                      <div className="pay-all-clear">
+                        <span>✓</span>
+                        <div>
+                          <b>Tout correspond</b>
+                          <small>
+                            Aucune différence détectée pour cette fiche.
+                          </small>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="pay-course-list">
+                        {comparisonIssues.map((row, index) =>
+                          renderPayComparison(row, index, "issue"),
+                        )}
+                      </div>
+                    )}
+                  </section>
+
+                  {comparisonMatches.length > 0 && (
+                    <details className="pay-detail-group pay-matches-group">
+                      <summary>
+                        <span>Courses qui correspondent</span>
+                        <small>
+                          {comparisonMatches.length} course
+                          {comparisonMatches.length !== 1 ? "s" : ""}
+                        </small>
+                      </summary>
+                      <div className="pay-course-list">
+                        {comparisonMatches.map((row, index) =>
+                          renderPayComparison(row, index, "match"),
+                        )}
+                      </div>
+                    </details>
+                  )}
+
+                  <details className="pay-detail-group pay-pdf-group">
+                    <summary>
+                      <span>Toutes les lignes du PDF</span>
+                      <small>{selectedPayStatement.rows.length} lignes</small>
+                    </summary>
+                    <div className="statement-lines">
+                      {selectedPayStatement.rows.map((row, index) => (
+                        <div key={`${row.key}-${row.date}-${index}`}>
+                          <b>{row.key}</b>
+                          <span>{row.date}</span>
+                          <span>Course {money(row.amount)}</span>
+                          <span>Pourboire {money(row.tip)}</span>
+                          <strong>{money(row.amount + row.tip)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 </section>
               )}
               {false && payRows.length > 0 && (
