@@ -412,7 +412,9 @@ export default function Home() {
           (historyType === "all" || c.type === historyType) &&
           (!query ||
             c.hob?.toUpperCase().includes(query) ||
-            c.payment.toUpperCase().includes(query)),
+            c.teoId?.toUpperCase().includes(query) ||
+            c.payment.toUpperCase().includes(query) ||
+            c.taxiCategory?.toUpperCase().includes(query)),
       )
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [
@@ -424,6 +426,20 @@ export default function Home() {
     customStart,
     customEnd,
   ]);
+  const historyGroups = useMemo(() => {
+    const groups: Array<{ date: string; courses: Course[] }> = [];
+
+    for (const course of filteredHistory) {
+      const currentGroup = groups[groups.length - 1];
+      if (!currentGroup || currentGroup.date !== course.date) {
+        groups.push({ date: course.date, courses: [course] });
+      } else {
+        currentGroup.courses.push(course);
+      }
+    }
+
+    return groups;
+  }, [filteredHistory]);
   const historyTotals = useMemo(
     () =>
       filteredHistory.reduce(
@@ -2681,37 +2697,43 @@ export default function Home() {
           {courses.length > 0 && (
             <>
               <div className="history-controls">
-                <input
-                  aria-label="Rechercher un numéro HOB"
-                  placeholder="Rechercher HOB…"
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                />
-                <select
-                  aria-label="Filtrer par type"
-                  value={historyType}
-                  onChange={(e) =>
-                    setHistoryType(e.target.value as typeof historyType)
-                  }
-                >
-                  <option value="all">Toutes</option>
-                  <option value="taxi">Taxi</option>
-                  <option value="adapte">Adapté</option>
-                </select>
-                <select
-                  aria-label="Filtrer par période"
-                  value={historyPeriod}
-                  onChange={(e) =>
-                    setHistoryPeriod(e.target.value as typeof historyPeriod)
-                  }
-                >
-                  <option value="week">Cette semaine</option>
-                  <option value="last-week">Semaine passée</option>
-                  <option value="month">Ce mois-ci</option>
-                  <option value="last-month">Mois passé</option>
-                  <option value="custom">Période personnalisée</option>
-                  <option value="all">Tout l’historique</option>
-                </select>
+                <label className="history-search">
+                  <span>Rechercher</span>
+                  <input
+                    placeholder="HOB, ID ou paiement…"
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Type de course</span>
+                  <select
+                    value={historyType}
+                    onChange={(e) =>
+                      setHistoryType(e.target.value as typeof historyType)
+                    }
+                  >
+                    <option value="all">Toutes</option>
+                    <option value="taxi">Taxi</option>
+                    <option value="adapte">Adapté</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Période</span>
+                  <select
+                    value={historyPeriod}
+                    onChange={(e) =>
+                      setHistoryPeriod(e.target.value as typeof historyPeriod)
+                    }
+                  >
+                    <option value="week">Cette semaine</option>
+                    <option value="last-week">Semaine passée</option>
+                    <option value="month">Ce mois-ci</option>
+                    <option value="last-month">Mois passé</option>
+                    <option value="custom">Période personnalisée</option>
+                    <option value="all">Tout l’historique</option>
+                  </select>
+                </label>
               </div>
               {historyPeriod === "custom" && (
                 <div className="custom-period">
@@ -2801,100 +2823,130 @@ export default function Home() {
               <p>Modifiez la recherche ou les filtres.</p>
             </div>
           ) : (
-            filteredHistory.map((c, index) => {
-              const fee = serviceFee(c, settings),
-                deductions = fee + (c.perception || 0),
-                payment = isCardPayment(c.payment)
-                  ? "Téo / carte"
-                  : c.payment === "Autre"
-                    ? "Machine crédit"
-                    : c.payment;
-              const showDate =
-                index === 0 || filteredHistory[index - 1].date !== c.date;
-              return (
-                <div key={c.id}>
-                  {showDate && (
-                    <h3 className="history-date">
-                      {new Date(c.date + "T12:00").toLocaleDateString("fr-CA", {
+            historyGroups.map((group) => (
+              <section className="history-day-group" key={group.date}>
+                <header className="history-date">
+                  <span>
+                    {new Date(group.date + "T12:00").toLocaleDateString(
+                      "fr-CA",
+                      {
                         weekday: "long",
                         day: "numeric",
                         month: "long",
-                      })}
-                    </h3>
-                  )}
-                  <article className="course">
-                    <div
-                      className={`course-icon ${c.type}`}
-                      aria-hidden="true"
-                    >
-                      {courseEmoji(c)}
-                    </div>
-                    <div className="course-info">
-                      <b>
-                        {c.type === "taxi"
-                          ? c.taxiCategory === "aeroport"
-                            ? "Course aéroport"
-                            : "Course centre-ville"
-                          : c.hob || "Transport adapté"}
-                      </b>
-                      <span>
-                        {new Date(c.date + "T12:00").toLocaleDateString(
-                          "fr-CA",
-                          {
-                            day: "numeric",
-                            month: "short",
-                          },
-                        )}{" "}
-                        ·{" "}
-                        {c.type === "taxi"
-                          ? `${payment}${c.taxiCategory === "aeroport" ? " · Aéroport" : ""}`
-                          : `${c.duration?.toFixed(2)} h réelles · ${(c.billedDuration || Math.max(c.duration || 0, settings.adaptedMinimum)).toFixed(2)} h payées${c.perception ? ` · STM ${money(c.perception)}` : ""}`}
-                      </span>
-                      {c.verified && (
-                        <span className="verified-course">
-                          ✓ Vérifiée
-                          {c.type === "taxi" && c.teoId
-                            ? ` · ID ${c.teoId}`
-                            : c.hob
-                              ? ` · ID ${c.hob}`
-                              : ""}
-                          {c.verifiedBillId ? ` · ${c.verifiedBillId}` : ""}
-                        </span>
-                      )}
-                    </div>
-                    <div className="course-money">
-                      <b>{money(c.amount + c.tip - deductions)}</b>
-                      <span>
-                        Total avec pourboire {money(c.amount + c.tip)}
-                        {c.type === "taxi"
-                          ? ` · Avant pourboire ${money(c.amount)}`
-                          : ""}
-                        {c.tip > 0 ? ` · tip ${money(c.tip)}` : ""}
-                        {deductions > 0 ? ` · frais ${money(deductions)}` : ""}
-                      </span>
-                    </div>
-                    <div className="course-actions">
-                      <button
-                        aria-label="Modifier"
-                        className="edit"
-                        onClick={() => editCourse(c)}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        aria-label="Supprimer"
-                        className="delete"
-                        onClick={() =>
-                          setCourses(courses.filter((x) => x.id !== c.id))
-                        }
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </article>
+                      },
+                    )}
+                  </span>
+                  <small>
+                    {group.courses.length} course
+                    {group.courses.length !== 1 ? "s" : ""}
+                  </small>
+                </header>
+                <div className="history-day-courses">
+                  {group.courses.map((c) => {
+                    const fee = serviceFee(c, settings),
+                      perception = c.perception || 0,
+                      deductions = fee + perception,
+                      gross = c.amount + c.tip,
+                      payment = isCardPayment(c.payment)
+                        ? "Téo / carte"
+                        : c.payment === "Autre"
+                          ? "Machine crédit"
+                          : c.payment;
+                    return (
+                      <article className="course history-course" key={c.id}>
+                        <div
+                          className={`course-icon ${c.type}`}
+                          aria-hidden="true"
+                        >
+                          {courseEmoji(c)}
+                        </div>
+                        <div className="course-info">
+                          <b>
+                            {c.type === "taxi"
+                              ? c.taxiCategory === "aeroport"
+                                ? "Course aéroport"
+                                : "Course centre-ville"
+                              : c.hob || "Transport adapté"}
+                          </b>
+                          <span>
+                            {c.type === "taxi"
+                              ? `${payment}${c.taxiCategory === "aeroport" ? " · Aéroport" : ""}`
+                              : `${c.duration?.toFixed(2)} h réelles · ${(c.billedDuration || Math.max(c.duration || 0, settings.adaptedMinimum)).toFixed(2)} h payées`}
+                          </span>
+                          {c.verified && (
+                            <span className="verified-course">
+                              ✓ Vérifiée
+                              {c.type === "taxi" && c.teoId
+                                ? ` · ID ${c.teoId}`
+                                : c.hob
+                                  ? ` · ID ${c.hob}`
+                                  : ""}
+                              {c.verifiedBillId
+                                ? ` · ${c.verifiedBillId}`
+                                : ""}
+                            </span>
+                          )}
+                        </div>
+                        <div className="course-actions">
+                          <button
+                            aria-label="Modifier"
+                            className="edit"
+                            onClick={() => editCourse(c)}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            aria-label="Supprimer"
+                            className="delete"
+                            onClick={() =>
+                              setCourses(courses.filter((x) => x.id !== c.id))
+                            }
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className="history-course-values">
+                          <div>
+                            <span>
+                              {c.type === "taxi"
+                                ? "Total avec pourboire"
+                                : "Montant payé"}
+                            </span>
+                            <b>{money(gross)}</b>
+                          </div>
+                          {c.type === "taxi" && (
+                            <>
+                              <div>
+                                <span>Avant pourboire</span>
+                                <b>{money(c.amount)}</b>
+                              </div>
+                              <div>
+                                <span>Pourboire</span>
+                                <b>{money(c.tip)}</b>
+                              </div>
+                            </>
+                          )}
+                          <div>
+                            <span>Frais Téo</span>
+                            <b>− {money(fee)}</b>
+                          </div>
+                          {perception > 0 && (
+                            <div>
+                              <span>Perception STM</span>
+                              <b>− {money(perception)}</b>
+                            </div>
+                          )}
+                          <div className="history-net">
+                            <span>Net</span>
+                            <b>{money(gross - deductions)}</b>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
-              );
-            })
+              </section>
+            ))
           )}
         </section>
       </div>
