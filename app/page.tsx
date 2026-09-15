@@ -192,7 +192,14 @@ export default function Home() {
   const [billSearch, setBillSearch] = useState(""),
     [billStatus, setBillStatus] = useState<"all" | "issues" | "clear">(
       "all",
-    );
+    ),
+    [billPeriod, setBillPeriod] = useState<
+      "all" | "last-week" | "month" | "custom"
+    >("all"),
+    [billCustomStart, setBillCustomStart] = useState(
+      currentTuesdayWeek().start,
+    ),
+    [billCustomEnd, setBillCustomEnd] = useState(today());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [mobilePage, setMobilePage] = useState<
@@ -602,6 +609,35 @@ export default function Home() {
   }, [payStatements, courses]);
   const filteredPayStatements = useMemo(() => {
     const query = billSearch.trim().toLowerCase();
+    let bounds: [string, string] | null = null;
+
+    if (billPeriod === "last-week") {
+      const previousStart = new Date(
+        `${currentTuesdayWeek().start}T12:00:00`,
+      );
+      previousStart.setDate(previousStart.getDate() - 7);
+      const previousEnd = new Date(previousStart);
+      previousEnd.setDate(previousEnd.getDate() + 6);
+      bounds = [dateKey(previousStart), dateKey(previousEnd)];
+    } else if (billPeriod === "month") {
+      const currentDate = new Date(`${today()}T12:00:00`);
+      const monthStart = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1,
+      );
+      const monthEnd = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0,
+      );
+      bounds = [dateKey(monthStart), dateKey(monthEnd)];
+    } else if (billPeriod === "custom") {
+      bounds =
+        billCustomStart <= billCustomEnd
+          ? [billCustomStart, billCustomEnd]
+          : [billCustomEnd, billCustomStart];
+    }
 
     return payStatements.filter((statement) => {
       const courseDates = getPayrollCourseDates(statement.rows);
@@ -611,15 +647,31 @@ export default function Home() {
         statement.fileName.toLowerCase().includes(query) ||
         statement.invoiceDate.includes(query) ||
         courseDates.some((date) => date.includes(query));
+      const matchesPeriod =
+        !bounds ||
+        courseDates.some((date) => date >= bounds[0] && date <= bounds[1]);
       const hasIssues = (statementWarnings[statement.id] || 0) > 0;
       const matchesStatus =
         billStatus === "all" ||
         (billStatus === "issues" && hasIssues) ||
         (billStatus === "clear" && !hasIssues);
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesPeriod && matchesStatus;
     });
-  }, [billSearch, billStatus, payStatements, statementWarnings]);
+  }, [
+    billCustomEnd,
+    billCustomStart,
+    billPeriod,
+    billSearch,
+    billStatus,
+    payStatements,
+    statementWarnings,
+  ]);
+  function closeSelectedPayStatement() {
+    setSelectedStatementId("");
+    setPayRows([]);
+    setPayFile("");
+  }
   const flash = (t: string) => {
     setNotice(t);
     window.setTimeout(() => setNotice(""), 2400);
@@ -1582,7 +1634,10 @@ export default function Home() {
                       <input
                         type="search"
                         value={billSearch}
-                        onChange={(event) => setBillSearch(event.target.value)}
+                        onChange={(event) => {
+                          setBillSearch(event.target.value);
+                          closeSelectedPayStatement();
+                        }}
                         placeholder="No BILL ou date"
                       />
                     </label>
@@ -1590,22 +1645,66 @@ export default function Home() {
                       <span>État</span>
                       <select
                         value={billStatus}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setBillStatus(
                             event.target.value as "all" | "issues" | "clear",
-                          )
-                        }
+                          );
+                          closeSelectedPayStatement();
+                        }}
                       >
                         <option value="all">Toutes</option>
                         <option value="issues">À vérifier</option>
                         <option value="clear">Sans anomalie</option>
                       </select>
                     </label>
+                    <label>
+                      <span>Période des courses</span>
+                      <select
+                        value={billPeriod}
+                        onChange={(event) => {
+                          setBillPeriod(event.target.value as typeof billPeriod);
+                          closeSelectedPayStatement();
+                        }}
+                      >
+                        <option value="all">Toutes les dates</option>
+                        <option value="last-week">Semaine précédente</option>
+                        <option value="month">Mois en cours</option>
+                        <option value="custom">Période personnalisée</option>
+                      </select>
+                    </label>
                   </div>
+                  {billPeriod === "custom" && (
+                    <div className="custom-period bill-custom-period">
+                      <label>
+                        Du
+                        <input
+                          type="date"
+                          value={billCustomStart}
+                          max={billCustomEnd}
+                          onChange={(event) => {
+                            setBillCustomStart(event.target.value);
+                            closeSelectedPayStatement();
+                          }}
+                        />
+                      </label>
+                      <label>
+                        Au
+                        <input
+                          type="date"
+                          value={billCustomEnd}
+                          min={billCustomStart}
+                          onChange={(event) => {
+                            setBillCustomEnd(event.target.value);
+                            closeSelectedPayStatement();
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
                   <p className="bill-filter-count">
                     {filteredPayStatements.length} fiche
-                    {filteredPayStatements.length > 1 ? "s" : ""} affichée
-                    {filteredPayStatements.length > 1 ? "s" : ""} sur {" "}
+                    {filteredPayStatements.length !== 1 ? "s" : ""} affichée
+                    {filteredPayStatements.length !== 1 ? "s" : ""} sur {" "}
                     {payStatements.length}
                   </p>
                   {filteredPayStatements.length === 0 && (
@@ -1627,9 +1726,7 @@ export default function Home() {
                         }
                         onClick={() => {
                           if (statement.id === selectedStatementId) {
-                            setSelectedStatementId("");
-                            setPayRows([]);
-                            setPayFile("");
+                            closeSelectedPayStatement();
                           } else {
                             setSelectedStatementId(statement.id);
                             setPayRows(statement.rows);

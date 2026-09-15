@@ -1015,7 +1015,7 @@ select:focus {
 }
 .bill-filters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px;
+  grid-template-columns: minmax(0, 1fr) 150px 180px;
   gap: 10px;
   padding: 12px;
   border: 1px solid #d9e8e7;
@@ -1038,6 +1038,9 @@ select:focus {
   margin: 8px 2px 0;
   color: var(--muted);
   font-size: 12px;
+}
+.bill-custom-period {
+  margin: 10px 0 0;
 }
 .bill-filter-empty {
   margin: 12px 0 0;
