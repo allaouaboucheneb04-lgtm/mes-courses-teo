@@ -159,17 +159,26 @@ const serviceFee = (course: Course, settings: AppSettings) => {
 };
 const dateKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-const currentTuesdayWeek = () => {
-  const now = new Date(),
-    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+const tuesdayWeekForDate = (value: string) => {
+  const selected = new Date(`${value}T12:00:00`),
+    start = new Date(
+      selected.getFullYear(),
+      selected.getMonth(),
+      selected.getDate(),
+    );
   start.setDate(start.getDate() - ((start.getDay() - 2 + 7) % 7));
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   return { start: dateKey(start), end: dateKey(end) };
 };
-const currentMondayWeek = () => {
-  const now = new Date(),
-    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+const currentTuesdayWeek = () => tuesdayWeekForDate(today());
+const mondayWeekForDate = (value: string) => {
+  const selected = new Date(`${value}T12:00:00`),
+    start = new Date(
+      selected.getFullYear(),
+      selected.getMonth(),
+      selected.getDate(),
+    );
   start.setDate(start.getDate() - ((start.getDay() - 1 + 7) % 7));
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
@@ -346,12 +355,14 @@ export default function Home() {
       return changed ? updated : current;
     });
   }, [loaded, payStatements]);
-  const week = useMemo(currentTuesdayWeek, []),
-    weeklyCourses = useMemo(
-      () => courses.filter((c) => c.date >= week.start && c.date <= week.end),
-      [courses, week],
-    );
-  const airportWeek = useMemo(currentMondayWeek, []);
+  const selectedDate =
+    (tab === "adapte" ? adapted.date : taxi.date) || today();
+  const week = tuesdayWeekForDate(selectedDate);
+  const weeklyCourses = useMemo(
+    () => courses.filter((c) => c.date >= week.start && c.date <= week.end),
+    [courses, week.start, week.end],
+  );
+  const airportWeek = mondayWeekForDate(selectedDate);
   const weeklyAirportCourses = useMemo(
     () =>
       courses.filter(
@@ -361,7 +372,7 @@ export default function Home() {
           course.date >= airportWeek.start &&
           course.date <= airportWeek.end,
       ),
-    [courses, airportWeek],
+    [courses, airportWeek.start, airportWeek.end],
   );
   const airportFeeTotal = round2(
     weeklyAirportCourses.length * settings.airportFee,
@@ -479,7 +490,6 @@ export default function Home() {
       ).length,
     [filteredHistory],
   );
-  const selectedDate = tab === "adapte" ? adapted.date : taxi.date;
   const selectedDayCourses = useMemo(
     () => courses.filter((c) => c.date === selectedDate),
     [courses, selectedDate],
