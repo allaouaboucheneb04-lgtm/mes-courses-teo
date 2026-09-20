@@ -1351,7 +1351,10 @@ export default function Home() {
       /\b(JANVIER|FEVRIER|MARS|AVRIL|MAI|JUIN|JUILLET|AOUT|SEPTEMBRE|OCTOBRE|NOVEMBRE|DECEMBRE)\s+(20\d{2})\b/,
     );
     const headerMonth = monthHeader ? monthNames[monthHeader[1]] : "";
-    const headerYear = monthHeader?.[2] || String(new Date().getFullYear());
+    // The month title on the tablet is often very pale and may be omitted by
+    // OCR. In that case, use the year currently selected in the form rather
+    // than the device's current date.
+    const headerYear = monthHeader?.[2] || taxi.date.slice(0, 4) || String(new Date().getFullYear());
     const dateFromSegment = (segment: string) => {
       const fullDate = segment.match(
         /\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/,
@@ -1373,13 +1376,24 @@ export default function Home() {
           return `${headerYear}-${headerMonth}-${first}`;
         if (first === headerMonth)
           return `${headerYear}-${headerMonth}-${second}`;
+      }
+      // Without a readable month heading, Téo can still show both 15/09
+      // (day/month) and 09/14 (month/day). The number over 12 tells us which
+      // position is the day, so the screenshot remains importable.
+      const firstNumber = Number(first);
+      const secondNumber = Number(second);
+      if (firstNumber > 12 && secondNumber <= 12)
+        return `${headerYear}-${second}-${first}`;
+      if (secondNumber > 12 && firstNumber <= 12)
+        return `${headerYear}-${first}-${second}`;
+      if (headerMonth) {
         return "";
       }
       return `${headerYear}-${second}-${first}`;
     };
     // On reflective tablet photos, Tesseract commonly reads 45,60 $ as
     // "4560$" and 167,88 $ as "167885" (the final 5 is the $ sign).
-    const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*\$?|(?:^|\n)[^\d\n]{0,16}(\d{4,6})\s*\$?/gm;
+    const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*[$§]?|(?:^|\n)[^\d\n]{0,16}(\d{3,6})\s*[$§]?/gm;
     const matches = [...text.matchAll(amountPattern)].filter((match) => {
       const value = match[1] || match[2] || "";
       return !value.includes("/") && !/^20\d{2}$/.test(value);
@@ -1391,7 +1405,7 @@ export default function Home() {
       const segment = text.slice(start, end).toUpperCase();
       // Import only rows explicitly marked Carte. Cancelled and cash rows
       // must never be proposed even when they also contain a visible amount.
-      if (!/\bCARTE\b/.test(segment)) return;
+      if (!/CARTE/.test(segment)) return;
       if (/\b(COMPTANT|ESPECES?|CANCELLED|ANNULEE?)\b/.test(segment)) return;
       const date = dateFromSegment(segment);
       if (!date) return;
@@ -1421,7 +1435,7 @@ export default function Home() {
     // different order: the payment label is present, but falls outside the
     // amount segment above. Attach every visible "Carte" label to the closest
     // preceding amount and nearby date.
-    for (const cardMatch of text.matchAll(/\bCARTE\b/gi)) {
+    for (const cardMatch of text.matchAll(/CARTE/gi)) {
       const cardIndex = cardMatch.index || 0;
       const preceding = matches
         .filter((match) => (match.index || 0) < cardIndex && cardIndex - (match.index || 0) < 260)
