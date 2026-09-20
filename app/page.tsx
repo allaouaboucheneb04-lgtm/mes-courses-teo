@@ -1365,7 +1365,7 @@ export default function Home() {
       }
       // The current Téo tablet view displays dates as 15/09 and puts the
       // year in the month heading (for example SEPTEMBRE 2026).
-      const shortDate = segment.match(/\b(\d{1,2})[\/.\-](\d{1,2})\b/);
+      const shortDate = segment.match(/\b(\d{1,2})\/(\d{1,2})\b/);
       if (!shortDate) return "";
       const first = shortDate[1].padStart(2, "0");
       const second = shortDate[2].padStart(2, "0");
@@ -1393,7 +1393,7 @@ export default function Home() {
     };
     // On reflective tablet photos, Tesseract commonly reads 45,60 $ as
     // "4560$" and 167,88 $ as "167885" (the final 5 is the $ sign).
-    const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*[$§]?|(?:^|\n)[^\d\n]{0,16}(\d{3,6})\s*[$§]?/gm;
+    const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*[$§]?|(?:^|\n)[^\d\n]{0,16}(\d{3,6})(?![\d,.])\s*[$§]/gm;
     const matches = [...text.matchAll(amountPattern)].filter((match) => {
       const value = match[1] || match[2] || "";
       return !value.includes("/") && !/^20\d{2}$/.test(value);
@@ -1431,73 +1431,14 @@ export default function Home() {
       });
     });
 
-    // Second, card-first pass. Some Android phones return OCR blocks in a
-    // different order: the payment label is present, but falls outside the
-    // amount segment above. Attach every visible "Carte" label to the closest
-    // preceding amount and nearby date.
-    for (const cardMatch of text.matchAll(/CARTE/gi)) {
-      const cardIndex = cardMatch.index || 0;
-      const preceding = matches
-        .filter((match) => (match.index || 0) < cardIndex && cardIndex - (match.index || 0) < 260)
-        .at(-1);
-      if (!preceding) continue;
-      const nearby = text.slice(Math.max(0, (preceding.index || 0) - 20), Math.min(text.length, cardIndex + 180));
-      if (/\bCOMPTANT\b/i.test(nearby.slice(0, Math.max(0, cardIndex - (preceding.index || 0))))) continue;
-      if (/\b(COMPTANT|ESPECES?|CANCELLED|ANNULEE?)\b/i.test(nearby)) continue;
-      const date = dateFromSegment(nearby.toUpperCase());
-      if (!date) continue;
-      let recognizedAmount = preceding[1] || preceding[2] || "";
-      let total: number;
-      if (/[,.]/.test(recognizedAmount)) total = Number(recognizedAmount.replace(",", "."));
-      else {
-        if (recognizedAmount.length === 6 && recognizedAmount.endsWith("5")) recognizedAmount = recognizedAmount.slice(0, -1);
-        total = Number(recognizedAmount) / 100;
-      }
-      if (!Number.isFinite(total) || total <= 0 || total > 1000) continue;
-      if (detected.some((item) => item.date === date && parseMoneyInput(item.total) === total)) continue;
-      detected.push({
-        id: `photo-card-${Date.now()}-${cardIndex}`,
-        date,
-        total: total.toFixed(2).replace(".", ","),
-        tip: "",
-        category: /AEROPORT|AIRPORT|\bYUL\b/i.test(nearby) ? "aeroport" : "centre-ville",
-        selected: true,
-      });
-    }
-
-    // Last-resort row reader for actual Téo tablet captures. On some phones
-    // the OCR returns the price, “Carte”, and the date as separate lines,
-    // which makes block coordinates unreliable even though every value is
-    // readable. Read those neighbouring lines directly.
-    if (!detected.length) {
-      const lines = text
-        .split(/\n+/)
-        .map((line) => line.trim())
-        .filter(Boolean);
-      for (let index = 0; index < lines.length; index += 1) {
-        const amountMatch = lines[index].match(/(?:^|\s)(\d{1,4}[,.]\d{2})\s*[$§]?/);
-        if (!amountMatch) continue;
-        const nearby = lines.slice(index, Math.min(lines.length, index + 4)).join(" ");
-        if (!/CARTE/i.test(nearby)) continue;
-        if (/\b(COMPTANT|ESPECES?|CANCELLED|ANNULEE?)\b/i.test(nearby)) continue;
-        const total = Number(amountMatch[1].replace(",", "."));
-        const date = dateFromSegment(nearby);
-        if (!date || !Number.isFinite(total) || total <= 0 || total > 1000) continue;
-        detected.push({
-          id: `photo-line-${Date.now()}-${index}`,
-          date,
-          total: total.toFixed(2).replace(".", ","),
-          tip: "",
-          category: /AEROPORT|AIRPORT|\bYUL\b/i.test(nearby) ? "aeroport" : "centre-ville",
-          selected: true,
-        });
-      }
-    }
     return detected;
   };
 
   const readTabletPhotos = async (files: FileList | null) => {
-    if (!files?.length) return;
+    // FileList is live: resetting the input clears it while the worker loads.
+    // Keep the File objects before the first await.
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
     setPhotoReading(true);
     setPhotoProgress(0);
     setPhotoMessage("Lecture des photos…");
@@ -1510,9 +1451,9 @@ export default function Home() {
         },
       });
       const allDetected: PhotoCourse[] = [];
-      for (let index = 0; index < files.length; index += 1) {
-        setPhotoMessage(`Lecture de la photo ${index + 1} sur ${files.length}…`);
-        const result = await worker.recognize(files[index]);
+      for (let index = 0; index < selectedFiles.length; index += 1) {
+        setPhotoMessage(`Lecture de la capture ${index + 1} sur ${selectedFiles.length}…`);
+        const result = await worker.recognize(selectedFiles[index]);
         allDetected.push(...parseTabletPhoto(result.data.text));
       }
       await worker.terminate();
@@ -1523,7 +1464,7 @@ export default function Home() {
       setPhotoMessage(
         unique.length
           ? `${unique.length} course${unique.length > 1 ? "s" : ""} par carte détectée${unique.length > 1 ? "s" : ""}. Ajoutez le pourboire de chaque course.`
-          : "Aucune course par carte reconnue. Essayez une photo plus droite et sans reflet.",
+          : "Aucune course Carte reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
       );
     } catch (error) {
       console.error(error);
@@ -1976,7 +1917,7 @@ export default function Home() {
                 <section className="photo-import">
                   <div className="photo-import-head">
                     <div>
-                      <b>Importer les courses de la tablette</b>
+                      <b>Importer des captures d’écran Téo</b>
                       <small>Seules les courses marquées « Carte » seront conservées.</small>
                     </div>
                     <span>▣</span>
@@ -1992,7 +1933,7 @@ export default function Home() {
                         event.target.value = "";
                       }}
                     />
-                    {photoReading ? `Analyse en cours${photoProgress ? ` · ${photoProgress} %` : ""}` : "Prendre ou choisir des photos"}
+                    {photoReading ? `Analyse en cours${photoProgress ? ` · ${photoProgress} %` : ""}` : "Choisir des captures d’écran"}
                   </label>
                   {photoMessage && <p className="photo-message" role="status">{photoMessage}</p>}
                   {photoCourses.length > 0 && (
