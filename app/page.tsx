@@ -1332,6 +1332,51 @@ export default function Home() {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\r/g, "\n");
+    const upperText = text.toUpperCase();
+    const monthNames: Record<string, string> = {
+      JANVIER: "01",
+      FEVRIER: "02",
+      MARS: "03",
+      AVRIL: "04",
+      MAI: "05",
+      JUIN: "06",
+      JUILLET: "07",
+      AOUT: "08",
+      SEPTEMBRE: "09",
+      OCTOBRE: "10",
+      NOVEMBRE: "11",
+      DECEMBRE: "12",
+    };
+    const monthHeader = upperText.match(
+      /\b(JANVIER|FEVRIER|MARS|AVRIL|MAI|JUIN|JUILLET|AOUT|SEPTEMBRE|OCTOBRE|NOVEMBRE|DECEMBRE)\s+(20\d{2})\b/,
+    );
+    const headerMonth = monthHeader ? monthNames[monthHeader[1]] : "";
+    const headerYear = monthHeader?.[2] || String(new Date().getFullYear());
+    const dateFromSegment = (segment: string) => {
+      const fullDate = segment.match(
+        /\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/,
+      );
+      if (fullDate) {
+        const [, day, month, year] = fullDate;
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
+      // The current Téo tablet view displays dates as 15/09 and puts the
+      // year in the month heading (for example SEPTEMBRE 2026).
+      const shortDate = segment.match(/\b(\d{1,2})[\/.\-](\d{1,2})\b/);
+      if (!shortDate) return "";
+      const first = shortDate[1].padStart(2, "0");
+      const second = shortDate[2].padStart(2, "0");
+      // Téo can mix 15/09 (jour/mois) and 09/14 (mois/jour) in the
+      // same screen. The month heading removes the ambiguity.
+      if (headerMonth) {
+        if (second === headerMonth)
+          return `${headerYear}-${headerMonth}-${first}`;
+        if (first === headerMonth)
+          return `${headerYear}-${headerMonth}-${second}`;
+        return "";
+      }
+      return `${headerYear}-${second}-${first}`;
+    };
     // On reflective tablet photos, Tesseract commonly reads 45,60 $ as
     // "4560$" and 167,88 $ as "167885" (the final 5 is the $ sign).
     const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*\$?|(?:^|\n)[^\d\n]{0,16}(\d{4,6})\s*\$?/gm;
@@ -1344,14 +1389,12 @@ export default function Home() {
       const start = match.index || 0;
       const end = matches[index + 1]?.index ?? text.length;
       const segment = text.slice(start, end).toUpperCase();
-      // Never import a row that OCR positively identifies as cash. If glare
-      // erased the word "Carte", keep the candidate so the driver can verify
-      // it instead of silently losing a paid ride.
-      if (/\bCOMPTANT\b/.test(segment)) return;
-      const dateMatch = segment.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/);
-      if (!dateMatch) return;
-      const [, day, month, year] = dateMatch;
-      const date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      // Import only rows explicitly marked Carte. Cancelled and cash rows
+      // must never be proposed even when they also contain a visible amount.
+      if (!/\bCARTE\b/.test(segment)) return;
+      if (/\b(COMPTANT|ESPECES?|CANCELLED|ANNULEE?)\b/.test(segment)) return;
+      const date = dateFromSegment(segment);
+      if (!date) return;
       let recognizedAmount = match[1] || match[2] || "";
       let total: number;
       if (/[,.]/.test(recognizedAmount)) {
@@ -1386,8 +1429,9 @@ export default function Home() {
       if (!preceding) continue;
       const nearby = text.slice(Math.max(0, (preceding.index || 0) - 20), Math.min(text.length, cardIndex + 180));
       if (/\bCOMPTANT\b/i.test(nearby.slice(0, Math.max(0, cardIndex - (preceding.index || 0))))) continue;
-      const dateMatch = nearby.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/);
-      if (!dateMatch) continue;
+      if (/\b(COMPTANT|ESPECES?|CANCELLED|ANNULEE?)\b/i.test(nearby)) continue;
+      const date = dateFromSegment(nearby.toUpperCase());
+      if (!date) continue;
       let recognizedAmount = preceding[1] || preceding[2] || "";
       let total: number;
       if (/[,.]/.test(recognizedAmount)) total = Number(recognizedAmount.replace(",", "."));
@@ -1396,8 +1440,6 @@ export default function Home() {
         total = Number(recognizedAmount) / 100;
       }
       if (!Number.isFinite(total) || total <= 0 || total > 1000) continue;
-      const [, day, month, year] = dateMatch;
-      const date = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
       if (detected.some((item) => item.date === date && parseMoneyInput(item.total) === total)) continue;
       detected.push({
         id: `photo-card-${Date.now()}-${cardIndex}`,
