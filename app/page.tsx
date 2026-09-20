@@ -1464,6 +1464,35 @@ export default function Home() {
         selected: true,
       });
     }
+
+    // Last-resort row reader for actual Téo tablet captures. On some phones
+    // the OCR returns the price, “Carte”, and the date as separate lines,
+    // which makes block coordinates unreliable even though every value is
+    // readable. Read those neighbouring lines directly.
+    if (!detected.length) {
+      const lines = text
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      for (let index = 0; index < lines.length; index += 1) {
+        const amountMatch = lines[index].match(/(?:^|\s)(\d{1,4}[,.]\d{2})\s*[$§]?/);
+        if (!amountMatch) continue;
+        const nearby = lines.slice(index, Math.min(lines.length, index + 4)).join(" ");
+        if (!/CARTE/i.test(nearby)) continue;
+        if (/\b(COMPTANT|ESPECES?|CANCELLED|ANNULEE?)\b/i.test(nearby)) continue;
+        const total = Number(amountMatch[1].replace(",", "."));
+        const date = dateFromSegment(nearby);
+        if (!date || !Number.isFinite(total) || total <= 0 || total > 1000) continue;
+        detected.push({
+          id: `photo-line-${Date.now()}-${index}`,
+          date,
+          total: total.toFixed(2).replace(".", ","),
+          tip: "",
+          category: /AEROPORT|AIRPORT|\bYUL\b/i.test(nearby) ? "aeroport" : "centre-ville",
+          selected: true,
+        });
+      }
+    }
     return detected;
   };
 
