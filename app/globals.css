@@ -162,6 +162,10 @@ button {
 .auth-heading > span { color:var(--teal); font-weight:800; font-size:14px; }
 .auth-heading h2 { margin:5px 0 8px; font-size:32px; line-height:1.1; }
 .auth-heading p { margin:0 0 20px; color:var(--muted); line-height:1.5; }
+.new-driver-guide { display:grid; gap:9px; margin:0 0 20px; padding:15px; border:1px solid #b9d9d7; border-radius:15px; background:#f2faf9; color:#1e4f52; }
+.new-driver-guide b { color:var(--teal-dark); font-size:15px; }
+.new-driver-guide p,.new-driver-guide small { margin:0; color:#3b6567; font-size:13px; line-height:1.45; }
+.new-driver-guide ul { display:grid; gap:5px; margin:0; padding-left:18px; color:#315e60; font-size:13px; line-height:1.4; }
 .google-button { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:13px; border:1px solid #cbd7da; border-radius:13px; background:#fff; color:var(--ink); font-weight:800; }
 .google-button span { color:#4285f4; font-size:20px; font-weight:900; }
 .auth-divider { display:flex; align-items:center; gap:10px; margin:18px 0; color:var(--muted); font-size:13px; }
