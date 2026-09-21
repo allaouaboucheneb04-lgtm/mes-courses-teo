@@ -111,6 +111,7 @@ type PhotoCourse = {
   tip: string;
   category: "centre-ville" | "aeroport";
   selected: boolean;
+  alreadyRecorded?: boolean;
 };
 const DEFAULT_SETTINGS: AppSettings = {
   cardFee: 5.51,
@@ -1460,10 +1461,22 @@ export default function Home() {
       const unique = allDetected.filter((item, index, list) =>
         list.findIndex((other) => other.date === item.date && other.total === item.total) === index,
       );
-      setPhotoCourses(unique);
+      const checked = unique.map((item) => {
+        const total = parseMoneyInput(item.total);
+        const alreadyRecorded = courses.some(
+          (course) =>
+            course.type === "taxi" &&
+            isCardPayment(course.payment) &&
+            course.date === item.date &&
+            Math.abs(course.amount + course.tip - total) < 0.02,
+        );
+        return { ...item, alreadyRecorded, selected: !alreadyRecorded };
+      });
+      const existingCount = checked.filter((item) => item.alreadyRecorded).length;
+      setPhotoCourses(checked);
       setPhotoMessage(
-        unique.length
-          ? `${unique.length} course${unique.length > 1 ? "s" : ""} par carte détectée${unique.length > 1 ? "s" : ""}. Ajoutez le pourboire de chaque course.`
+        checked.length
+          ? `${checked.length} course${checked.length > 1 ? "s" : ""} par carte détectée${checked.length > 1 ? "s" : ""}${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Ajoutez le pourboire des nouvelles courses.`
           : "Aucune course Carte reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
       );
     } catch (error) {
@@ -1945,8 +1958,8 @@ export default function Home() {
                           <article className={!item.selected ? "unselected" : ""} key={item.id}>
                             <div className="photo-row-title">
                               <label>
-                                <input type="checkbox" checked={item.selected} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, selected: event.target.checked } : course))} />
-                                Course par carte
+                                <input type="checkbox" checked={item.selected} disabled={item.alreadyRecorded} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, selected: event.target.checked } : course))} />
+                                {item.alreadyRecorded ? "Déjà enregistrée" : "Course par carte"}
                               </label>
                               <button type="button" aria-label="Supprimer cette course" onClick={() => setPhotoCourses((current) => current.filter((course) => course.id !== item.id))}>×</button>
                             </div>
