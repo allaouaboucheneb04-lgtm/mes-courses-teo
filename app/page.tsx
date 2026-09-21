@@ -1757,6 +1757,16 @@ export default function Home() {
       <section className="auth-card">
         <div className="auth-brand"><span className="mark">T</span><div><h1>Mes courses</h1><p>Téo Taxi · Montréal</p></div></div>
         <div className="auth-heading"><span>{authMode === "login" ? "Bon retour" : "Nouveau chauffeur"}</span><h2>{authMode === "login" ? "Se connecter" : "Créer un compte"}</h2><p>Connectez-vous pour accéder à vos courses et à vos fiches de paie.</p></div>
+        {authMode === "register" && <section className="new-driver-guide" aria-label="Comment fonctionne l’application">
+          <b>Votre assistant de travail Téo</b>
+          <p>Entrez vos courses taxi ou transport adapté, ou importez vos captures d’écran Téo : seules les courses « Carte » sont proposées.</p>
+          <ul>
+            <li>Le revenu net calcule les frais Téo, redevances aéroport et dépenses.</li>
+            <li>Les pourboires sont séparés du montant total de chaque course.</li>
+            <li>Les fiches de paie sont comparées à vos courses pour trouver les différences.</li>
+          </ul>
+          <small>Vos données sont enregistrées dans votre compte et restent séparées de celles des autres chauffeurs.</small>
+        </section>}
         <button className="google-button" type="button" disabled={authBusy} onClick={connectGoogle}><span>G</span> Continuer avec Google</button>
         <div className="auth-divider"><span>ou avec votre courriel</span></div>
         <form className="auth-form" onSubmit={submitAuth}>
