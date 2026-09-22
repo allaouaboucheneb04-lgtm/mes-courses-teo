@@ -14,6 +14,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
+import { expenseTotal } from "@/lib/expenses";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -53,6 +54,7 @@ type TaxiExpense = {
   date: string;
   category:
     | "Essence"
+    | "Recharge électrique"
     | "Lavage"
     | "Entretien et réparation"
     | "Assurance"
@@ -143,6 +145,7 @@ const COUPON_STATUS_LABELS: Record<CouponStatus, string> = {
 };
 const EXPENSE_CATEGORIES: TaxiExpense["category"][] = [
   "Essence",
+  "Recharge électrique",
   "Lavage",
   "Entretien et réparation",
   "Assurance",
@@ -154,6 +157,7 @@ const EXPENSE_CATEGORIES: TaxiExpense["category"][] = [
 ];
 const EXPENSE_ICONS: Record<TaxiExpense["category"], string> = {
   Essence: "⛽",
+  "Recharge électrique": "🔌",
   Lavage: "🧽",
   "Entretien et réparation": "🔧",
   Assurance: "🛡️",
@@ -354,7 +358,12 @@ export default function Home() {
     "add" | "history" | "expenses" | "pay" | "settings"
   >("add");
   const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
-  const [expensePeriod, setExpensePeriod] = useState<"week" | "month" | "all">("week");
+  const [expensePeriod, setExpensePeriod] = useState<"week" | "month" | "custom" | "all">("week");
+  const [expenseAnchor, setExpenseAnchor] = useState(today());
+  const [expenseStart, setExpenseStart] = useState(today());
+  const [expenseEnd, setExpenseEnd] = useState(today());
+  const [expenseCategory, setExpenseCategory] = useState("all");
+  const [expensePayment, setExpensePayment] = useState("all");
   const [expenseForm, setExpenseForm] = useState({
     date: today(),
     category: "Essence" as TaxiExpense["category"],
@@ -427,7 +436,7 @@ export default function Home() {
           const localSettings = JSON.parse(localStorage.getItem("teo-settings") || "{}") as Partial<AppSettings>;
           const localStatements = JSON.parse(localStorage.getItem("teo-pay-statements") || "[]") as PayStatement[];
           const migratedSettings = { ...DEFAULT_SETTINGS, ...localSettings };
-          setCourses(localCourses); setSettings(migratedSettings); setPayStatements(localStatements);
+          setCourses(localCourses); setExpenses([]); setSettings(migratedSettings); setPayStatements(localStatements);
           await setDoc(stateRef, { courses: localCourses, expenses: [], settings: migratedSettings, payStatements: localStatements, ownerEmail: user.email || "", updatedAt: serverTimestamp() });
           localStorage.removeItem("teo-courses"); localStorage.removeItem("teo-settings"); localStorage.removeItem("teo-pay-statements");
         }
@@ -506,7 +515,7 @@ export default function Home() {
   }, [loaded, payStatements]);
   const selectedDate =
     (mobilePage === "expenses"
-      ? expenseForm.date
+      ? expenseAnchor
       : tab === "adapte"
         ? adapted.date
         : taxi.date) || today();
@@ -531,13 +540,7 @@ export default function Home() {
     weeklyAirportCourses.length * settings.airportFee,
   );
   const weeklyCompanyFee = round2(settings.companyFee);
-  const weeklyExpenses = useMemo(
-    () => expenses.filter((expense) => expense.date >= week.start && expense.date <= week.end),
-    [expenses, week.start, week.end],
-  );
-  const weeklyExpenseTotal = round2(
-    weeklyExpenses.reduce((sum, expense) => sum + expense.amount, 0),
-  );
+  const weeklyExpenseTotal = expenseTotal(expenses, [week.start, week.end]);
   const totals = useMemo(
     () =>
       weeklyCourses.reduce(
@@ -554,8 +557,7 @@ export default function Home() {
       ),
     [weeklyCourses, settings],
   );
-  const filteredHistory = useMemo(() => {
-    const query = historySearch.trim().toUpperCase();
+  const historyBounds = useMemo(() => {
     const now = new Date(),
       monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -564,8 +566,7 @@ export default function Home() {
     lastWeekStart.setDate(lastWeekStart.getDate() - 7);
     const lastWeekEnd = new Date(lastWeekStart);
     lastWeekEnd.setDate(lastWeekEnd.getDate() + 6);
-    const bounds =
-      historyPeriod === "week"
+    return historyPeriod === "week"
         ? [week.start, week.end]
         : historyPeriod === "last-week"
           ? [dateKey(lastWeekStart), dateKey(lastWeekEnd)]
@@ -576,6 +577,12 @@ export default function Home() {
               : historyPeriod === "custom"
                 ? [customStart, customEnd]
                 : null;
+  }, [historyPeriod, week.start, week.end, customStart, customEnd]);
+  const historyExpenseTotal = expenseTotal(expenses, historyBounds);
+  const historyHasCourseFilter = historyType !== "all" || historyPayment !== "all" || !!historySearch.trim();
+  const filteredHistory = useMemo(() => {
+    const query = historySearch.trim().toUpperCase();
+    const bounds = historyBounds;
     return courses
       .filter(
         (c) =>
@@ -597,6 +604,7 @@ export default function Home() {
     historyType,
     historyPayment,
     historySearch,
+    historyBounds,
     week,
     customStart,
     customEnd,
@@ -711,22 +719,22 @@ export default function Home() {
       selectedDayTotals.fees -
       selectedDayAirportFeeTotal,
   );
-  const dailyNet = round2(dailyGoalNet - selectedDayCompanyFee);
+  const selectedDayExpenseTotal = expenseTotal(expenses, [selectedDate, selectedDate]);
+  const dailyNet = round2(dailyGoalNet - selectedDayCompanyFee - selectedDayExpenseTotal);
   const dailyGoalProgress = dailyGoal
     ? Math.min(100, Math.max(0, (dailyGoalNet / dailyGoal) * 100))
     : 0;
   const filteredExpenses = useMemo(() => {
-    if (expensePeriod === "all") return [...expenses].sort((a, b) => b.date.localeCompare(a.date));
-    if (expensePeriod === "week")
-      return expenses
-        .filter((expense) => expense.date >= week.start && expense.date <= week.end)
-        .sort((a, b) => b.date.localeCompare(a.date));
-    const selected = new Date(`${expenseForm.date || today()}T12:00:00`);
-    const month = `${selected.getFullYear()}-${String(selected.getMonth() + 1).padStart(2, "0")}`;
     return expenses
-      .filter((expense) => expense.date.startsWith(month))
+      .filter((expense) =>
+        (expensePeriod === "all" ||
+          (expensePeriod === "week" && expense.date >= week.start && expense.date <= week.end) ||
+          (expensePeriod === "month" && expense.date.startsWith(expenseAnchor.slice(0, 7))) ||
+          (expensePeriod === "custom" && expense.date >= expenseStart && expense.date <= expenseEnd)) &&
+        (expenseCategory === "all" || expense.category === expenseCategory) &&
+        (expensePayment === "all" || expense.payment === expensePayment))
       .sort((a, b) => b.date.localeCompare(a.date));
-  }, [expenses, expensePeriod, week.start, week.end, expenseForm.date]);
+  }, [expenses, expensePeriod, week.start, week.end, expenseAnchor, expenseStart, expenseEnd, expenseCategory, expensePayment]);
   const filteredExpenseTotal = round2(
     filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
   );
@@ -944,7 +952,7 @@ export default function Home() {
   function saveExpense(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const amount = parseMoneyInput(expenseForm.amount);
-    if (!expenseForm.date || amount <= 0) {
+    if (!expenseForm.date || !Number.isFinite(amount) || amount <= 0) {
       flash("Inscrivez une date et un montant valide.");
       return;
     }
@@ -980,6 +988,17 @@ export default function Home() {
     setExpenses((current) => current.filter((expense) => expense.id !== expenseId));
     if (expenseEditingId === expenseId) resetExpenseForm();
     flash("Dépense supprimée.");
+  }
+  function openExpenseWeekHistory() {
+    setTaxi((current) => ({ ...current, date: expenseAnchor }));
+    setAdapted((current) => ({ ...current, date: expenseAnchor }));
+    setTab("taxi");
+    setHistoryPeriod("week");
+    setHistoryType("all");
+    setHistoryPayment("all");
+    setHistorySearch("");
+    setMobilePage("history");
+    window.requestAnimationFrame(() => document.getElementById("history")?.scrollIntoView({ behavior: "smooth" }));
   }
   function changeCoursePayment(courseId: string, payment: string) {
     setCourses((current) =>
@@ -1870,13 +1889,15 @@ export default function Home() {
             <b>
               − {money(totals.deductions + airportFeeTotal + weeklyCompanyFee + weeklyExpenseTotal)}
             </b>
-            {weeklyCompanyFee > 0 && (
-              <small>
-                dont {money(weeklyCompanyFee)} de frais de compagnie
-              </small>
-            )}
-            {weeklyExpenseTotal > 0 && (
-              <small>dont {money(weeklyExpenseTotal)} de dépenses taxi</small>
+            {(weeklyCompanyFee > 0 || weeklyExpenseTotal > 0) && (
+              <div className="fee-details">
+                {weeklyCompanyFee > 0 && (
+                  <small>Dont {money(weeklyCompanyFee)} de frais de compagnie</small>
+                )}
+                {weeklyExpenseTotal > 0 && (
+                  <small>Dont {money(weeklyExpenseTotal)} de dépenses taxi</small>
+                )}
+              </div>
             )}
           </div>
         </section>
@@ -3483,7 +3504,7 @@ export default function Home() {
               <div className="form-title">
                 <div>
                   <h3>{expenseEditingId ? "Modifier la dépense" : "Nouvelle dépense"}</h3>
-                  <p>Le montant sera déduit de la semaine correspondant à la date.</p>
+                  <p>Déduit une seule fois du net du jour, de la semaine et de l’historique.</p>
                 </div>
                 <span className="type-icon">🧾</span>
               </div>
@@ -3545,6 +3566,7 @@ export default function Home() {
                   onChange={(event) => setExpenseForm({ ...expenseForm, note: event.target.value })}
                 />
               </label>
+              <p className="expense-guidance">Les frais Téo, de compagnie et les redevances aéroport sont déjà calculés automatiquement : ne les saisissez pas ici. Les dépenses ne modifient ni la paie Téo à vérifier ni l’objectif de courses.</p>
               <button className="primary" type="submit">
                 {expenseEditingId ? "Enregistrer la modification" : "Ajouter la dépense"}
               </button>
@@ -3566,10 +3588,27 @@ export default function Home() {
                   value={expensePeriod}
                   onChange={(event) => setExpensePeriod(event.target.value as typeof expensePeriod)}
                 >
-                  <option value="week">Cette semaine</option>
-                  <option value="month">Ce mois-ci</option>
+                  <option value="week">Semaine sélectionnée</option>
+                  <option value="month">Mois sélectionné</option>
+                  <option value="custom">Dates personnalisées</option>
                   <option value="all">Toutes</option>
                 </select>
+              </div>
+              <div className="expense-filters">
+                {(expensePeriod === "week" || expensePeriod === "month") && <label>Date de référence<input type="date" value={expenseAnchor} onChange={(event) => event.target.value && setExpenseAnchor(event.target.value)} /></label>}
+                {expensePeriod === "custom" && <>
+                  <label>Du<input type="date" value={expenseStart} onChange={(event) => setExpenseStart(event.target.value)} /></label>
+                  <label>Au<input type="date" min={expenseStart} value={expenseEnd} onChange={(event) => setExpenseEnd(event.target.value)} /></label>
+                </>}
+                <label>Catégorie<select value={expenseCategory} onChange={(event) => setExpenseCategory(event.target.value)}><option value="all">Toutes les catégories</option>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></label>
+                <label>Paiement<select value={expensePayment} onChange={(event) => setExpensePayment(event.target.value)}><option value="all">Tous les paiements</option><option>Carte</option><option>Espèces</option><option>Compte bancaire</option></select></label>
+              </div>
+              {expensePeriod === "custom" && expenseStart > expenseEnd && <p role="alert">La date de fin doit être après la date de début.</p>}
+              <div className="expense-breakdown" aria-label="Répartition des dépenses">
+                {EXPENSE_CATEGORIES.map((category) => {
+                  const total = filteredExpenses.filter((expense) => expense.category === category).reduce((sum, expense) => sum + expense.amount, 0);
+                  return total > 0 ? <div key={category}><span>{EXPENSE_ICONS[category]} {category}</span><b>{money(total)}</b></div> : null;
+                })}
               </div>
               {filteredExpenses.length === 0 ? (
                 <div className="empty compact">
@@ -3596,6 +3635,16 @@ export default function Home() {
                   ))}
                 </div>
               )}
+            </section>
+            <section className="expense-linked-summary">
+              <h3>Impact sur la semaine du {week.start} au {week.end}</h3>
+              <p>Cette synthèse inclut toutes les dépenses de la semaine, même si la liste est filtrée.</p>
+              <div className="expense-breakdown">
+                <div><span>Courses après frais, compagnie et aéroport</span><b>{money(totals.gross - totals.deductions - airportFeeTotal - weeklyCompanyFee)}</b></div>
+                <div><span>Dépenses taxi</span><b>− {money(weeklyExpenseTotal)}</b></div>
+                <div><span>Net après dépenses</span><b>{money(totals.gross - totals.deductions - airportFeeTotal - weeklyCompanyFee - weeklyExpenseTotal)}</b></div>
+              </div>
+              <button type="button" className="cancel-edit" onClick={openExpenseWeekHistory}>Voir cette semaine dans l’historique →</button>
             </section>
           </section>
         )}
@@ -3639,7 +3688,11 @@ export default function Home() {
                 </div>
               )}
               <div>
-                <span>Net</span>
+                <span>Dépenses taxi</span>
+                <b>− {money(selectedDayExpenseTotal)}</b>
+              </div>
+              <div>
+                <span>Net après dépenses</span>
                 <b>{money(dailyNet)}</b>
               </div>
             </div>
@@ -3871,7 +3924,7 @@ export default function Home() {
                 <header className="history-block-heading">
                   <div>
                     <b>Résumé de la période</b>
-                    <small>Calculé avec les courses affichées</small>
+                    <small>{historyHasCourseFilter ? "Courses filtrées : les dépenses communes ne sont pas réparties entre les courses." : "Courses affichées et toutes les dépenses de la période, même les jours sans course."}</small>
                   </div>
                 </header>
                 <div className="history-summary">
@@ -3900,13 +3953,18 @@ export default function Home() {
                     </div>
                   )}
                   <div>
-                    <span>Net</span>
+                    <span>Dépenses taxi de la période{historyHasCourseFilter ? " (information)" : ""}</span>
+                    <b>− {money(historyExpenseTotal)}</b>
+                  </div>
+                  <div>
+                    <span>{historyHasCourseFilter ? "Net des courses filtrées, hors dépenses" : "Net après dépenses"}</span>
                     <b>
                       {money(
                         historyTotals.gross -
                           historyTotals.fees -
                           historyAirportFeeTotal -
-                          historyCompanyFeeTotal,
+                          historyCompanyFeeTotal -
+                          (historyHasCourseFilter ? 0 : historyExpenseTotal),
                       )}
                     </b>
                   </div>
