@@ -1843,7 +1843,7 @@ export default function Home() {
         </div>
       </header>
       <div className={`shell page-${mobilePage} tab-${tab}`}>
-        {mobilePage === "sev" && <SevPage courses={courses} onChange={setSevStatus} today={today()} week={currentTuesdayWeek()} />}
+        {mobilePage === "sev" && <SevPage courses={courses.map((course) => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0, billedDuration: course.type === "adapte" ? course.billedDuration ?? Math.max(course.duration || 0, settings.adaptedMinimum) : course.billedDuration }))} onChange={setSevStatus} onEdit={(id) => { const course = courses.find((item) => item.id === id); if (course) editCourse(course); }} today={today()} week={currentTuesdayWeek()} />}
         <section className="summary">
           <div>
             <span>Revenu net de la semaine</span>
