@@ -51,6 +51,8 @@ type Course = {
   couponAccount?: string;
   verified?: boolean;
   sevAdded?: boolean;
+  sevTaxExempt?: boolean;
+  sevLevyCount?: number;
   verifiedBillId?: string;
   verifiedAt?: string;
 };
@@ -1335,6 +1337,7 @@ export default function Home() {
       id: editingId || crypto.randomUUID(),
       type: "taxi",
       sevAdded: isCardPayment(taxi.payment) && taxiSev,
+      ...(editingId ? { sevTaxExempt: courses.find(c=>c.id === editingId)?.sevTaxExempt ?? false, sevLevyCount: courses.find(c=>c.id === editingId)?.sevLevyCount ?? 1 } : {}),
       date: taxi.date,
       amount: round2(total - tip),
       tip: round2(tip),
@@ -1586,6 +1589,7 @@ export default function Home() {
       type: "adapte",
       date: adapted.date,
       sevAdded: adaptedSev,
+      ...(editingId ? { sevTaxExempt: courses.find(c=>c.id === editingId)?.sevTaxExempt ?? false, sevLevyCount: courses.find(c=>c.id === editingId)?.sevLevyCount ?? 0 } : {}),
       amount: round2(billedDuration * settings.adaptedRate),
       tip: 0,
       payment: "Transport adapté",
@@ -1843,7 +1847,7 @@ export default function Home() {
         </div>
       </header>
       <div className={`shell page-${mobilePage} tab-${tab}`}>
-        {mobilePage === "sev" && <SevPage courses={courses.map((course) => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0, billedDuration: course.type === "adapte" ? course.billedDuration ?? Math.max(course.duration || 0, settings.adaptedMinimum) : course.billedDuration }))} onChange={setSevStatus} onEdit={(id) => { const course = courses.find((item) => item.id === id); if (course) editCourse(course); }} today={today()} week={currentTuesdayWeek()} />}
+        {mobilePage === "sev" && <SevPage expenses={expenses} companyFee={settings.companyFee} onFiscalChange={(id, patch) => setCourses(current => current.map(course => course.id === id ? {...course, ...patch} : course))} courses={courses.map((course) => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0, billedDuration: course.type === "adapte" ? course.billedDuration ?? Math.max(course.duration || 0, settings.adaptedMinimum) : course.billedDuration }))} onChange={setSevStatus} onEdit={(id) => { const course = courses.find((item) => item.id === id); if (course) editCourse(course); }} today={today()} week={currentTuesdayWeek()} />}
         <section className="summary">
           <div>
             <span>Revenu net de la semaine</span>

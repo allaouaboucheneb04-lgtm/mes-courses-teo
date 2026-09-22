@@ -407,6 +407,20 @@ button {
 label.sev-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--teal-dark); cursor: pointer; grid-column: 1 / -1; }
 label.sev-check input { appearance: auto; width: 22px; height: 22px; min-height: 22px; flex: 0 0 22px; margin: 0; accent-color: var(--teal); }
 .sev-empty { padding: 30px; text-align: center; background: white; border-radius: 18px; color: var(--muted); }
+.sev-tabs { display: flex; gap: 6px; padding: 6px; margin: 18px 0; background: #e0eded; border-radius: 16px; }
+.sev-tabs button { flex: 1; min-width: 0; min-height: 48px; padding: 10px 6px; border: 0; border-radius: 12px; background: transparent; color: var(--teal-dark); font: inherit; font-size: 14px; font-weight: 700; }
+.sev-tabs button[aria-current="page"] { background: white; box-shadow: 0 2px 6px #003f4910; }
+.sev-tax-panels { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 16px 0; }
+.sev-tax-panels article { background: white; padding: 20px; border: 1px solid var(--line); border-radius: 18px; }
+.sev-tax-panels h3 { margin-top: 0; }
+.sev-tax-panels p, .sev-declaration p, .sev-fiscal-options p, .sev-calculation-note { font-size: 13px; line-height: 1.6; color: var(--muted); }
+.sev-declaration { grid-column: 1 / -1; padding: 16px; border: 1px solid #b8d8d5; border-radius: 14px; background: #f2fafa; }
+.sev-declaration h4 { margin: 0 0 14px; color: var(--teal-dark); }
+.sev-fiscal-options { grid-column: 1 / -1; font-size: 13px; }
+.sev-fiscal-options summary { padding: 12px 0; cursor: pointer; }
+.sev-calculation-note { margin-top: 22px; }
+.sev-calculation-note a { color: var(--teal); text-decoration: underline; }
+@media (max-width: 640px) { .sev-tax-panels { grid-template-columns: 1fr; } .sev-declaration { padding: 12px; } }
 .sev-desktop-launch { border: 1px solid var(--line); border-radius: 20px; background: white; color: var(--teal); padding: 10px 14px; margin-right: 14px; font-weight: 700; }
 @media(max-width:760px) { .sev-desktop-launch { display: none; } .sev-filters { grid-template-columns: 1fr; } .sev-stats { gap: 7px; } .sev-stats > div { padding: 12px; } .mobile-nav button { min-width: 0; padding: 4px 1px; } }
 .expense-form { align-self: start; }
