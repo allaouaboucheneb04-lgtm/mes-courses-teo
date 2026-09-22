@@ -17,6 +17,7 @@ import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { expenseTotal } from "@/lib/expenses";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
+import { parsePhotoDate } from "@/lib/photo-date";
 import SevPage, { SevCheckbox } from "@/components/sev-page";
 import {
   extractCouponPayrollRows,
@@ -1375,64 +1376,14 @@ export default function Home() {
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\r/g, "\n");
     const upperText = text.toUpperCase();
-    const monthNames: Record<string, string> = {
-      JANVIER: "01",
-      FEVRIER: "02",
-      MARS: "03",
-      AVRIL: "04",
-      MAI: "05",
-      JUIN: "06",
-      JUILLET: "07",
-      AOUT: "08",
-      SEPTEMBRE: "09",
-      OCTOBRE: "10",
-      NOVEMBRE: "11",
-      DECEMBRE: "12",
-    };
     const monthHeader = upperText.match(
       /\b(JANVIER|FEVRIER|MARS|AVRIL|MAI|JUIN|JUILLET|AOUT|SEPTEMBRE|OCTOBRE|NOVEMBRE|DECEMBRE)\s+(20\d{2})\b/,
     );
-    const headerMonth = monthHeader ? monthNames[monthHeader[1]] : "";
     // The month title on the tablet is often very pale and may be omitted by
     // OCR. In that case, use the year currently selected in the form rather
     // than the device's current date.
     const headerYear = monthHeader?.[2] || taxi.date.slice(0, 4) || String(new Date().getFullYear());
-    const dateFromSegment = (segment: string) => {
-      const fullDate = segment.match(
-        /\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2})\b/,
-      );
-      if (fullDate) {
-        const [, day, month, year] = fullDate;
-        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-      }
-      // The current Téo tablet view displays dates as 15/09 and puts the
-      // year in the month heading (for example SEPTEMBRE 2026).
-      const shortDate = segment.match(/\b(\d{1,2})\/(\d{1,2})\b/);
-      if (!shortDate) return "";
-      const first = shortDate[1].padStart(2, "0");
-      const second = shortDate[2].padStart(2, "0");
-      // Téo can mix 15/09 (jour/mois) and 09/14 (mois/jour) in the
-      // same screen. The month heading removes the ambiguity.
-      if (headerMonth) {
-        if (second === headerMonth)
-          return `${headerYear}-${headerMonth}-${first}`;
-        if (first === headerMonth)
-          return `${headerYear}-${headerMonth}-${second}`;
-      }
-      // Without a readable month heading, Téo can still show both 15/09
-      // (day/month) and 09/14 (month/day). The number over 12 tells us which
-      // position is the day, so the screenshot remains importable.
-      const firstNumber = Number(first);
-      const secondNumber = Number(second);
-      if (firstNumber > 12 && secondNumber <= 12)
-        return `${headerYear}-${second}-${first}`;
-      if (secondNumber > 12 && firstNumber <= 12)
-        return `${headerYear}-${first}-${second}`;
-      if (headerMonth) {
-        return "";
-      }
-      return `${headerYear}-${second}-${first}`;
-    };
+    const dateFromSegment = (segment: string) => parsePhotoDate(segment, headerYear);
     // On reflective tablet photos, Tesseract commonly reads 45,60 $ as
     // "4560$" and 167,88 $ as "167885" (the final 5 is the $ sign).
     const amountPattern = /\b(\d{1,4}[,.]\d{2})\s*[$§]?|(?:^|\n)[^\d\n]{0,16}(\d{3,6})(?![\d,.])\s*[$§]/gm;
