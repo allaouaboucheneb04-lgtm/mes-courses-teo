@@ -16,6 +16,7 @@ import { auth, db } from "./firebase";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { expenseTotal } from "@/lib/expenses";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
+import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -34,6 +35,7 @@ type Course = {
   date: string;
   amount: number;
   tip: number;
+  tipPending?: boolean;
   payment: string;
   duration?: number;
   billedDuration?: number;
@@ -256,9 +258,7 @@ const payrollDifference = (course: Course, row: PayRow) => {
   if (row.type === "adapte") return Math.abs(course.amount - row.amount);
   if (isCouponPayRow(row))
     return Math.abs(course.amount + course.tip - (row.amount + row.tip));
-  return (
-    Math.abs(course.amount - row.amount) + Math.abs(course.tip - row.tip)
-  );
+  return cardPayrollDifference(course, row);
 };
 const matchesHistoryPayment = (
   course: Course,
@@ -466,24 +466,29 @@ export default function Home() {
     if (!loaded || !payStatements.length) return;
     setCourses((current) => {
       let changed = false;
-      const updated = current.map((course) => {
+      const usedRows = new Set<string>();
+      // Resolve already linked rides first so one payroll row cannot verify two rides.
+      const updated = [...current].sort((a, b) => Number(!!b.teoId) - Number(!!a.teoId) || Number(!!a.tipPending) - Number(!!b.tipPending)).map((course) => {
         let matchedStatement: PayStatement | undefined;
         let matchedRow: PayRow | undefined;
         for (const statement of payStatements) {
-          const row = statement.rows.find(
-            (item) =>
+          const rowIndex = statement.rows.findIndex(
+            (item, index) =>
+              !usedRows.has(`${statement.id}:${index}`) &&
               payrollCourseMatchesRow(course, item) &&
               payrollDifference(course, item) < 0.02,
           );
-          if (row) {
+          if (rowIndex >= 0) {
+            usedRows.add(`${statement.id}:${rowIndex}`);
             matchedStatement = statement;
-            matchedRow = row;
+            matchedRow = statement.rows[rowIndex];
             break;
           }
         }
         if (!matchedStatement || !matchedRow) return course;
         if (
           course.verified &&
+          !course.tipPending &&
           course.verifiedBillId === matchedStatement.id &&
           payrollCourseMatchesRow(course, matchedRow)
         )
@@ -491,6 +496,8 @@ export default function Home() {
         changed = true;
         return {
           ...course,
+          ...(course.type === "taxi" && !isCouponPayRow(matchedRow)
+            ? resolvePhotoTip(course, matchedRow) : {}),
           ...(course.type === "taxi" && !isCouponPayRow(matchedRow)
             ? { teoId: matchedRow.key }
             : {}),
@@ -507,9 +514,10 @@ export default function Home() {
           verifiedAt: course.verifiedAt || matchedStatement.importedAt,
         };
       });
-      return changed ? updated : current;
+      const byId = new Map(updated.map((course) => [course.id, course]));
+      return changed ? current.map((course) => byId.get(course.id)!) : current;
     });
-  }, [loaded, payStatements]);
+  }, [loaded, payStatements, courses]);
   const selectedDate =
     (mobilePage === "expenses"
       ? expenseAnchor
@@ -1026,6 +1034,7 @@ export default function Home() {
             ? round2(Math.max(0, row.amount + row.tip - course.tip))
             : row.amount,
           tip: coupon ? course.tip : row.tip,
+          tipPending: false,
           ...(row.type === "taxi" && !coupon ? { teoId: row.key } : {}),
           ...(coupon
             ? {
@@ -1490,7 +1499,7 @@ export default function Home() {
       setPhotoCourses(checked);
       setPhotoMessage(
         checked.length
-          ? `${checked.length} course${checked.length > 1 ? "s" : ""} Carte ou Compte détectée${checked.length > 1 ? "s" : ""}${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Ajoutez le pourboire des nouvelles courses.`
+          ? `${checked.length} course${checked.length > 1 ? "s" : ""} Carte ou Compte détectée${checked.length > 1 ? "s" : ""}${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Pourboire facultatif : laissez vide pour le récupérer depuis la fiche Téo.`
           : "Aucune course Carte ou Compte reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
       );
     } catch (error) {
@@ -1505,10 +1514,6 @@ export default function Home() {
   const savePhotoCourses = () => {
     const selected = photoCourses.filter((item) => item.selected);
     if (!selected.length) { setPhotoMessage("Sélectionnez au moins une course."); return; }
-    if (selected.some((item) => item.tip === "")) {
-      setPhotoMessage("Insérez le pourboire de chaque course sélectionnée, même s’il est de 0,00 $. ");
-      return;
-    }
     if (
       selected.some(
         (item) =>
@@ -1540,6 +1545,7 @@ export default function Home() {
         date: item.date,
         amount: round2(total - tip),
         tip: round2(tip),
+        tipPending: item.tip.trim() === "",
         payment: "Téo / carte",
         taxiCategory: settings.airportEnabled ? item.category : "centre-ville",
       });
@@ -1992,10 +1998,10 @@ export default function Home() {
                             <div className="photo-fields">
                               <label>Date<input type="date" value={item.date} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, date: event.target.value } : course))} /></label>
                               <label>Total tablette, pourboire inclus<input inputMode="decimal" value={item.total} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, total: autoCommaMoneyInput(event.target.value) } : course))} /></label>
-                              <label>Pourboire inclus<input inputMode="decimal" required={item.selected} placeholder="0,00" value={item.tip} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, tip: autoCommaMoneyInput(event.target.value) } : course))} /></label>
+                              <label>Pourboire inclus (facultatif)<input inputMode="decimal" placeholder="Inconnu" value={item.tip} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, tip: autoCommaMoneyInput(event.target.value) } : course))} /></label>
                               {settings.airportEnabled && <label>Type<select value={item.category} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, category: event.target.value as PhotoCourse["category"] } : course))}><option value="centre-ville">Centre-ville</option><option value="aeroport">Aéroport</option></select></label>}
                             </div>
-                            <small className="photo-calculation">Montant avant pourboire : <b>{money(Math.max(0, total - tip))}</b> · Pourboire : <b>{item.tip === "" ? "à saisir" : money(tip)}</b></small>
+                            <small className="photo-calculation">{item.tip === "" ? <>Total conservé : <b>{money(total)}</b> · Pourboire à récupérer depuis la fiche Téo. Saisissez 0 uniquement si vous savez qu’il n’y en a pas.</> : <>Montant avant pourboire : <b>{money(Math.max(0, total - tip))}</b> · Pourboire : <b>{money(tip)}</b></>}</small>
                           </article>
                         );
                       })}
@@ -3745,11 +3751,11 @@ export default function Home() {
                           <>
                             <span>
                               <em>Montant avant pourboire</em>
-                              <b>{money(c.amount)}</b>
+                              <b>{c.tipPending ? "À confirmer" : money(c.amount)}</b>
                             </span>
                             <span>
                               <em>Pourboire</em>
-                              <b>{money(c.tip)}</b>
+                              <b>{c.tipPending ? "À récupérer" : money(c.tip)}</b>
                             </span>
                           </>
                         ) : (
@@ -4117,11 +4123,11 @@ export default function Home() {
                             <>
                               <div>
                                 <span>Avant pourboire</span>
-                                <b>{money(c.amount)}</b>
+                                <b>{c.tipPending ? "À confirmer" : money(c.amount)}</b>
                               </div>
                               <div>
                                 <span>Pourboire</span>
-                                <b>{money(c.tip)}</b>
+                                <b>{c.tipPending ? "À récupérer" : money(c.tip)}</b>
                               </div>
                             </>
                           )}
