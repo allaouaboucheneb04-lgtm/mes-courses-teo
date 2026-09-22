@@ -1396,8 +1396,6 @@ export default function Home() {
       const start = match.index || 0;
       const end = matches[index + 1]?.index ?? text.length;
       const segment = text.slice(start, end).toUpperCase();
-      // Téo account rides use the same fees and payroll flow as card rides.
-      if (!isImportableTeoPayment(segment)) return;
       const date = dateFromSegment(segment);
       if (!date) return;
       let recognizedAmount = match[1] || match[2] || "";
@@ -1412,6 +1410,8 @@ export default function Home() {
         total = Number(recognizedAmount) / 100;
       }
       if (!Number.isFinite(total) || total <= 0 || total > 1000) return;
+      // Paid no-shows, account and card rides share the Téo payroll flow.
+      if (!isImportableTeoPayment(segment, total)) return;
       detected.push({
         id: `photo-${Date.now()}-${index}`,
         date,
@@ -1466,8 +1466,8 @@ export default function Home() {
       setPhotoCourses(checked);
       setPhotoMessage(
         checked.length
-          ? `${checked.length} course${checked.length > 1 ? "s" : ""} Carte ou Compte détectée${checked.length > 1 ? "s" : ""}${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Pourboire facultatif : laissez vide pour le récupérer depuis la fiche Téo.`
-          : "Aucune course Carte ou Compte reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
+          ? `${checked.length} course${checked.length > 1 ? "s" : ""} Téo détectée${checked.length > 1 ? "s" : ""} (Carte, Compte ou No show payé)${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Pourboire facultatif : laissez vide pour le récupérer depuis la fiche Téo.`
+          : "Aucune course Carte, Compte ou No show payé reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
       );
     } catch (error) {
       console.error(error);
@@ -1749,7 +1749,7 @@ export default function Home() {
         <div className="auth-heading"><span>{authMode === "login" ? "Bon retour" : "Nouveau chauffeur"}</span><h2>{authMode === "login" ? "Se connecter" : "Créer un compte"}</h2><p>Connectez-vous pour accéder à vos courses et à vos fiches de paie.</p></div>
         {authMode === "register" && <section className="new-driver-guide" aria-label="Comment fonctionne l’application">
           <b>Votre assistant de travail Téo</b>
-          <p>Entrez vos courses taxi ou transport adapté, ou importez vos captures d’écran Téo : les courses « Carte » et « Compte » sont proposées.</p>
+          <p>Entrez vos courses taxi ou transport adapté, ou importez vos captures d’écran Téo : les courses « Carte », « Compte » et les « No show » payés sont proposés.</p>
           <ul>
             <li>Le revenu net calcule les frais Téo, redevances aéroport et dépenses.</li>
             <li>Les pourboires sont séparés du montant total de chaque course.</li>
@@ -1935,7 +1935,7 @@ export default function Home() {
                   <div className="photo-import-head">
                     <div>
                       <b>Importer des captures d’écran Téo</b>
-                      <small>Les courses « Carte » et « Compte » sont regroupées sous Téo / carte, avec les mêmes frais. Les « No show » sont exclus.</small>
+                      <small>Les courses « Carte », « Compte » et les « No show » supérieurs à 0 $ sont regroupés sous Téo / carte, avec les mêmes frais. Les « No show » à 0 $ sont ignorés.</small>
                     </div>
                     <span>▣</span>
                   </div>
