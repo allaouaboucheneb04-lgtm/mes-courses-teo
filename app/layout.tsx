@@ -12,9 +12,9 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Mes courses" },
   formatDetection: { telephone: false },
   icons: {
-    icon: `${basePath}/favicon.svg`,
-    shortcut: `${basePath}/favicon.svg`,
-    apple: `${basePath}/icons/apple-touch-icon.png`,
+    icon: `${basePath}/icons/taxi-v2-192.png`,
+    shortcut: `${basePath}/icons/taxi-v2-192.png`,
+    apple: `${basePath}/icons/apple-touch-icon-v2.png`,
   },
 };
 

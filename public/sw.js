@@ -1,12 +1,12 @@
-const CACHE = "mes-courses-teo-v5";
+const CACHE = "mes-courses-teo-v6";
 const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const HOME = `${BASE}/`;
 const APP_SHELL = [
   HOME,
   `${BASE}/manifest.webmanifest`,
-  `${BASE}/favicon.svg`,
-  `${BASE}/icons/icon-192.png`,
-  `${BASE}/icons/icon-512.png`,
+  `${BASE}/icons/taxi-v2-192.png`,
+  `${BASE}/icons/taxi-v2-512.png`,
+  `${BASE}/icons/apple-touch-icon-v2.png`,
 ];
 
 self.addEventListener("install", (event) => {
