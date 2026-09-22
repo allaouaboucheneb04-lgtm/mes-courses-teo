@@ -15,6 +15,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { expenseTotal } from "@/lib/expenses";
+import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -196,10 +197,6 @@ const today = () => {
 
   return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
 };
-const isCardPayment = (payment: string) =>
-  payment === "Carte" ||
-  payment === "Téo / compte" ||
-  payment === "Téo / carte";
 const courseEmoji = (course: Course) => {
   if (course.type === "adapte") return "♿";
   if (isCardPayment(course.payment)) return "💳";
@@ -1423,10 +1420,8 @@ export default function Home() {
       const start = match.index || 0;
       const end = matches[index + 1]?.index ?? text.length;
       const segment = text.slice(start, end).toUpperCase();
-      // Import only rows explicitly marked Carte. Cancelled and cash rows
-      // must never be proposed even when they also contain a visible amount.
-      if (!/CARTE/.test(segment)) return;
-      if (/\b(COMPTANT|ESPECES?|CANCELLED|ANNULEE?)\b/.test(segment)) return;
+      // Téo account rides use the same fees and payroll flow as card rides.
+      if (!isImportableTeoPayment(segment)) return;
       const date = dateFromSegment(segment);
       if (!date) return;
       let recognizedAmount = match[1] || match[2] || "";
@@ -1495,8 +1490,8 @@ export default function Home() {
       setPhotoCourses(checked);
       setPhotoMessage(
         checked.length
-          ? `${checked.length} course${checked.length > 1 ? "s" : ""} par carte détectée${checked.length > 1 ? "s" : ""}${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Ajoutez le pourboire des nouvelles courses.`
-          : "Aucune course Carte reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
+          ? `${checked.length} course${checked.length > 1 ? "s" : ""} Carte ou Compte détectée${checked.length > 1 ? "s" : ""}${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Ajoutez le pourboire des nouvelles courses.`
+          : "Aucune course Carte ou Compte reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
       );
     } catch (error) {
       console.error(error);
@@ -1778,7 +1773,7 @@ export default function Home() {
         <div className="auth-heading"><span>{authMode === "login" ? "Bon retour" : "Nouveau chauffeur"}</span><h2>{authMode === "login" ? "Se connecter" : "Créer un compte"}</h2><p>Connectez-vous pour accéder à vos courses et à vos fiches de paie.</p></div>
         {authMode === "register" && <section className="new-driver-guide" aria-label="Comment fonctionne l’application">
           <b>Votre assistant de travail Téo</b>
-          <p>Entrez vos courses taxi ou transport adapté, ou importez vos captures d’écran Téo : seules les courses « Carte » sont proposées.</p>
+          <p>Entrez vos courses taxi ou transport adapté, ou importez vos captures d’écran Téo : les courses « Carte » et « Compte » sont proposées.</p>
           <ul>
             <li>Le revenu net calcule les frais Téo, redevances aéroport et dépenses.</li>
             <li>Les pourboires sont séparés du montant total de chaque course.</li>
@@ -1962,7 +1957,7 @@ export default function Home() {
                   <div className="photo-import-head">
                     <div>
                       <b>Importer des captures d’écran Téo</b>
-                      <small>Seules les courses marquées « Carte » seront conservées.</small>
+                      <small>Les courses « Carte » et « Compte » sont regroupées sous Téo / carte, avec les mêmes frais. Les « No show » sont exclus.</small>
                     </div>
                     <span>▣</span>
                   </div>
@@ -1990,7 +1985,7 @@ export default function Home() {
                             <div className="photo-row-title">
                               <label>
                                 <input type="checkbox" checked={item.selected} disabled={item.alreadyRecorded} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, selected: event.target.checked } : course))} />
-                                {item.alreadyRecorded ? "Déjà enregistrée" : "Course par carte"}
+                                {item.alreadyRecorded ? "Déjà enregistrée" : "Course Carte / Compte"}
                               </label>
                               <button type="button" aria-label="Supprimer cette course" onClick={() => setPhotoCourses((current) => current.filter((course) => course.id !== item.id))}>×</button>
                             </div>
