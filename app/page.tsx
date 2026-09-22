@@ -17,6 +17,7 @@ import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { expenseTotal } from "@/lib/expenses";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
+import SevPage, { SevCheckbox } from "@/components/sev-page";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -49,6 +50,7 @@ type Course = {
   couponNumber?: string;
   couponAccount?: string;
   verified?: boolean;
+  sevAdded?: boolean;
   verifiedBillId?: string;
   verifiedAt?: string;
 };
@@ -350,9 +352,11 @@ export default function Home() {
     ),
     [billCustomEnd, setBillCustomEnd] = useState(today());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [taxiSev, setTaxiSev] = useState(false);
+  const [adaptedSev, setAdaptedSev] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [mobilePage, setMobilePage] = useState<
-    "add" | "history" | "expenses" | "pay" | "settings"
+    "add" | "history" | "expenses" | "sev" | "pay" | "settings"
   >("add");
   const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
   const [expensePeriod, setExpensePeriod] = useState<"week" | "month" | "custom" | "all">("week");
@@ -1099,6 +1103,8 @@ export default function Home() {
   }
   function editCourse(course: Course) {
     setEditingId(course.id);
+    setTaxiSev(!!course.sevAdded);
+    setAdaptedSev(!!course.sevAdded);
     setMobilePage("add");
     if (course.type === "taxi") {
       setTaxi({
@@ -1133,8 +1139,13 @@ export default function Home() {
     }
     window.scrollTo({ top: 190, behavior: "smooth" });
   }
+  function setSevStatus(id: string, added: boolean) {
+    setCourses((current) => current.map((course) => course.id === id ? { ...course, sevAdded: added } : course));
+  }
   function cancelEdit() {
     setEditingId(null);
+    setTaxiSev(false);
+    setAdaptedSev(false);
     setTaxi({
       date: today(),
       amount: "",
@@ -1323,6 +1334,7 @@ export default function Home() {
     const updated: Course = {
       id: editingId || crypto.randomUUID(),
       type: "taxi",
+      sevAdded: isCardPayment(taxi.payment) && taxiSev,
       date: taxi.date,
       amount: round2(total - tip),
       tip: round2(tip),
@@ -1343,6 +1355,7 @@ export default function Home() {
     );
     const wasEditing = Boolean(editingId);
     setEditingId(null);
+    setTaxiSev(false);
     setTaxi({
       ...taxi,
       amount: "",
@@ -1572,6 +1585,7 @@ export default function Home() {
       id: editingId || crypto.randomUUID(),
       type: "adapte",
       date: adapted.date,
+      sevAdded: adaptedSev,
       amount: round2(billedDuration * settings.adaptedRate),
       tip: 0,
       payment: "Transport adapté",
@@ -1590,6 +1604,7 @@ export default function Home() {
     const wasEditing = Boolean(editingId);
     setEditingId(null);
     setAdapted({ ...adapted, hob: "", perception: "" });
+    setAdaptedSev(false);
     flash(
       wasEditing
         ? "Tournée modifiée."
@@ -1821,12 +1836,14 @@ export default function Home() {
         >
           {mobilePage === "expenses" ? "← Retour aux courses" : "🧾 Dépenses taxi"}
         </button>
+        <button type="button" className="sev-desktop-launch" onClick={() => { setMobilePage("sev"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>☑ SEV</button>
         <div className="account-pill" title={user.email || "Compte chauffeur"}>
           <span>{(user.displayName || user.email || "C").charAt(0).toUpperCase()}</span>
           <div><b>{user.displayName || "Chauffeur"}</b><small>{syncState === "saving" ? "Enregistrement…" : syncState === "error" ? "Erreur de sauvegarde" : "Données enregistrées"}</small></div>
         </div>
       </header>
       <div className={`shell page-${mobilePage} tab-${tab}`}>
+        {mobilePage === "sev" && <SevPage courses={courses} onChange={setSevStatus} today={today()} week={currentTuesdayWeek()} />}
         <section className="summary">
           <div>
             <span>Revenu net de la semaine</span>
@@ -2205,6 +2222,7 @@ export default function Home() {
                   ? "Enregistrer les modifications"
                   : "Ajouter la course"}
               </button>
+              {isCardPayment(taxi.payment) && <label className="sev-check"><input type="checkbox" checked={taxiSev} onChange={(event) => setTaxiSev(event.target.checked)} />Déjà ajouté au SEV</label>}
               {editingId && (
                 <button
                   type="button"
@@ -2315,6 +2333,7 @@ export default function Home() {
                   ? "Enregistrer les modifications"
                   : "Calculer et ajouter"}
               </button>
+              <label className="sev-check"><input type="checkbox" checked={adaptedSev} onChange={(event) => setAdaptedSev(event.target.checked)} />Tournée déjà ajoutée au SEV</label>
               {editingId && (
                 <button
                   type="button"
@@ -3743,6 +3762,7 @@ export default function Home() {
                         </>
                       )}
                       <div className="daily-details">
+                        <SevCheckbox ride={c} onChange={setSevStatus} />
                         <span>
                           <em>Total avec pourboire</em>
                           <b>{money(c.amount + c.tip)}</b>
@@ -4111,6 +4131,7 @@ export default function Home() {
                           </button>
                         </div>
                         <div className="history-course-values">
+                          <SevCheckbox ride={c} onChange={setSevStatus} />
                           <div>
                             <span>
                               {c.type === "taxi"
@@ -4199,6 +4220,7 @@ export default function Home() {
       </div>
       {notice && <div className="toast">{notice}</div>}
       <nav className="mobile-nav">
+        <button className={mobilePage === "sev" ? "selected" : ""} onClick={() => { setMobilePage("sev"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>☑<span>SEV</span></button>
         <button
           className={mobilePage === "add" ? "selected" : ""}
           onClick={() => {
