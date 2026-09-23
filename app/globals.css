@@ -439,6 +439,16 @@ button {
 label.sev-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 700; color: var(--teal-dark); cursor: pointer; grid-column: 1 / -1; }
 label.sev-check input { appearance: auto; width: 22px; height: 22px; min-height: 22px; flex: 0 0 22px; margin: 0; accent-color: var(--teal); }
 .sev-empty { padding: 30px; text-align: center; background: white; border-radius: 18px; color: var(--muted); }
+.pay-share-help { margin: 16px 0; border: 1px solid var(--line); border-radius: 14px; padding: 14px; font-size: 13px; line-height: 1.6; }
+.pay-share-help summary { cursor: pointer; color: var(--teal); font-weight: 700; }
+.shared-payroll { background: #edf8f6; border: 1px solid #b9d7d5; border-radius: 16px; padding: 16px; margin-bottom: 18px; }
+.shared-payroll h3 { margin: 0 0 8px; }
+.shared-payroll p, .shared-payroll small { font-size: 12px; line-height: 1.6; color: var(--muted); }
+.shared-payroll article { padding: 14px 0; border-top: 1px solid #b9d7d5; }
+.shared-payroll article b { display: block; overflow-wrap: anywhere; }
+.shared-payroll article > div { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.shared-payroll button { padding: 10px 14px; min-height: 44px; border: 1px solid #b9d7d5; border-radius: 10px; background: white; color: var(--teal-dark); font-weight: 700; }
+.shared-payroll button:disabled { opacity: .5; cursor: wait; }
 .sev-tabs { display: flex; gap: 6px; padding: 6px; margin: 18px 0; background: #e0eded; border-radius: 16px; }
 .sev-tabs button { flex: 1; min-width: 0; min-height: 48px; padding: 10px 6px; border: 0; border-radius: 12px; background: transparent; color: var(--teal-dark); font: inherit; font-size: 14px; font-weight: 700; }
 .sev-tabs button[aria-current="page"] { background: white; box-shadow: 0 2px 6px #003f4910; }

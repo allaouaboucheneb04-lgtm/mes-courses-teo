@@ -20,6 +20,7 @@ import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
 import SevPage, { SevCheckbox } from "@/components/sev-page";
 import StatisticsPage from "@/components/statistics-page";
+import SharedPayroll from "@/components/shared-payroll";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -363,6 +364,13 @@ export default function Home() {
     "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics"
   >("add");
   const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("page") !== "pay") return;
+    setMobilePage("pay");
+    setTab("paie");
+    if (params.has("share_error")) setPayError(params.get("share_error") === "files" ? "Partage non reçu : choisissez de 1 à 5 PDF valides (20 Mo par fichier, 50 Mo au total). Vous pouvez aussi choisir le PDF ci-dessous." : "Impossible de conserver le fichier partagé. Choisissez le PDF ci-dessous.");
+  }, []);
   const [expensePeriod, setExpensePeriod] = useState<"week" | "month" | "custom" | "all">("week");
   const [expenseAnchor, setExpenseAnchor] = useState(today());
   const [expenseStart, setExpenseStart] = useState(today());
@@ -1306,11 +1314,13 @@ export default function Home() {
           .getElementById("pay-statement-analysis")
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
+      return true;
     } catch (error) {
       console.error(error);
       const reason =
         error instanceof Error ? error.message : "Erreur de lecture inconnue";
       setPayError(`Impossible de lire cette fiche : ${reason}`);
+      return false;
     } finally {
       setPayLoading(false);
     }
@@ -2312,6 +2322,7 @@ export default function Home() {
                 <span className="type-icon">📄</span>
               </div>
               <section className="pay-import-section">
+                <SharedPayroll key={user.uid} email={user.email || "Compte chauffeur"} disabled={!loaded || payLoading} onImport={importPayPdf} />
                 <div className="pay-section-title">
                   <span>1</span>
                   <div>
@@ -2326,7 +2337,8 @@ export default function Home() {
                   <input
                     type="file"
                     accept="application/pdf,.pdf"
-                    onChange={(e) => importPayPdf(e.target.files?.[0])}
+                    disabled={payLoading || !loaded}
+                    onChange={(e) => {void importPayPdf(e.target.files?.[0]);e.target.value="";}}
                   />
                   <span>
                     {payLoading
