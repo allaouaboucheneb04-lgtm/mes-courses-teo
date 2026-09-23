@@ -19,6 +19,7 @@ import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
 import SevPage, { SevCheckbox } from "@/components/sev-page";
+import StatisticsPage from "@/components/statistics-page";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -359,7 +360,7 @@ export default function Home() {
   const [adaptedSev, setAdaptedSev] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [mobilePage, setMobilePage] = useState<
-    "add" | "history" | "expenses" | "sev" | "pay" | "settings"
+    "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics"
   >("add");
   const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
   const [expensePeriod, setExpensePeriod] = useState<"week" | "month" | "custom" | "all">("week");
@@ -1792,12 +1793,14 @@ export default function Home() {
           {mobilePage === "expenses" ? "← Retour aux courses" : "🧾 Dépenses taxi"}
         </button>
         <button type="button" className="sev-desktop-launch" onClick={() => { setMobilePage("sev"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>☑ SEV</button>
+        <button type="button" className="sev-desktop-launch" onClick={() => {setMobilePage("statistics");window.scrollTo({top:0,behavior:"smooth"});}}>📊 Statistiques</button>
         <div className="account-pill" title={user.email || "Compte chauffeur"}>
           <span>{(user.displayName || user.email || "C").charAt(0).toUpperCase()}</span>
           <div><b>{user.displayName || "Chauffeur"}</b><small>{syncState === "saving" ? "Enregistrement…" : syncState === "error" ? "Erreur de sauvegarde" : "Données enregistrées"}</small></div>
         </div>
       </header>
       <div className={`shell page-${mobilePage} tab-${tab}`}>
+        {mobilePage === "statistics" && <StatisticsPage courses={courses.map(course=>({...course,serviceFee:serviceFee(course,settings)}))} today={today()} week={currentTuesdayWeek()} />}
         {mobilePage === "sev" && <SevPage expenses={expenses} companyFee={settings.companyFee} onFiscalChange={(id, patch) => setCourses(current => current.map(course => course.id === id ? {...course, ...patch} : course))} courses={courses.map((course) => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0, billedDuration: course.type === "adapte" ? course.billedDuration ?? Math.max(course.duration || 0, settings.adaptedMinimum) : course.billedDuration }))} onChange={setSevStatus} onEdit={(id) => { const course = courses.find((item) => item.id === id); if (course) editCourse(course); }} today={today()} week={currentTuesdayWeek()} />}
         <section className="summary">
           <div>
@@ -4175,6 +4178,7 @@ export default function Home() {
       </div>
       {notice && <div className="toast">{notice}</div>}
       <nav className="mobile-nav">
+        <button className={mobilePage === "statistics" ? "selected" : ""} onClick={() => {setMobilePage("statistics");window.scrollTo({top:0,behavior:"smooth"});}}>📊<span>Stats</span></button>
         <button className={mobilePage === "sev" ? "selected" : ""} onClick={() => { setMobilePage("sev"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>☑<span>SEV</span></button>
         <button
           className={mobilePage === "add" ? "selected" : ""}
