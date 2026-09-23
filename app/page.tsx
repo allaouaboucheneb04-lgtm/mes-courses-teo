@@ -21,6 +21,7 @@ import { parsePhotoDate } from "@/lib/photo-date";
 import SevPage, { SevCheckbox } from "@/components/sev-page";
 import StatisticsPage from "@/components/statistics-page";
 import SharedPayroll from "@/components/shared-payroll";
+import PastePayroll from "@/components/paste-payroll";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -2323,6 +2324,7 @@ export default function Home() {
               </div>
               <section className="pay-import-section">
                 <SharedPayroll key={user.uid} email={user.email || "Compte chauffeur"} disabled={!loaded || payLoading} onImport={importPayPdf} />
+                <PastePayroll key={`paste-${user.uid}`} disabled={!loaded || payLoading} onImport={importPayPdf} />
                 <div className="pay-section-title">
                   <span>1</span>
                   <div>
@@ -2337,6 +2339,7 @@ export default function Home() {
                   <input
                     type="file"
                     accept="application/pdf,.pdf"
+                    id="pay-pdf-input"
                     disabled={payLoading || !loaded}
                     onChange={(e) => {void importPayPdf(e.target.files?.[0]);e.target.value="";}}
                   />

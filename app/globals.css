@@ -449,6 +449,16 @@ label.sev-check input { appearance: auto; width: 22px; height: 22px; min-height:
 .shared-payroll article > div { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
 .shared-payroll button { padding: 10px 14px; min-height: 44px; border: 1px solid #b9d7d5; border-radius: 10px; background: white; color: var(--teal-dark); font-weight: 700; }
 .shared-payroll button:disabled { opacity: .5; cursor: wait; }
+.paste-payroll { margin: 18px 0; padding: 18px; background: #f0f8f7; border: 1px solid #b9d7d5; border-radius: 16px; }
+.paste-payroll h3 { margin: 0 0 8px; }
+.paste-payroll p, .paste-payroll small { font-size: 13px; line-height: 1.6; }
+.paste-payroll small { display: block; color: var(--muted); }
+.paste-payroll label { display: grid; gap: 8px; margin: 14px 0 8px; font-size: 13px; font-weight: 700; }
+.paste-payroll textarea { width: 100%; min-height: 80px; padding: 14px; background: white; border: 2px dashed #80b8b4; border-radius: 12px; font: inherit; font-size: 16px; }
+.paste-payroll button { margin: 8px 8px 0 0; min-height: 44px; padding: 10px 14px; border: 1px solid #b9d7d5; border-radius: 10px; background: white; color: var(--teal-dark); font-weight: 700; }
+.paste-payroll button:disabled { opacity: .5; }
+.paste-pdf-ready { margin-top: 12px; padding: 12px; background: white; border-radius: 12px; }
+.paste-pdf-ready b { overflow-wrap: anywhere; }
 .sev-tabs { display: flex; gap: 6px; padding: 6px; margin: 18px 0; background: #e0eded; border-radius: 16px; }
 .sev-tabs button { flex: 1; min-width: 0; min-height: 48px; padding: 10px 6px; border: 0; border-radius: 12px; background: transparent; color: var(--teal-dark); font: inherit; font-size: 14px; font-weight: 700; }
 .sev-tabs button[aria-current="page"] { background: white; box-shadow: 0 2px 6px #003f4910; }
