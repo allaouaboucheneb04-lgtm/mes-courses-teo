@@ -1809,6 +1809,10 @@ export default function Home() {
           <span>{(user.displayName || user.email || "C").charAt(0).toUpperCase()}</span>
           <div><b>{user.displayName || "Chauffeur"}</b><small>{syncState === "saving" ? "Enregistrement…" : syncState === "error" ? "Erreur de sauvegarde" : "Données enregistrées"}</small></div>
         </div>
+        <details className="more-navigation" onKeyDown={event=>{if(event.key === "Escape")event.currentTarget.open=false;}}>
+          <summary aria-label="Autres pages">☰ Plus</summary>
+          <nav aria-label="Autres pages">{([{id:"statistics",label:"📊 Statistiques"},{id:"sev",label:"☑ SEV"},{id:"expenses",label:"🧾 Dépenses"},{id:"settings",label:"⚙ Réglages"}] as const).map(item=><button type="button" key={item.id} aria-current={mobilePage===item.id?"page":undefined} onClick={event=>{setMobilePage(item.id);setEditingId(null);if(item.id === "settings")setTab("settings");const menu=event.currentTarget.closest("details");if(menu)menu.open=false;window.scrollTo({top:0,behavior:"smooth"});}}>{item.label}</button>)}</nav>
+        </details>
       </header>
       <div className={`shell page-${mobilePage} tab-${tab}`}>
         {mobilePage === "statistics" && <StatisticsPage courses={courses.map(course=>({...course,serviceFee:serviceFee(course,settings),airportFee:course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0}))} today={today()} dailyGoals={settings.dailyGoals} goalsEnabled={settings.dailyGoalEnabled} onSettings={()=>{setMobilePage("settings");setTab("settings");window.scrollTo({top:0,behavior:"smooth"});}} />}
@@ -4192,60 +4196,10 @@ export default function Home() {
         </section>
       </div>
       {notice && <div className="toast">{notice}</div>}
-      <nav className="mobile-nav">
-        <button className={mobilePage === "statistics" ? "selected" : ""} onClick={() => {setMobilePage("statistics");window.scrollTo({top:0,behavior:"smooth"});}}>📊<span>Stats</span></button>
-        <button className={mobilePage === "sev" ? "selected" : ""} onClick={() => { setMobilePage("sev"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>☑<span>SEV</span></button>
-        <button
-          className={mobilePage === "add" ? "selected" : ""}
-          onClick={() => {
-            setMobilePage("add");
-            if (tab === "settings" || tab === "paie") setTab("taxi");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          ＋<span>Ajouter</span>
-        </button>
-        <button
-          className={mobilePage === "history" ? "selected" : ""}
-          onClick={() => {
-            setMobilePage("history");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          ▤<span>Historique</span>
-        </button>
-        <button
-          className={mobilePage === "expenses" ? "selected" : ""}
-          onClick={() => {
-            setMobilePage("expenses");
-            setEditingId(null);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          🧾<span>Dépenses</span>
-        </button>
-        <button
-          className={mobilePage === "pay" ? "selected" : ""}
-          onClick={() => {
-            setMobilePage("pay");
-            setEditingId(null);
-            setTab("paie");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          ✓<span>Vérifier paie</span>
-        </button>
-        <button
-          className={mobilePage === "settings" ? "selected" : ""}
-          onClick={() => {
-            setMobilePage("settings");
-            setEditingId(null);
-            setTab("settings");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          ⚙<span>Réglages</span>
-        </button>
+      <nav className="mobile-nav" aria-label="Navigation principale">
+        <button type="button" className={mobilePage === "history" ? "selected" : ""} onClick={() => {setMobilePage("history");window.scrollTo({top:0,behavior:"smooth"});}}>▤<span>Historique</span></button>
+        <button type="button" className={`nav-add ${mobilePage === "add" ? "selected" : ""}`} onClick={() => {setMobilePage("add");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}><b>＋</b><span>Ajouter</span></button>
+        <button type="button" className={mobilePage === "pay" ? "selected" : ""} onClick={() => {setMobilePage("pay");setEditingId(null);setTab("paie");window.scrollTo({top:0,behavior:"smooth"});}}>✓<span>Vérifier paie</span></button>
       </nav>
     </main>
   );

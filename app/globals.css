@@ -102,6 +102,12 @@ button {
 .account-pill div { display:grid; min-width:0; }
 .account-pill b { font-size:13px; max-width:125px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .account-pill small { font-size:11px; color:var(--muted); }
+.more-navigation { position: relative; margin-left: 10px; flex-shrink: 0; }
+.more-navigation summary { list-style: none; cursor: pointer; padding: 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--teal); background: white; }
+.more-navigation summary::-webkit-details-marker { display: none; }
+.more-navigation nav { position: absolute; right: 0; top: calc(100% + 8px); width: 210px; display: grid; padding: 8px; background: white; border: 1px solid var(--line); box-shadow: 0 10px 30px #123b4025; border-radius: 16px; z-index: 50; }
+.more-navigation button { border: 0; background: white; min-height: 48px; padding: 12px; border-radius: 10px; text-align: left; font: inherit; font-size: 14px; cursor: pointer; }
+.more-navigation button[aria-current="page"], .more-navigation button:hover { color: var(--teal); background: var(--mint); }
 .expense-desktop-launch {
   margin-left: auto;
   margin-right: 14px;
@@ -2589,6 +2595,10 @@ select:focus {
     padding: 0 16px;
   }
   .expense-desktop-launch { display: none; }
+  .topbar .account-pill { min-width: 0; padding: 0; margin-left: auto; }
+  .topbar .account-pill div { display: none; }
+  .topbar .brand { gap: 8px; }
+  .topbar .brand h1 { font-size: 18px; }
   .date-pill {
     font-size: 12px;
     padding: 8px 10px;
@@ -2838,6 +2848,7 @@ select:focus {
   .mobile-nav .selected {
     color: var(--teal);
   }
+  .mobile-nav .nav-add b { display: grid; place-items: center; width: 38px; height: 38px; margin: -8px auto 2px; border-radius: 13px; color: white; background: var(--teal); font-size: 28px; font-weight: 500; }
   .toast {
     bottom: 86px;
     white-space: nowrap;
