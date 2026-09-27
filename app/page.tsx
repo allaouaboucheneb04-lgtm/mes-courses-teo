@@ -919,6 +919,10 @@ export default function Home() {
         (billStatus === "clear" && !hasIssues);
 
       return matchesSearch && matchesPeriod && matchesStatus;
+    }).sort((left, right) => {
+      const leftDate = getPayrollCourseDates(left.rows).sort()[0] || left.invoiceDate || "9999-12-31";
+      const rightDate = getPayrollCourseDates(right.rows).sort()[0] || right.invoiceDate || "9999-12-31";
+      return leftDate.localeCompare(rightDate) || left.id.localeCompare(right.id);
     });
   }, [
     billCustomEnd,
