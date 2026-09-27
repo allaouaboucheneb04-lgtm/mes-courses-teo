@@ -14,6 +14,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
+import { extractCardPayrollRows } from "@/lib/card-payroll";
 import { expenseTotal } from "@/lib/expenses";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
@@ -1197,23 +1198,8 @@ export default function Home() {
             .map((item) => item.str || "")
             .join(" ") + "\n";
       }
-      const tips = new Map<string, number>(),
-        tipRows = /\[TIPC\][\s\S]*?\((\d+A) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)/g;
       let match: RegExpExecArray | null;
-      while ((match = tipRows.exec(text)))
-        tips.set(match[1], Number(match[2].replace(",", ".")));
-      const rows: PayRow[] = [],
-        regular =
-          /\[CRD\][\s\S]*?\((\d+A) to[^)]*\)\s+Date:\s+(\d{2})\/(\d{2})\/(\d{4})\s+\d{2}:\d{2}:\d{2}\s+1\s+([\d,]+)/g;
-      while ((match = regular.exec(text)))
-        rows.push({
-          key: match[1],
-          type: "taxi",
-          date: `${match[4]}-${match[3]}-${match[2]}`,
-          amount: Number(match[5].replace(",", ".")),
-          tip: tips.get(match[1]) || 0,
-          paymentKind: "card",
-        });
+      const rows: PayRow[] = extractCardPayrollRows(text);
       const adaptedRows =
         /\[PTR\][\s\S]*?\((HOB\d{4})_(\d{2})\/(\d{2})\/(\d{4}) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)\s+TPS/g;
       while ((match = adaptedRows.exec(text)))
