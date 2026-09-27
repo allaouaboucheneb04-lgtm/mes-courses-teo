@@ -1659,7 +1659,7 @@ select:focus {
   color: var(--muted);
   text-align: center;
 }
-.saved-statements button {
+.saved-statement > button {
   width: 100%;
   display: flex;
   align-items: center;
@@ -1672,13 +1672,13 @@ select:focus {
   background: #fff;
   text-align: left;
 }
-.saved-statements button > span:first-child {
+.saved-statement > button > span:first-child {
   min-width: 0;
 }
-.saved-statements button > span:first-child b {
+.saved-statement > button > span:first-child b {
   overflow-wrap: anywhere;
 }
-.saved-statements button.active {
+.saved-statement > button.active {
   border-color: var(--teal);
   border-radius: 11px;
   background: var(--mint);
@@ -1704,11 +1704,11 @@ select:focus {
   color: var(--teal);
   font-weight: 800;
 }
-.saved-statements span b,
-.saved-statements span small {
+.saved-statement > button span b,
+.saved-statement > button span small {
   display: block;
 }
-.saved-statements small {
+.saved-statement > button small {
   margin-top: 3px;
   color: var(--muted);
 }
@@ -1736,7 +1736,7 @@ select:focus {
   font-style: normal;
   font-weight: 800;
 }
-.saved-statements strong {
+.saved-statement > button strong {
   white-space: nowrap;
 }
 .pay-analysis {

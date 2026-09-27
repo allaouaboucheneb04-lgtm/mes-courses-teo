@@ -920,9 +920,9 @@ export default function Home() {
 
       return matchesSearch && matchesPeriod && matchesStatus;
     }).sort((left, right) => {
-      const leftDate = getPayrollCourseDates(left.rows).sort()[0] || left.invoiceDate || "9999-12-31";
-      const rightDate = getPayrollCourseDates(right.rows).sort()[0] || right.invoiceDate || "9999-12-31";
-      return leftDate.localeCompare(rightDate) || left.id.localeCompare(right.id);
+      const leftDate = getPayrollCourseDates(left.rows).sort().at(-1) || left.invoiceDate || "";
+      const rightDate = getPayrollCourseDates(right.rows).sort().at(-1) || right.invoiceDate || "";
+      return rightDate.localeCompare(leftDate) || right.id.localeCompare(left.id);
     });
   }, [
     billCustomEnd,
@@ -955,11 +955,6 @@ export default function Home() {
     setSelectedStatementId(statement.id);
     setPayRows(statement.rows);
     setPayFile(statement.fileName);
-    window.setTimeout(() => {
-      document
-        .getElementById("pay-statement-analysis")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 80);
   }
   const flash = (t: string) => {
     setNotice(t);
@@ -2454,6 +2449,8 @@ export default function Home() {
                           statement.id === selectedStatementId ? "active" : ""
                         }
                         onClick={() => togglePayStatement(statement)}
+                        aria-expanded={statement.id === selectedStatementId}
+                        aria-controls={statement.id === selectedStatementId ? "pay-statement-analysis" : undefined}
                       >
                         <span>
                           <b>{statement.id}</b>
@@ -2484,205 +2481,7 @@ export default function Home() {
                           </small>
                         </span>
                       </button>
-                      {statement.id === selectedStatementId && (
-                        <>
-                          <section className="statement-details inline">
-                            <div className="statement-grid">
-                              <div>
-                                <span>Date de la facture</span>
-                                <b>{statement.invoiceDate || "—"}</b>
-                              </div>
-                              <div>
-                                <span>Dates des courses vérifiées</span>
-                                <b>
-                                  {getPayrollCourseDates(statement.rows).join(
-                                    " · ",
-                                  ) || "—"}
-                                </b>
-                              </div>
-                              <div>
-                                <span>Sous-total</span>
-                                <b>{money(statement.subtotal)}</b>
-                              </div>
-                              <div>
-                                <span>Payé le</span>
-                                <b>
-                                  {statement.paidDate || "—"} ·{" "}
-                                  {money(statement.paidAmount)}
-                                </b>
-                              </div>
-                              <div>
-                                <span>Montant dû</span>
-                                <b>{money(statement.amountDue)}</b>
-                              </div>
-                              <div>
-                                <span>Lignes reconnues</span>
-                                <b>{statement.rows.length}</b>
-                              </div>
-                            </div>
-                            <details className="pdf-details">
-                              <summary>Toutes les lignes de la fiche</summary>
-                              <div className="statement-lines">
-                                {statement.rows.map((row, index) => (
-                                  <div key={`${row.key}-${row.date}-${index}`}>
-                                    <b>{payRowTitle(row)}</b>
-                                    <span>{row.date}</span>
-                                    <span>
-                                      {isCouponPayRow(row)
-                                        ? `Compte ${row.couponAccount || "non lu"}`
-                                        : `Course ${money(row.amount)}`}
-                                    </span>
-                                    <span>
-                                      {isCouponPayRow(row)
-                                        ? "Coupon déposé"
-                                        : `Pourboire ${money(row.tip)}`}
-                                    </span>
-                                    <strong>
-                                      {money(row.amount + row.tip)}
-                                    </strong>
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
-                          </section>
-                          <section className="bill-comparison">
-                            <div className="bill-comparison-head">
-                              <h4>Courses de cette fiche</h4>
-                              <span>
-                                <b>
-                                  {
-                                    comparisons.filter(
-                                      (row) => row.status === "ok",
-                                    ).length
-                                  }
-                                </b>{" "}
-                                correctes ·{" "}
-                                <b>
-                                  {
-                                    comparisons.filter(
-                                      (row) => row.status !== "ok",
-                                    ).length
-                                  }
-                                </b>{" "}
-                                à vérifier
-                              </span>
-                            </div>
-                            <div className="bill-course-list">
-                              {comparisons.map((row, index) => (
-                                <div
-                                  className={`bill-course ${row.status}`}
-                                  key={`${row.key}-${row.date}-${index}`}
-                                >
-                                  <span className="status-dot">
-                                    {row.status === "ok" ? "✓" : "!"}
-                                  </span>
-                                  <div className="bill-course-main">
-                                    <b>{payRowTitle(row)}</b>
-                                    <small>
-                                      {new Date(
-                                        row.date + "T12:00",
-                                      ).toLocaleDateString("fr-CA")}{" "}
-                                      ·{" "}
-                                      {row.status === "ok"
-                                        ? "Correspond"
-                                        : row.status === "different"
-                                          ? row.type === "adapte"
-                                            ? "Date et HOB trouvés · montant différent"
-                                            : isCouponPayRow(row)
-                                              ? "Coupon et compte trouvés · total différent"
-                                              : "Montant ou pourboire différent"
-                                          : row.status === "missing-app"
-                                            ? "Absente de l’application"
-                                            : "Absente de la fiche"}
-                                    </small>
-                                    <small>
-                                      Application :{" "}
-                                      {row.appAmount === null
-                                        ? "—"
-                                        : money(
-                                            row.appAmount + (row.appTip || 0),
-                                          )}{" "}
-                                      · Téo : {money(row.amount + row.tip)}
-                                      {row.type === "taxi" &&
-                                        !isCouponPayRow(row) &&
-                                        ` · Pourboire ${money(row.tip)}`}
-                                    </small>
-                                    {isCouponPayRow(row) && (
-                                      <small>
-                                        Compte {row.couponAccount || "non lu"}
-                                        {row.appTip !== null
-                                          ? ` · Pourboire saisi ${money(row.appTip || 0)}`
-                                          : ""}
-                                      </small>
-                                    )}
-                                    {row.status === "missing-app" && (
-                                      <button
-                                        type="button"
-                                        className="correct-teo"
-                                        onClick={() => savePayRow(row)}
-                                      >
-                                        Enregistrer dans l’application
-                                      </button>
-                                    )}
-                                    {row.status === "different" &&
-                                      row.courseId && (
-                                        <button
-                                          type="button"
-                                          className="correct-teo"
-                                          onClick={() => correctFromTeo(row)}
-                                        >
-                                          Corriger selon Téo
-                                        </button>
-                                      )}
-                                    {row.status !== "ok" && row.courseId && (
-                                      <div className="bill-course-actions">
-                                        <select
-                                          aria-label="Changer le mode de paiement"
-                                          defaultValue=""
-                                          onChange={(event) => {
-                                            if (event.target.value)
-                                              changeCoursePayment(
-                                                row.courseId!,
-                                                event.target.value,
-                                              );
-                                          }}
-                                        >
-                                          <option value="" disabled>
-                                            Changer paiement
-                                          </option>
-                                          <option value="Téo / carte">
-                                            Téo / carte
-                                          </option>
-                                          <option value="Espèces">
-                                            Espèces
-                                          </option>
-                                          <option value="Machine crédit">
-                                            Machine crédit
-                                          </option>
-                                        </select>
-                                        <button
-                                          type="button"
-                                          className="check-delete"
-                                          onClick={() =>
-                                            deleteCheckedCourse(row.courseId!)
-                                          }
-                                        >
-                                          Supprimer
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </section>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </section>
-              )}
-              {selectedPayStatement && (
+              {statement.id === selectedStatementId && selectedPayStatement && (
                 <section
                   className="pay-analysis"
                   id="pay-statement-analysis"
@@ -2833,6 +2632,10 @@ export default function Home() {
                       ))}
                     </div>
                   </details>
+                </section>
+              )}
+                    </div>
+                  ))}
                 </section>
               )}
               {false && payRows.length > 0 && (
