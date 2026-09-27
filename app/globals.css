@@ -53,8 +53,11 @@ button {
 }
 .pwa-install span { color: #9cdbd7; font-size: 18px; }
 .topbar {
-  height: 82px;
-  padding: 0 max(24px, calc((100vw - 1100px) / 2));
+  /* viewport-fit=cover includes the iPhone status bar in the page area. */
+  height: calc(82px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px)
+    max(24px, calc((100vw - 1100px) / 2), env(safe-area-inset-right, 0px))
+    0 max(24px, calc((100vw - 1100px) / 2), env(safe-area-inset-left, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2591,8 +2594,10 @@ select:focus {
 @media (max-width: 760px) {
   .pwa-install { bottom: 82px; right: 12px; }
   .topbar {
-    height: 72px;
-    padding: 0 16px;
+    height: calc(72px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px)
+      max(16px, env(safe-area-inset-right, 0px))
+      0 max(16px, env(safe-area-inset-left, 0px));
   }
   .expense-desktop-launch { display: none; }
   .topbar .account-pill { min-width: 0; padding: 0; margin-left: auto; }
