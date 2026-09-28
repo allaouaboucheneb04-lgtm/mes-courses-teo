@@ -2696,7 +2696,8 @@ select:focus {
   .page-history {
     display: block;
   }
-  .page-history .history {
+  .shell.page-history > .history {
+    display: block;
     min-height: calc(100vh - 180px);
   }
   .page-settings {

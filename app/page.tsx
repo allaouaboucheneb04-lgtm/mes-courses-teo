@@ -3979,7 +3979,7 @@ export default function Home() {
       </div>
       {notice && <div className="toast">{notice}</div>}
       <nav className="mobile-nav" aria-label="Navigation principale">
-        <button type="button" className={mobilePage === "history" ? "selected" : ""} onClick={() => {setMobilePage("history");window.scrollTo({top:0,behavior:"smooth"});}}>▤<span>Historique</span></button>
+        <button type="button" className={mobilePage === "history" ? "selected" : ""} onClick={() => {setMobilePage("history");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>▤<span>Historique</span></button>
         <button type="button" className={`nav-add ${mobilePage === "add" ? "selected" : ""}`} onClick={() => {setMobilePage("add");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}><b>＋</b><span>Ajouter</span></button>
         <button type="button" className={mobilePage === "pay" ? "selected" : ""} onClick={() => {setMobilePage("pay");setEditingId(null);setTab("paie");window.scrollTo({top:0,behavior:"smooth"});}}>✓<span>Vérifier paie</span></button>
       </nav>
