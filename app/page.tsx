@@ -332,6 +332,48 @@ const tuesdayWeekKey = (date: string) => {
   day.setDate(day.getDate() - ((day.getDay() - 2 + 7) % 7));
   return dateKey(day);
 };
+const formatSettingNumber = (value: number, decimals = 2) =>
+  Number(value || 0).toLocaleString("fr-CA", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+function SettingsNumberInput({
+  value,
+  onValue,
+  decimals = 2,
+}: {
+  value: number;
+  onValue: (value: number) => void;
+  decimals?: number;
+}) {
+  const [draft, setDraft] = useState(() => formatSettingNumber(value, decimals));
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    if (!editing) setDraft(formatSettingNumber(value, decimals));
+  }, [value, decimals, editing]);
+  const read = (raw: string) => Number(raw.replace(/\s/g, "").replace(",", "."));
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={editing ? draft : formatSettingNumber(value, decimals)}
+      onFocus={() => setEditing(true)}
+      onChange={(event) => {
+        const next = event.target.value;
+        if (!/^\d*(?:[,.]\d*)?$/.test(next)) return;
+        setDraft(next);
+        const parsed = read(next);
+        if (next && Number.isFinite(parsed)) onValue(parsed);
+      }}
+      onBlur={() => {
+        const parsed = read(draft);
+        if (Number.isFinite(parsed)) onValue(parsed);
+        setEditing(false);
+      }}
+    />
+  );
+}
 export default function Home() {
   const [tab, setTab] = useState<"taxi" | "adapte" | "paie" | "settings">(
       "taxi",
@@ -2102,8 +2144,7 @@ export default function Home() {
                           setTaxi({
                             ...taxi,
                             couponNumber: e.target.value.toUpperCase(),
-                          })
-                        }
+                          })}
                         required
                       />
                     </label>
@@ -2120,8 +2161,7 @@ export default function Home() {
                           setTaxi({
                             ...taxi,
                             couponAccount: e.target.value.toUpperCase(),
-                          })
-                        }
+                          })}
                         required
                       />
                     </label>
@@ -3002,13 +3042,9 @@ export default function Home() {
                   {settings.dailyGoalMode === "same" ? (
                     <label className="goal-amount">
                       Objectif par jour ($)
-                      <input
-                        type="number"
-                        step="1"
-                        min="0"
+                      <SettingsNumberInput
                         value={settings.dailyGoals[0]}
-                        onChange={(e) => {
-                          const amount = Number(e.target.value);
+                        onValue={(amount) => {
                           setSettings({
                             ...settings,
                             dailyGoals: Array(7).fill(amount),
@@ -3021,14 +3057,11 @@ export default function Home() {
                       {GOAL_DAYS.map((day, index) => (
                         <label key={day}>
                           {day}
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
+                          <SettingsNumberInput
                             value={settings.dailyGoals[index]}
-                            onChange={(e) => {
+                            onValue={(amount) => {
                               const dailyGoals = [...settings.dailyGoals];
-                              dailyGoals[index] = Number(e.target.value);
+                              dailyGoals[index] = amount;
                               setSettings({ ...settings, dailyGoals });
                             }}
                           />
@@ -3054,17 +3087,11 @@ export default function Home() {
                       <small>Pour les paiements Téo et par carte</small>
                     </span>
                     <div className="setting-number">
-                      <input
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        value={settings.cardFee}
-                        onChange={(e) =>
+                      <SettingsNumberInput value={settings.cardFee} onValue={(cardFee) =>
                           setSettings({
                             ...settings,
-                            cardFee: Number(e.target.value),
-                          })
-                        }
+                            cardFee,
+                          })}
                       />
                       <em>%</em>
                     </div>
@@ -3075,17 +3102,11 @@ export default function Home() {
                       <small>Frais du terminal de paiement externe</small>
                     </span>
                     <div className="setting-number">
-                      <input
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        value={settings.machineFee}
-                        onChange={(e) =>
+                      <SettingsNumberInput value={settings.machineFee} onValue={(machineFee) =>
                           setSettings({
                             ...settings,
-                            machineFee: Number(e.target.value),
-                          })
-                        }
+                            machineFee,
+                          })}
                       />
                       <em>%</em>
                     </div>
@@ -3096,17 +3117,11 @@ export default function Home() {
                       <small>Prélevés une fois chaque mardi</small>
                     </span>
                     <div className="setting-number">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={settings.companyFee}
-                        onChange={(e) =>
+                      <SettingsNumberInput value={settings.companyFee} onValue={(companyFee) =>
                           setSettings({
                             ...settings,
-                            companyFee: Number(e.target.value),
-                          })
-                        }
+                            companyFee,
+                          })}
                       />
                       <em>$</em>
                     </div>
@@ -3118,17 +3133,11 @@ export default function Home() {
                         <small>Montant déduit par course aéroport</small>
                       </span>
                       <div className="setting-number">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={settings.airportFee}
-                          onChange={(e) =>
+                        <SettingsNumberInput value={settings.airportFee} onValue={(airportFee) =>
                             setSettings({
                               ...settings,
-                              airportFee: Number(e.target.value),
-                            })
-                          }
+                              airportFee,
+                            })}
                         />
                         <em>$</em>
                       </div>
@@ -3152,17 +3161,11 @@ export default function Home() {
                         <small>Montant brut avant les frais</small>
                       </span>
                       <div className="setting-number">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={settings.adaptedRate}
-                          onChange={(e) =>
+                        <SettingsNumberInput value={settings.adaptedRate} onValue={(adaptedRate) =>
                             setSettings({
                               ...settings,
-                              adaptedRate: Number(e.target.value),
-                            })
-                          }
+                              adaptedRate,
+                            })}
                         />
                         <em>$/h</em>
                       </div>
@@ -3173,17 +3176,11 @@ export default function Home() {
                         <small>Même si la tournée dure moins longtemps</small>
                       </span>
                       <div className="setting-number">
-                        <input
-                          type="number"
-                          step="0.25"
-                          min="0"
-                          value={settings.adaptedMinimum}
-                          onChange={(e) =>
+                        <SettingsNumberInput value={settings.adaptedMinimum} onValue={(adaptedMinimum) =>
                             setSettings({
                               ...settings,
-                              adaptedMinimum: Number(e.target.value),
-                            })
-                          }
+                              adaptedMinimum,
+                            })}
                         />
                         <em>h</em>
                       </div>
@@ -3194,17 +3191,11 @@ export default function Home() {
                         <small>Pourcentage retiré de la tournée</small>
                       </span>
                       <div className="setting-number">
-                        <input
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          value={settings.adaptedFee}
-                          onChange={(e) =>
+                        <SettingsNumberInput value={settings.adaptedFee} onValue={(adaptedFee) =>
                             setSettings({
                               ...settings,
-                              adaptedFee: Number(e.target.value),
-                            })
-                          }
+                              adaptedFee,
+                            })}
                         />
                         <em>%</em>
                       </div>
