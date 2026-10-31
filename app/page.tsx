@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -11,8 +11,9 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
 import { expenseTotal } from "@/lib/expenses";
@@ -22,6 +23,11 @@ import { parsePhotoDate } from "@/lib/photo-date";
 import SevPage, { SevCheckbox } from "@/components/sev-page";
 import StatisticsPage from "@/components/statistics-page";
 import SharedPayroll from "@/components/shared-payroll";
+import PayrollOverview from "@/components/payroll-overview";
+import { mergeDriverData, sameData, SyncConflict } from "@/lib/sync-merge";
+import { reconcileVerification } from "@/lib/verification";
+import { photoCandidateError, photoDuplicateStatus, photoCategory, photoScreenContent, uniquePhotoCandidates, photoPreviewDuplicateStatus } from "@/lib/photo-import";
+import { defaultTaxiCategory, retainBankReceipt, validBankReceipt, type BankReceipt } from "@/lib/payroll-summary";
 import {
   extractCouponPayrollRows,
   normalizeCouponReference,
@@ -41,6 +47,8 @@ type Course = {
   amount: number;
   tip: number;
   tipPending?: boolean;
+  sourceFingerprint?: string;
+  sourceContentFingerprint?: string;
   payment: string;
   duration?: number;
   billedDuration?: number;
@@ -99,6 +107,7 @@ type PayStatement = {
   total: number;
   paidDate: string;
   paidAmount: number;
+  bankReceipt?: BankReceipt | null;
   amountDue: number;
   rows: PayRow[];
   rawText: string;
@@ -111,6 +120,7 @@ type AppSettings = {
   adaptedFee: number;
   airportFee: number;
   airportEnabled: boolean;
+  defaultTaxiCategory: "centre-ville" | "aeroport";
   adaptedEnabled: boolean;
   dailyGoalEnabled: boolean;
   dailyGoalMode: "same" | "custom";
@@ -125,6 +135,8 @@ type PhotoCourse = {
   category: "centre-ville" | "aeroport";
   selected: boolean;
   alreadyRecorded?: boolean;
+  sourceFingerprint?: string;
+  sourceContentFingerprint?: string;
 };
 const DEFAULT_SETTINGS: AppSettings = {
   cardFee: 5.51,
@@ -134,6 +146,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   adaptedFee: 13.797,
   airportFee: 6.44,
   airportEnabled: true,
+  defaultTaxiCategory: "centre-ville",
   adaptedEnabled: true,
   dailyGoalEnabled: false,
   dailyGoalMode: "same",
@@ -382,6 +395,7 @@ export default function Home() {
     [expenses, setExpenses] = useState<TaxiExpense[]>([]),
     [loaded, setLoaded] = useState(false),
     [notice, setNotice] = useState("");
+  const [payView, setPayView] = useState<"statements" | "courses">("statements");
   const [payRows, setPayRows] = useState<PayRow[]>([]),
     [payFile, setPayFile] = useState(""),
     [payLoading, setPayLoading] = useState(false),
@@ -411,7 +425,7 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("page") !== "pay") return;
     setMobilePage("pay");
-    setTab("paie");
+    setTab("paie");setPayView("statements");
     if (params.has("share_error")) setPayError(params.get("share_error") === "files" ? "Partage non reçu : choisissez de 1 à 5 PDF valides (20 Mo par fichier, 50 Mo au total). Vous pouvez aussi choisir le PDF ci-dessous." : "Impossible de conserver le fichier partagé. Choisissez le PDF ci-dessous.");
   }, []);
   const [expensePeriod, setExpensePeriod] = useState<"week" | "month" | "custom" | "all">("week");
@@ -444,7 +458,7 @@ export default function Home() {
     end: "10:00",
     perception: "",
   });
-  const [historyType, setHistoryType] = useState<"all" | "taxi" | "adapte">(
+  const [historyType, setHistoryType] = useState<HistoryTypeFilter>(
       "all",
     ),
     [historyPeriod, setHistoryPeriod] = useState<
@@ -462,6 +476,25 @@ export default function Home() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [syncError, setSyncError] = useState("");
+  const [syncRetry, setSyncRetry] = useState(0);
+  type DriverData = { courses: Course[]; expenses: TaxiExpense[]; settings: AppSettings; payStatements: PayStatement[] };
+  const baseline = useRef<DriverData | null>(null);
+  const liveData = useRef<DriverData>({ courses, expenses, settings, payStatements });
+  liveData.current = { courses, expenses, settings, payStatements };
+  const saving = useRef(false);
+  const syncOwner = useRef(user?.uid);
+  syncOwner.current = user?.uid;
+  const normalizeData = (remote: Partial<DriverData>): DriverData => ({
+    courses: Array.isArray(remote.courses) ? remote.courses : [],
+    expenses: Array.isArray(remote.expenses) ? remote.expenses : [],
+    settings: { ...DEFAULT_SETTINGS, ...(remote.settings || {}) },
+    payStatements: Array.isArray(remote.payStatements) ? remote.payStatements : [],
+  });
+  const applyData = (data: DriverData) => {
+    liveData.current = data;
+    setCourses(data.courses); setExpenses(data.expenses); setSettings(data.settings); setPayStatements(data.payStatements);
+  };
   const [photoCourses, setPhotoCourses] = useState<PhotoCourse[]>([]);
   const [photoReading, setPhotoReading] = useState(false);
   const [photoProgress, setPhotoProgress] = useState(0);
@@ -473,109 +506,126 @@ export default function Home() {
     });
   }, []);
   useEffect(() => {
+    baseline.current = null;
     if (!authReady || !user) { setLoaded(false); return; }
     let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    const owner = user;
+    const stateRef = doc(db, "drivers", owner.uid, "data", "app");
     const loadDriverData = async () => {
-      setLoaded(false);
+      setLoaded(false); setSyncError("");
       try {
-        const stateRef = doc(db, "drivers", user.uid, "data", "app");
-        const snapshot = await getDoc(stateRef);
+        let migratedLegacy = false;
+        const initial = await runTransaction(db, async transaction => {
+          const snapshot = await transaction.get(stateRef);
+          if (snapshot.exists()) return normalizeData(snapshot.data());
+          const migrated = normalizeData({
+            courses: JSON.parse(localStorage.getItem("teo-courses") || "[]"),
+            settings: JSON.parse(localStorage.getItem("teo-settings") || "{}"),
+            payStatements: JSON.parse(localStorage.getItem("teo-pay-statements") || "[]"),
+          });
+          migratedLegacy = true;
+          transaction.set(stateRef, { ...migrated, ownerEmail: owner.email || "", updatedAt: serverTimestamp() });
+          return migrated;
+        });
         if (cancelled) return;
-        if (snapshot.exists()) {
-          const remote = snapshot.data();
-          setCourses(Array.isArray(remote.courses) ? remote.courses : []);
-          setExpenses(Array.isArray(remote.expenses) ? remote.expenses : []);
-          setSettings({ ...DEFAULT_SETTINGS, ...(remote.settings || {}) });
-          setPayStatements(Array.isArray(remote.payStatements) ? remote.payStatements : []);
-        } else {
-          const localCourses = JSON.parse(localStorage.getItem("teo-courses") || "[]") as Course[];
-          const localSettings = JSON.parse(localStorage.getItem("teo-settings") || "{}") as Partial<AppSettings>;
-          const localStatements = JSON.parse(localStorage.getItem("teo-pay-statements") || "[]") as PayStatement[];
-          const migratedSettings = { ...DEFAULT_SETTINGS, ...localSettings };
-          setCourses(localCourses); setExpenses([]); setSettings(migratedSettings); setPayStatements(localStatements);
-          await setDoc(stateRef, { courses: localCourses, expenses: [], settings: migratedSettings, payStatements: localStatements, ownerEmail: user.email || "", updatedAt: serverTimestamp() });
-          localStorage.removeItem("teo-courses"); localStorage.removeItem("teo-settings"); localStorage.removeItem("teo-pay-statements");
+        baseline.current = initial;
+        let restored = initial;
+        let draft: string | null = null;
+        try {
+          if (migratedLegacy) { localStorage.removeItem("teo-courses"); localStorage.removeItem("teo-settings"); localStorage.removeItem("teo-pay-statements"); }
+          draft = localStorage.getItem(`teo-pending-${owner.uid}`);
+        } catch { /* Account data can still load when browser storage is unavailable. */ }
+        if (draft) {
+          try {
+            const pending = JSON.parse(draft);
+            restored = mergeDriverData(normalizeData(pending.base), normalizeData(pending.local), initial);
+          } catch (error) {
+            if (error instanceof SyncConflict) {
+              const pending = JSON.parse(draft);
+              baseline.current = normalizeData(pending.base); restored = normalizeData(pending.local);
+              setSyncError(error.message); setSyncState("error");
+            }
+          }
         }
-        if (!cancelled) { setLoaded(true); setSyncState("saved"); }
+        applyData(restored);
+        setTaxi(current => ({ ...current, category: defaultTaxiCategory(restored.settings) }));
+        setLoaded(true);
+        if (sameData(restored, initial)) setSyncState("saved");
+        unsubscribe = onSnapshot(stateRef, snapshot => {
+          if (cancelled || !snapshot.exists() || snapshot.metadata.hasPendingWrites || saving.current || !baseline.current) return;
+          if (!sameData(liveData.current, baseline.current)) return;
+          const remote = normalizeData(snapshot.data());
+          baseline.current = remote; applyData(remote); setSyncState("saved"); setSyncError("");
+        }, () => { if (!cancelled) {setSyncState("error");setSyncError("Synchronisation interrompue. Vérifiez votre connexion.");} });
       } catch (error) {
         console.error(error);
-        if (!cancelled) { setAuthMessage("Impossible de charger vos données. Vérifiez la configuration Firestore."); setSyncState("error"); }
+        if (!cancelled) { setAuthMessage("Impossible de charger vos données. Vérifiez votre connexion."); setSyncState("error"); }
       }
     };
-    loadDriverData();
-    return () => { cancelled = true; };
+    void loadDriverData();
+    return () => { cancelled = true; unsubscribe?.(); };
   }, [authReady, user]);
   useEffect(() => {
-    if (!loaded || !user) return;
+    if (!loaded || !user || !baseline.current || sameData(liveData.current, baseline.current)) return;
+    const owner = user;
+    const draftKey = `teo-pending-${owner.uid}`;
+    try { localStorage.setItem(draftKey, JSON.stringify({ base: baseline.current, local: liveData.current })); } catch { /* The live changes remain visible if browser storage is full. */ }
     setSyncState("saving");
     const timer = window.setTimeout(async () => {
+      if (saving.current || !baseline.current || syncOwner.current !== owner.uid) return;
+      saving.current = true;
+      const base = baseline.current;
+      const local = liveData.current;
       try {
-        await setDoc(doc(db, "drivers", user.uid, "data", "app"), { courses, expenses, settings, payStatements, ownerEmail: user.email || "", updatedAt: serverTimestamp() }, { merge: true });
-        setSyncState("saved");
-      } catch (error) { console.error(error); setSyncState("error"); }
+        const merged = await runTransaction(db, async transaction => {
+          const stateRef = doc(db, "drivers", owner.uid, "data", "app");
+          const snapshot = await transaction.get(stateRef);
+          if (!snapshot.exists()) throw new SyncConflict();
+          const result = mergeDriverData(base, local, normalizeData(snapshot.data()));
+          transaction.set(stateRef, { ...result, ownerEmail: owner.email || "", updatedAt: serverTimestamp() }, { merge: true });
+          return result;
+        });
+        if (syncOwner.current !== owner.uid) return;
+        const withNewEdits = mergeDriverData(local, liveData.current, merged);
+        baseline.current = merged; applyData(withNewEdits);
+        setSyncError("");
+        if (sameData(withNewEdits, merged)) {
+          try { localStorage.removeItem(draftKey); } catch { /* Server save succeeded. */ }
+          setSyncState("saved");
+        } else {
+          try { localStorage.setItem(draftKey,JSON.stringify({base:merged,local:withNewEdits})); } catch { /* New edits remain in memory for the next save. */ }
+          setSyncState("saving");
+        }
+      } catch (error) {
+        console.error(error);
+        if (syncOwner.current === owner.uid) {
+          setSyncState("error");
+          setSyncError(error instanceof SyncConflict ? error.message : "Sauvegarde en attente. Vos changements restent sur cet appareil. Vérifiez la connexion puis réessayez.");
+        }
+      } finally {
+        saving.current = false;
+        if (syncOwner.current !== owner.uid) setSyncRetry(value => value + 1);
+      }
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [courses, expenses, settings, payStatements, loaded, user]);
+  }, [courses, expenses, settings, payStatements, loaded, user, syncRetry]);
+  useEffect(() => {
+    const retry = () => setSyncRetry(value => value + 1);
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, []);
   useEffect(() => {
     if (!settings.adaptedEnabled && tab === "adapte") setTab("taxi");
     if (!settings.airportEnabled && taxi.category === "aeroport")
       setTaxi((current) => ({ ...current, category: "centre-ville" }));
   }, [settings.adaptedEnabled, settings.airportEnabled, tab, taxi.category]);
   useEffect(() => {
-    if (!loaded || !payStatements.length) return;
-    setCourses((current) => {
-      let changed = false;
-      const usedRows = new Set<string>();
-      // Resolve already linked rides first so one payroll row cannot verify two rides.
-      const updated = [...current].sort((a, b) => Number(!!b.teoId) - Number(!!a.teoId) || Number(!!a.tipPending) - Number(!!b.tipPending)).map((course) => {
-        let matchedStatement: PayStatement | undefined;
-        let matchedRow: PayRow | undefined;
-        for (const statement of payStatements) {
-          const rowIndex = statement.rows.findIndex(
-            (item, index) =>
-              !usedRows.has(`${statement.id}:${index}`) &&
-              payrollCourseMatchesRow(course, item) &&
-              payrollDifference(course, item) < 0.02,
-          );
-          if (rowIndex >= 0) {
-            usedRows.add(`${statement.id}:${rowIndex}`);
-            matchedStatement = statement;
-            matchedRow = statement.rows[rowIndex];
-            break;
-          }
-        }
-        if (!matchedStatement || !matchedRow) return course;
-        if (
-          course.verified &&
-          !course.tipPending &&
-          course.verifiedBillId === matchedStatement.id &&
-          payrollCourseMatchesRow(course, matchedRow)
-        )
-          return course;
-        changed = true;
-        return {
-          ...course,
-          ...(course.type === "taxi" && !isCouponPayRow(matchedRow)
-            ? resolvePhotoTip(course, matchedRow) : {}),
-          ...(course.type === "taxi" && !isCouponPayRow(matchedRow)
-            ? { teoId: matchedRow.key }
-            : {}),
-          ...(isCouponPayRow(matchedRow)
-            ? {
-                couponNumber:
-                  matchedRow.couponNumber || course.couponNumber || "",
-                couponAccount:
-                  matchedRow.couponAccount || course.couponAccount || "",
-              }
-            : {}),
-          verified: true,
-          verifiedBillId: matchedStatement.id,
-          verifiedAt: course.verifiedAt || matchedStatement.importedAt,
-        };
-      });
-      const byId = new Map(updated.map((course) => [course.id, course]));
-      return changed ? current.map((course) => byId.get(course.id)!) : current;
-    });
+    if (!loaded) return;
+    setCourses(current => reconcileVerification(current, payStatements, payrollCourseMatchesRow, payrollDifference, (course, row) => ({
+      ...(course.type === "taxi" && !isCouponPayRow(row) ? { ...resolvePhotoTip(course, row), teoId: row.key } : {}),
+      ...(isCouponPayRow(row) ? { couponNumber: row.couponNumber || course.couponNumber || "", couponAccount: row.couponAccount || course.couponAccount || "" } : {}),
+    })));
   }, [loaded, payStatements, courses]);
   const selectedDate =
     (mobilePage === "expenses"
@@ -645,21 +695,14 @@ export default function Home() {
   const historyExpenseTotal = expenseTotal(expenses, historyBounds);
   const historyHasCourseFilter = historyType !== "all" || historyPayment !== "all" || !!historySearch.trim();
   const filteredHistory = useMemo(() => {
-    const query = historySearch.trim().toUpperCase();
     const bounds = historyBounds;
     return courses
       .filter(
         (c) =>
           (!bounds || (c.date >= bounds[0] && c.date <= bounds[1])) &&
-          (historyType === "all" || c.type === historyType) &&
+          matchesHistoryType(c, historyType) &&
           matchesHistoryPayment(c, historyPayment) &&
-          (!query ||
-            c.hob?.toUpperCase().includes(query) ||
-            c.teoId?.toUpperCase().includes(query) ||
-            c.couponNumber?.toUpperCase().includes(query) ||
-            c.couponAccount?.toUpperCase().includes(query) ||
-            c.payment.toUpperCase().includes(query) ||
-            c.taxiCategory?.toUpperCase().includes(query)),
+          matchesHistorySearch(c, historySearch),
       )
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [
@@ -1132,7 +1175,7 @@ export default function Home() {
             ? "Coupon"
             : "Téo / carte",
       ...(row.type === "taxi" && !coupon ? { teoId: row.key } : {}),
-      ...(row.type === "taxi" ? { taxiCategory: "centre-ville" as const } : {}),
+      ...(row.type === "taxi" ? { taxiCategory: defaultTaxiCategory(settings) } : {}),
       ...(coupon
         ? {
             couponStatus: "deposited" as const,
@@ -1164,7 +1207,7 @@ export default function Home() {
       setTaxi({
         date: course.date,
         amount: formatMoneyInput(round2(course.amount + course.tip)),
-        tip: formatMoneyInput(course.tip),
+        tip: course.tipPending ? "" : formatMoneyInput(course.tip),
         payment: isCardPayment(course.payment) ? "Téo / carte" : course.payment,
         couponStatus: course.couponStatus || "pending",
         couponNumber: course.couponNumber || "",
@@ -1208,7 +1251,7 @@ export default function Home() {
       couponStatus: "pending",
       couponNumber: "",
       couponAccount: "",
-      category: "centre-ville",
+      category: defaultTaxiCategory(settings),
     });
     setAdapted({
       date: today(),
@@ -1301,40 +1344,9 @@ export default function Home() {
       setPayRows(rows);
       setSelectedStatementId(billId);
       setPayStatements((current) => [
-        statement,
+        retainBankReceipt(statement, current.find(item => item.id === billId)),
         ...current.filter((item) => item.id !== billId),
       ]);
-      setCourses((current) => {
-        const linked = new Set<number>();
-        return current.map((course) => {
-          const matched = rows
-            .map((item, index) => ({ item, index }))
-            .find(
-              ({ item, index }) =>
-                !linked.has(index) &&
-                payrollCourseMatchesRow(course, item) &&
-                payrollDifference(course, item) < 0.02,
-            );
-          if (!matched) return course;
-          const row = matched.item;
-          linked.add(matched.index);
-          return {
-            ...course,
-            ...(row.type === "taxi" && !isCouponPayRow(row)
-              ? { teoId: row.key }
-              : {}),
-            ...(isCouponPayRow(row)
-              ? {
-                  couponNumber: row.couponNumber || course.couponNumber || "",
-                  couponAccount: row.couponAccount || course.couponAccount || "",
-                }
-              : {}),
-            verified: true,
-            verifiedBillId: billId,
-            verifiedAt: new Date().toISOString(),
-          };
-        });
-      });
       flash(`Fiche ${billId} enregistrée avec tous ses détails.`);
       window.setTimeout(() => {
         document
@@ -1358,7 +1370,9 @@ export default function Home() {
     const tip = parseMoneyInput(taxi.tip);
     if (!total || total < 0)
       return flash("Entrez un montant total valide.");
-    if (taxi.tip === "")
+    const previous = courses.find(course => course.id === editingId);
+    const keepUnknownTip = !!previous?.tipPending && taxi.tip.trim() === "" && isCardPayment(taxi.payment);
+    if (taxi.tip === "" && !keepUnknownTip)
       return flash("Entrez le pourboire, même s’il est de 0,00 $.");
     if (tip > total)
       return flash("Le pourboire ne peut pas dépasser le montant total.");
@@ -1375,6 +1389,10 @@ export default function Home() {
     const updated: Course = {
       id: editingId || crypto.randomUUID(),
       type: "taxi",
+      ...(previous?.teoId ? { teoId: previous.teoId } : {}),
+      ...(previous?.sourceFingerprint ? { sourceFingerprint: previous.sourceFingerprint } : {}),
+      ...(previous?.sourceContentFingerprint ? { sourceContentFingerprint: previous.sourceContentFingerprint } : {}),
+      tipPending: keepUnknownTip,
       sevAdded: isCardPayment(taxi.payment) && taxiSev,
       ...(editingId ? { sevTaxExempt: courses.find(c=>c.id === editingId)?.sevTaxExempt ?? false, sevLevyCount: courses.find(c=>c.id === editingId)?.sevLevyCount ?? 1 } : {}),
       date: taxi.date,
@@ -1400,6 +1418,7 @@ export default function Home() {
     setTaxiSev(false);
     setTaxi({
       ...taxi,
+      category: defaultTaxiCategory(settings),
       amount: "",
       tip: "",
       couponNumber: "",
@@ -1455,7 +1474,7 @@ export default function Home() {
         date,
         total: total.toFixed(2).replace(".", ","),
         tip: "",
-        category: /AEROPORT|AIRPORT|\bYUL\b/.test(segment) ? "aeroport" : "centre-ville",
+        category: photoCategory(segment, defaultTaxiCategory(settings), settings.airportEnabled),
         selected: true,
       });
     });
@@ -1479,32 +1498,31 @@ export default function Home() {
             setPhotoProgress(Math.round((message.progress || 0) * 100));
         },
       });
+      await worker.setParameters({ tessedit_pageseg_mode: "6" as import("tesseract.js").PSM });
       const allDetected: PhotoCourse[] = [];
+      try {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         setPhotoMessage(`Lecture de la capture ${index + 1} sur ${selectedFiles.length}…`);
         const result = await worker.recognize(selectedFiles[index]);
-        allDetected.push(...parseTabletPhoto(result.data.text));
+        const digest = await crypto.subtle.digest("SHA-256", await selectedFiles[index].arrayBuffer());
+        const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+        const content = photoScreenContent(result.data.text);
+        const contentDigest = content ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(content)) : null;
+        const contentFingerprint = contentDigest ? Array.from(new Uint8Array(contentDigest), byte => byte.toString(16).padStart(2, "0")).join("") : "";
+        allDetected.push(...parseTabletPhoto(result.data.text).map((item, rowIndex) => ({ ...item, sourceFingerprint: `${fingerprint}:${rowIndex}`, ...(contentFingerprint ? { sourceContentFingerprint: `${contentFingerprint}:${item.date}:${rowIndex}` } : {}) })));
       }
-      await worker.terminate();
-      const unique = allDetected.filter((item, index, list) =>
-        list.findIndex((other) => other.date === item.date && other.total === item.total) === index,
-      );
+      } finally { await worker.terminate(); }
+      const unique = uniquePhotoCandidates(allDetected);
+      const duplicateCaptureRows = allDetected.length - unique.length;
       const checked = unique.map((item) => {
-        const total = parseMoneyInput(item.total);
-        const alreadyRecorded = courses.some(
-          (course) =>
-            course.type === "taxi" &&
-            isCardPayment(course.payment) &&
-            course.date === item.date &&
-            Math.abs(course.amount + course.tip - total) < 0.02,
-        );
-        return { ...item, alreadyRecorded, selected: !alreadyRecorded };
+        const duplicate = photoPreviewDuplicateStatus(item, unique, courses);
+        return { ...item, alreadyRecorded: duplicate === "exact", selected: duplicate === "new" };
       });
-      const existingCount = checked.filter((item) => item.alreadyRecorded).length;
+      const existingCount = checked.filter(item => photoPreviewDuplicateStatus(item, checked, courses) === "possible").length;
       setPhotoCourses(checked);
       setPhotoMessage(
         checked.length
-          ? `${checked.length} course${checked.length > 1 ? "s" : ""} Téo détectée${checked.length > 1 ? "s" : ""} (Carte, Compte ou No show payé)${existingCount ? ` · ${existingCount} déjà enregistrée${existingCount > 1 ? "s" : ""}` : ""}. Pourboire facultatif : laissez vide pour le récupérer depuis la fiche Téo.`
+          ? `${checked.length} course${checked.length > 1 ? "s" : ""} Téo détectée${checked.length > 1 ? "s" : ""} (Carte, Compte ou No show payé)${duplicateCaptureRows ? ` · ${duplicateCaptureRows} répétition(s) entre captures ignorée(s)` : ""}${existingCount ? ` · ${existingCount} à confirmer (même date et montant)` : ""}. Pourboire facultatif : laissez vide pour le récupérer depuis la fiche Téo.`
           : "Aucune course Carte, Compte ou No show payé reconnue dans cette capture. Vérifiez que les montants, dates et modes de paiement sont visibles.",
       );
     } catch (error) {
@@ -1519,17 +1537,8 @@ export default function Home() {
   const savePhotoCourses = () => {
     const selected = photoCourses.filter((item) => item.selected);
     if (!selected.length) { setPhotoMessage("Sélectionnez au moins une course."); return; }
-    if (
-      selected.some(
-        (item) =>
-          parseMoneyInput(item.tip) > parseMoneyInput(item.total),
-      )
-    ) {
-      setPhotoMessage(
-        "Le pourboire ne peut pas dépasser le montant total de la course.",
-      );
-      return;
-    }
+    const invalid = selected.map(photoCandidateError).find(Boolean);
+    if (invalid) { setPhotoMessage(invalid); flash(invalid); return; }
     const existingOrAdded = [...courses];
     let added = 0;
     let duplicates = 0;
@@ -1537,15 +1546,12 @@ export default function Home() {
       const total = parseMoneyInput(item.total);
       const tip = parseMoneyInput(item.tip);
       if (tip > total) return;
-      const duplicate = existingOrAdded.some((course) =>
-        course.type === "taxi" &&
-        isCardPayment(course.payment) &&
-        course.date === item.date &&
-        Math.abs(course.amount + course.tip - total) < 0.02,
-      );
+      const duplicate = photoDuplicateStatus(item, existingOrAdded) === "exact";
       if (duplicate) { duplicates += 1; return; }
       existingOrAdded.unshift({
-        id: `${Date.now()}-photo-${index}`,
+        id: crypto.randomUUID(),
+        ...(item.sourceFingerprint ? { sourceFingerprint: item.sourceFingerprint } : {}),
+        ...(item.sourceContentFingerprint ? { sourceContentFingerprint: item.sourceContentFingerprint } : {}),
         type: "taxi",
         date: item.date,
         amount: round2(total - tip),
@@ -1694,6 +1700,7 @@ export default function Home() {
           </div>
           <em>{statusLabel}</em>
         </header>
+
         <p className="pay-course-status">{statusText}</p>
         <div className="pay-course-amounts">
           <div>
@@ -1780,6 +1787,7 @@ export default function Home() {
     );
   };
   if (!authReady) return <main className="auth-page"><div className="auth-loader">Chargement…</div></main>;
+  if (user && !loaded) return <main className="auth-page"><div className="auth-loader"><p>{authMessage || "Chargement de vos données…"}</p>{authMessage && <button type="button" onClick={() => window.location.reload()}>Réessayer</button>}</div></main>;
   if (!user) return (
     <main className="auth-page">
       <section className="auth-card">
@@ -1840,6 +1848,20 @@ export default function Home() {
           <nav aria-label="Autres pages">{([{id:"statistics",label:"📊 Statistiques"},{id:"sev",label:"☑ SEV"},{id:"expenses",label:"🧾 Dépenses"},{id:"settings",label:"⚙ Réglages"}] as const).map(item=><button type="button" key={item.id} aria-current={mobilePage===item.id?"page":undefined} onClick={event=>{setMobilePage(item.id);setEditingId(null);if(item.id === "settings")setTab("settings");const menu=event.currentTarget.closest("details");if(menu)menu.open=false;window.scrollTo({top:0,behavior:"smooth"});}}>{item.label}</button>)}</nav>
         </details>
       </header>
+      {syncError && <section className="error-box" role="alert">
+        <p>{syncError}</p>
+        <button type="button" onClick={() => setSyncRetry(value => value + 1)}>Réessayer</button>
+        <button type="button" onClick={async () => {
+          if (!window.confirm("Charger la version sauvegardée dans votre compte et abandonner les modifications non enregistrées de cet appareil ?")) return;
+          try {
+            const snapshot = await getDoc(doc(db, "drivers", user.uid, "data", "app"));
+            if (!snapshot.exists()) return;
+            const remote = normalizeData(snapshot.data());
+            baseline.current = remote; applyData(remote); localStorage.removeItem(`teo-pending-${user.uid}`);
+            setSyncError(""); setSyncState("saved");
+          } catch { setSyncError("Impossible de charger la version sauvegardée. Vos changements sont conservés."); }
+        }}>Charger la version sauvegardée</button>
+      </section>}
       <div className={`shell page-${mobilePage} tab-${tab}`}>
         {mobilePage === "statistics" && <StatisticsPage courses={courses.map(course=>({...course,serviceFee:serviceFee(course,settings),airportFee:course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0}))} today={today()} dailyGoals={settings.dailyGoals} goalsEnabled={settings.dailyGoalEnabled} onSettings={()=>{setMobilePage("settings");setTab("settings");window.scrollTo({top:0,behavior:"smooth"});}} />}
         {mobilePage === "sev" && <SevPage expenses={expenses} companyFee={settings.companyFee} onFiscalChange={(id, patch) => setCourses(current => current.map(course => course.id === id ? {...course, ...patch} : course))} courses={courses.map((course) => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0, billedDuration: course.type === "adapte" ? course.billedDuration ?? Math.max(course.duration || 0, settings.adaptedMinimum) : course.billedDuration }))} onChange={setSevStatus} onEdit={(id) => { const course = courses.find((item) => item.id === id); if (course) editCourse(course); }} today={today()} week={currentTuesdayWeek()} />}
@@ -1946,7 +1968,7 @@ export default function Home() {
               className={tab === "paie" ? "active" : ""}
               onClick={() => {
                 setEditingId(null);
-                setTab("paie");
+                setTab("paie");setPayView("statements");
               }}
             >
               Vérifier paie
@@ -2006,11 +2028,14 @@ export default function Home() {
                           <article className={!item.selected ? "unselected" : ""} key={item.id}>
                             <div className="photo-row-title">
                               <label>
-                                <input type="checkbox" checked={item.selected} disabled={item.alreadyRecorded} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, selected: event.target.checked } : course))} />
-                                {item.alreadyRecorded ? "Déjà enregistrée" : "Course Carte / Compte"}
+                                <input type="checkbox" checked={item.selected} disabled={photoPreviewDuplicateStatus(item, photoCourses, courses) === "exact"} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, selected: event.target.checked } : course))} />
+                                {photoPreviewDuplicateStatus(item, photoCourses, courses) === "exact" ? "Cette capture a déjà été importée" : photoPreviewDuplicateStatus(item, photoCourses, courses) === "possible" ? "Course distincte à confirmer" : "Course Carte / Compte"}
                               </label>
                               <button type="button" aria-label="Supprimer cette course" onClick={() => setPhotoCourses((current) => current.filter((course) => course.id !== item.id))}>×</button>
                             </div>
+                            {photoPreviewDuplicateStatus(item, photoCourses, courses) === "possible" && <p>Une course du même montant existe ce jour-là dans l’historique ou une autre capture. Cochez si cette course est différente : elle sera conservée séparément.</p>}
+                            <details className="photo-details">
+                              <summary><span>{item.date.split("-").reverse().join("/")} · <b>{money(total)}</b><small>{item.category === "aeroport" ? "Aéroport" : "Centre-ville"} · {item.tip === "" ? "Pourboire inconnu" : `Pourboire ${money(tip)}`}</small></span><span className="photo-edit-label">Modifier</span></summary>
                             <div className="photo-fields">
                               <label>Date<input type="date" value={item.date} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, date: event.target.value } : course))} /></label>
                               <label>Total tablette, pourboire inclus<input inputMode="decimal" value={item.total} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, total: autoCommaMoneyInput(event.target.value) } : course))} /></label>
@@ -2018,10 +2043,14 @@ export default function Home() {
                               {settings.airportEnabled && <label>Type<select value={item.category} onChange={(event) => setPhotoCourses((current) => current.map((course) => course.id === item.id ? { ...course, category: event.target.value as PhotoCourse["category"] } : course))}><option value="centre-ville">Centre-ville</option><option value="aeroport">Aéroport</option></select></label>}
                             </div>
                             <small className="photo-calculation">{item.tip === "" ? <>Total conservé : <b>{money(total)}</b> · Pourboire à récupérer depuis la fiche Téo. Saisissez 0 uniquement si vous savez qu’il n’y en a pas.</> : <>Montant avant pourboire : <b>{money(Math.max(0, total - tip))}</b> · Pourboire : <b>{money(tip)}</b></>}</small>
+                            </details>
                           </article>
                         );
                       })}
-                      <button type="button" className="primary photo-save" onClick={savePhotoCourses}>Enregistrer les courses sélectionnées</button>
+                      <div className="photo-save-bar" role="region" aria-label="Enregistrer les courses importées">
+                        <span><b>{photoCourses.filter((item) => item.selected).length} / {photoCourses.length}</b><small>courses sélectionnées</small></span>
+                        <button type="button" className="primary photo-save" disabled={photoReading || !photoCourses.some((item) => item.selected)} onClick={savePhotoCourses}>Enregistrer</button>
+                      </div>
                     </div>
                   )}
                 </section>
@@ -2073,13 +2102,14 @@ export default function Home() {
                 </label>
                 <label>
                   Pourboire inclus dans le total
+                  {courses.find(course => course.id === editingId)?.tipPending && <small>Inconnu : laissez vide pour le récupérer sur la fiche Téo.</small>}
                   <div className="money-input">
                     <span>$</span>
                     <input
                       inputMode="decimal"
                       placeholder="0,00"
                       value={taxi.tip}
-                      required
+                      required={!courses.find(course => course.id === editingId)?.tipPending}
                       onChange={(e) =>
                         setTaxi({
                           ...taxi,
@@ -2100,7 +2130,7 @@ export default function Home() {
                 <div>
                   <span>Montant avant pourboire</span>
                   <b>
-                    {money(
+                    {taxi.tip === "" && courses.find(course => course.id === editingId)?.tipPending ? "À confirmer" : money(
                       Math.max(
                         0,
                         parseMoneyInput(taxi.amount) -
@@ -2111,7 +2141,7 @@ export default function Home() {
                 </div>
                 <div>
                   <span>Pourboire</span>
-                  <b>{money(parseMoneyInput(taxi.tip))}</b>
+                  <b>{taxi.tip === "" && courses.find(course => course.id === editingId)?.tipPending ? "À récupérer" : money(parseMoneyInput(taxi.tip))}</b>
                 </div>
               </div>
               <label>
@@ -2345,11 +2375,34 @@ export default function Home() {
             <div className="form-card reconcile">
               <div className="form-title pay-page-head">
                 <div>
-                  <h2>Vérifier paie</h2>
-                  <p>Comparez chaque fiche Téo avec vos courses.</p>
+                  <h2>{payView === "courses" ? "Suivi des courses" : "Vérifier paie"}</h2>
+                  <p>{payView === "courses" ? "Vos courses vérifiées et celles en attente." : "Comparez chaque fiche Téo avec vos courses."}</p>
                 </div>
                 <span className="type-icon">📄</span>
               </div>
+              <div hidden={payView !== "courses"}>
+                  <button type="button" className="pay-subpage-back" onClick={() => { setPayView("statements"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>← Retour à Vérifier paie</button>
+                  <PayrollOverview courses={courses.filter(isPayrollCourse).map(course => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0 }))} statements={payStatements} today={today()}
+                    onOpenStatement={(id) => {
+                      const statement = payStatements.find(item => item.id === id);
+                      if (!statement) return;
+                      setBillSearch(id); setBillStatus("all"); setBillPeriod("all");
+                      setSelectedStatementId(id); setPayRows(statement.rows); setPayFile(statement.fileName);
+                      setPayView("statements");
+                      window.setTimeout(() => document.getElementById("pay-statement-analysis")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+                    }}
+                    onBankReceipt={(id, receipt) => {
+                      if (receipt && !validBankReceipt(receipt, today())) return;
+                      setPayStatements(current => current.map(item => item.id === id ? { ...item, bankReceipt: receipt } : item));
+                      flash(receipt ? "Réception bancaire enregistrée." : "Confirmation bancaire annulée.");
+                    }}
+                    onEdit={(id) => { const course = courses.find(item => item.id === id); if (course) editCourse(course); }} />
+              </div>
+              <div hidden={payView !== "statements"}>
+                  <button type="button" className="pay-subpage-link" onClick={() => { setPayView("courses"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                    <span><b>Suivi des courses</b><small>Non vérifiées, vérifiées et montants totaux</small></span>
+                    <span aria-hidden="true">→</span>
+                  </button>
               <section className="pay-import-section">
                 <SharedPayroll key={user.uid} email={user.email || "Compte chauffeur"} disabled={!loaded || payLoading} onImport={importPayPdf} />
                 <div className="pay-section-title">
@@ -2530,6 +2583,7 @@ export default function Home() {
                     <span>3</span>
                     <div>
                       <h3>Analyse de {selectedPayStatement.id}</h3>
+                      <button type="button" className="pay-subpage-back" onClick={() => { setPayView("courses"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Retour au suivi des courses</button>
                       <p>
                         Courses du {" "}
                         {getPayrollCourseDates(selectedPayStatement.rows).join(
@@ -2913,6 +2967,7 @@ export default function Home() {
                   </div>
                 </>
               )}
+              </div>
             </div>
           ) : (
             <div className="form-card settings-card">
@@ -2967,6 +3022,7 @@ export default function Home() {
                       setSettings({
                         ...settings,
                         airportEnabled: e.target.checked,
+                        defaultTaxiCategory: e.target.checked ? settings.defaultTaxiCategory : "centre-ville",
                       })
                     }
                   />
@@ -2988,6 +3044,26 @@ export default function Home() {
                   />
                 </label>
                 </div>
+              </section>
+              <section className="settings-section">
+                <div className="settings-section-heading">
+                  <div>
+                    <h3>Type de course par défaut</h3>
+                    <p>Présélectionné à l’ouverture et après chaque ajout. Vous pouvez le changer pour chaque course.</p>
+                  </div>
+                </div>
+                <label className="default-taxi-category">
+                  Aéroport ou centre-ville
+                  <select value={defaultTaxiCategory(settings)} onChange={(event) => {
+                    const category = event.target.value as AppSettings["defaultTaxiCategory"];
+                    setSettings(current => ({ ...current, defaultTaxiCategory: category }));
+                    if (!editingId) setTaxi(current => ({ ...current, category }));
+                  }}>
+                    <option value="centre-ville">Centre-ville</option>
+                    <option value="aeroport" disabled={!settings.airportEnabled}>Aéroport</option>
+                  </select>
+                </label>
+                {!settings.airportEnabled && <p>Activez « Courses Aéroport » ci-dessus pour choisir Aéroport par défaut.</p>}
               </section>
               <section className="settings-section settings-goal-section">
                 <div className="settings-toggle-heading">
@@ -3625,7 +3701,7 @@ export default function Home() {
                 <label className="history-search">
                   <span>Rechercher</span>
                   <input
-                    placeholder="HOB, ID, coupon ou compte…"
+                    placeholder="Montant, HOB, ID, coupon ou compte…"
                     value={historySearch}
                     onChange={(e) => setHistorySearch(e.target.value)}
                   />
@@ -3639,7 +3715,9 @@ export default function Home() {
                     }
                   >
                     <option value="all">Toutes</option>
-                    <option value="taxi">Taxi</option>
+                    <option value="taxi">Taxi (les deux)</option>
+                    <option value="aeroport">Aéroport</option>
+                    <option value="centre-ville">Centre-ville</option>
                     <option value="adapte">Adapté</option>
                   </select>
                 </label>
@@ -3981,7 +4059,7 @@ export default function Home() {
       <nav className="mobile-nav" aria-label="Navigation principale">
         <button type="button" className={mobilePage === "history" ? "selected" : ""} onClick={() => {setMobilePage("history");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>▤<span>Historique</span></button>
         <button type="button" className={`nav-add ${mobilePage === "add" ? "selected" : ""}`} onClick={() => {setMobilePage("add");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}><b>＋</b><span>Ajouter</span></button>
-        <button type="button" className={mobilePage === "pay" ? "selected" : ""} onClick={() => {setMobilePage("pay");setEditingId(null);setTab("paie");window.scrollTo({top:0,behavior:"smooth"});}}>✓<span>Vérifier paie</span></button>
+        <button type="button" className={mobilePage === "pay" ? "selected" : ""} onClick={() => {setMobilePage("pay");setEditingId(null);setTab("paie");setPayView("statements");window.scrollTo({top:0,behavior:"smooth"});}}>✓<span>Vérifier paie</span></button>
       </nav>
     </main>
   );
