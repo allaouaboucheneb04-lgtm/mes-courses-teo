@@ -1,4 +1,5 @@
 "use client";
+import { matchPayrollRows } from "@/lib/payroll-matching";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
@@ -846,6 +847,8 @@ export default function Home() {
     filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
   );
   const comparisons = useMemo(() => {
+    const eligibleCourses = courses.filter(c => !c.verifiedBillId || c.verifiedBillId === selectedStatementId);
+    const allocation = matchPayrollRows(eligibleCourses, payRows, payrollCourseMatchesRow, payrollDifference);
     const used = new Set<string>();
     const payDates = new Set(getPayrollCourseDates(payRows));
     const rows: Array<
@@ -855,14 +858,10 @@ export default function Home() {
         appTip: number | null;
         courseId: string | null;
       }
-    > = payRows.map((row) => {
-      const candidates = courses.filter(
-        (c) => !used.has(c.id) && payrollCourseMatchesRow(c, row),
-      );
+    > = payRows.map((row, rowIndex) => {
+      const courseIndex = allocation.assigned.get(rowIndex);
+      const course = courseIndex === undefined ? undefined : eligibleCourses[courseIndex];
       const difference = (c: Course) => payrollDifference(c, row);
-      let course = candidates.find((c) => difference(c) < 0.02);
-      if (!course && candidates.length)
-        course = candidates.sort((a, b) => difference(a) - difference(b))[0];
       if (!course)
         return {
           ...row,
@@ -881,7 +880,7 @@ export default function Home() {
         courseId: course.id,
       };
     });
-    for (const c of courses) {
+    for (const c of eligibleCourses) {
       if (
         !payDates.has(c.date) ||
         used.has(c.id) ||
@@ -916,7 +915,7 @@ export default function Home() {
       });
     }
     return rows;
-  }, [payRows, courses]);
+  }, [payRows, courses, selectedStatementId]);
   const statementWarnings = useMemo(() => {
     const warnings: Record<string, number> = {};
     for (const statement of payStatements) {
@@ -925,31 +924,13 @@ export default function Home() {
         warnings[statement.id] = 0;
         continue;
       }
-      const usedRows = new Set<number>();
-      let missing = 0;
-      for (const course of courses.filter(
-        (item) => dates.has(item.date) && isPayrollCourse(item),
-      )) {
-        const candidate = statement.rows
-          .map((row, index) => ({ row, index }))
-          .filter(
-            ({ row, index }) =>
-              !usedRows.has(index) &&
-              payrollCourseMatchesRow(course, row),
-          )
-          .sort(
-            (a, b) =>
-              payrollDifference(course, a.row) -
-              payrollDifference(course, b.row),
-          )[0];
-        if (candidate) {
-          usedRows.add(candidate.index);
-          if (payrollDifference(course, candidate.row) >= 0.02) missing++;
-        } else missing++;
-      }
-      missing += statement.rows.filter(
-        (_row, index) => !usedRows.has(index),
-      ).length;
+      const eligible = courses.filter(course => dates.has(course.date) && isPayrollCourse(course) && (!course.verifiedBillId || course.verifiedBillId === statement.id));
+      const allocation = matchPayrollRows(eligible, statement.rows, payrollCourseMatchesRow, payrollDifference);
+      let missing = eligible.length - allocation.used.size;
+      statement.rows.forEach((row, index) => {
+        const courseIndex = allocation.assigned.get(index);
+        if (courseIndex === undefined || payrollDifference(eligible[courseIndex], row) >= 0.02) missing++;
+      });
       warnings[statement.id] = missing;
     }
     return warnings;
