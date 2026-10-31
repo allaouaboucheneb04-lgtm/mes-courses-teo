@@ -2887,3 +2887,91 @@ select:focus {
     width: 100%;
   }
 }
+
+/* Payroll overview: retain the existing palette and compact mobile layout. */
+.payroll-overview { border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 24px; background: #fff; }
+.payroll-overview h3, .payroll-overview h4 { margin: 0 0 10px; }
+.payroll-overview p { font-size: 14px; line-height: 1.5; }
+.payroll-overview-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.payroll-overview-totals > div { display: flex; flex-direction: column; gap: 6px; background: var(--paper); padding: 14px; border-radius: 12px; }
+.payroll-overview-totals > div:last-child { background: var(--mint); }
+.payroll-overview-totals strong { font-size: clamp(20px, 4.5vw, 28px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.payroll-overview-totals span { font-weight: 650; font-size: 14px; }
+.payroll-overview-totals small, .payroll-course-info small { font-size: 13px; }
+.payroll-status-switch { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+.payroll-status-switch button, .payroll-overview-list button, .payroll-show-more { min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+.payroll-status-switch button[aria-pressed="true"] { background: var(--teal); color: #fff; border-color: var(--teal); }
+.payroll-overview button:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+.payroll-overview-list { list-style: none; padding: 0; margin: 0; }
+.payroll-overview-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+.payroll-course-info { display: flex; flex-direction: column; gap: 5px; overflow-wrap: anywhere; }
+.payroll-course-info b { font-size: 14px; }
+.payroll-overview-list li > strong { font-size: 15px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.payroll-show-more { margin-top: 12px; width: 100%; }
+.default-taxi-category { display: flex; flex-direction: column; gap: 8px; }
+.default-taxi-category select { min-height: 44px; width: 100%; }
+@media (max-width: 480px) {
+  .payroll-overview { padding: 12px; }
+  .payroll-overview-totals { gap: 8px; }
+  .payroll-overview-totals > div { padding: 10px; }
+  .payroll-overview-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .payroll-overview-list li > button { grid-column: 1 / -1; }
+}
+
+.pay-subpage-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 60px; padding: 14px 16px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--mint); color: var(--ink); text-align: left; }
+.pay-subpage-link > span:first-child { display: flex; flex-direction: column; gap: 5px; }
+.pay-subpage-link small { font-size: 13px; line-height: 1.4; }
+.pay-subpage-link > span:last-child { font-size: 24px; color: var(--teal); }
+.pay-subpage-back { min-height: 44px; padding: 10px 14px; margin-bottom: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--teal); }
+.pay-subpage-link:focus-visible, .pay-subpage-back:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+
+.payroll-filter-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.payroll-filter-grid label, .payroll-aging label { display: flex; flex-direction: column; gap: 7px; font-size: 14px; font-weight: 600; min-width: 0; }
+.payroll-filter-grid input, .payroll-filter-grid select, .payroll-aging select { width: 100%; min-width: 0; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink); font-size: 16px; }
+.payroll-aging, .payroll-bank-section { padding: 12px; border: 1px solid var(--line); border-radius: 12px; margin: 14px 0; }
+.payroll-overview summary { min-height: 44px; cursor: pointer; padding: 10px 0; font-weight: 650; line-height: 1.5; }
+.payroll-overview details button { min-height: 44px; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--teal); padding: 10px 12px; }
+.payroll-overview summary:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.payroll-overview-list li { grid-template-columns: minmax(0, 1fr) auto; }
+.payroll-course-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.payroll-course-actions button { overflow-wrap: anywhere; max-width: 100%; }
+.payroll-age-badge { color: #854d0e; background: #fff5dc; padding: 4px 7px; border-radius: 6px; align-self: flex-start; }
+.bank-confirmation { border-top: 1px solid var(--line); padding: 8px 0; }
+.bank-confirmation summary span { display: block; font-size: 13px; font-weight: 400; }
+@media (max-width: 480px) { .payroll-filter-grid { grid-template-columns: 1fr; } }
+
+/* Keep native iPhone date inputs inside the screenshot review cards. */
+.photo-fields > label { min-width: 0; }
+.photo-fields input, .photo-fields select { width: 100%; max-width: 100%; box-sizing: border-box; font-size: 16px; min-height: 44px; }
+.photo-fields input[type="date"] { display: block; min-width: 0; -webkit-appearance: none; appearance: none; }
+.photo-fields input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+@media (max-width: 480px) { .photo-fields { grid-template-columns: minmax(0, 1fr); } }
+
+/* Compact import cards and an always-reachable save action. */
+.photo-details summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; cursor: pointer; list-style: none; color: var(--ink); font-size: 15px; }
+.photo-details summary::-webkit-details-marker { display: none; }
+.photo-details summary small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.photo-edit-label { color: var(--teal); font-size: 13px; font-weight: 700; }
+.photo-details[open] .photo-fields { margin-top: 12px; }
+.photo-details summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; border-radius: 6px; }
+.photo-row-title { margin-bottom: 2px; gap: 8px; }
+.photo-row-title label { min-height: 44px; font-size: 13px; }
+.photo-row-title input { flex-shrink: 0; }
+.photo-row-title button { min-width: 44px; min-height: 44px; }
+.photo-results article.unselected { opacity: 1; background: #f7f9f9; }
+.photo-results article.unselected .photo-row-title { color: var(--muted); }
+.photo-results article > p { margin: 5px 0 9px; font-size: 13px; line-height: 1.4; }
+.photo-save-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); box-sizing: border-box; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: #fff; border: 1px solid #b9d9d7; border-radius: 16px; box-shadow: 0 4px 28px #12202726; }
+.photo-save-bar > span { font-size: 16px; }
+.photo-save-bar small { display: block; color: var(--muted); font-size: 12px; }
+.photo-save-bar .photo-save { width: auto; min-height: 48px; margin: 0; padding: 12px 22px; }
+.photo-save:disabled { opacity: .5; cursor: default; }
+body:has(.photo-save-bar) .pwa-install { display: none; }
+body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
+@media (max-width: 760px) {
+  .photo-save-bar { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); width: calc(100% - 24px); padding: 10px 12px; }
+  .mobile-nav { padding-bottom: env(safe-area-inset-bottom, 0px); height: calc(70px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+  body:has(.photo-save-bar) .toast { bottom: calc(166px + env(safe-area-inset-bottom, 0px)); white-space: normal; max-width: calc(100% - 32px); }
+  .photo-import { padding: 10px; }
+  .photo-results article { padding: 10px; }
+}
