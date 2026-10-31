@@ -2975,3 +2975,69 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .photo-import { padding: 10px; }
   .photo-results article { padding: 10px; }
 }
+
+/* Focused statistics and settings layouts, with mobile-safe form controls. */
+.statistics-header { padding: 22px 24px; border-radius: 20px; }
+.statistics-header h2 { margin: 8px 0; font-size: clamp(26px, 5vw, 34px); letter-spacing: -.03em; }
+.statistics-header p { margin: 0; font-size: 14px; }
+.statistics-view-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 5px; gap: 5px; margin: 16px 0; border-radius: 14px; background: #e5eeee; }
+.statistics-view-switch button { min-height: 46px; border: 0; border-radius: 10px; color: #456267; background: transparent; font: inherit; font-weight: 700; }
+.statistics-view-switch button[aria-pressed="true"] { color: var(--teal-dark); background: #fff; box-shadow: 0 2px 6px #12363812; }
+.statistics-page .sev-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 12px 0; }
+.statistics-page .sev-tabs button { min-width: 0; min-height: 44px; padding: 10px 8px; }
+.statistics-page input, .statistics-page select, .settings-card input, .settings-card select { box-sizing: border-box; min-width: 0; max-width: 100%; font-size: 16px; }
+.statistics-page input[type="date"] { width: 100%; -webkit-appearance: none; appearance: none; }
+.statistics-page input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.statistics-page .comparison-summary { gap: 10px; margin: 14px 0; }
+.statistics-page .comparison-summary article { padding: 16px; gap: 8px; }
+.statistics-page .comparison-summary article:first-child { background: #eef8f6; }
+.statistics-page .comparison-summary article > span { font-size: 13px; font-weight: 700; }
+.statistics-page .comparison-summary strong { font-variant-numeric: tabular-nums; letter-spacing: -.03em; font-size: clamp(21px, 4.8vw, 32px); }
+.statistics-page .comparison-gap { gap: 5px 16px; padding: 14px 16px; }
+.statistics-page .statistics-card { margin-top: 16px; }
+.statistics-page .comparison-pair { padding: 12px 0; }
+.statistics-page .comparison-track { height: 9px; border-radius: 8px; }
+.statistics-page .comparison-bar strong { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.statistics-page .comparison-graph { max-height: 440px; scrollbar-width: thin; }
+.statistics-goal-card > p { line-height: 1.6; }
+.statistics-page .comparison-goals article { background: #f6faf9; padding: 16px; }
+.statistics-page .comparison-goals strong { font-size: 20px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.statistics-footnote { padding: 14px 16px; border-left: 3px solid #b9d9d7; }
+.settings-card .settings-page-head { align-items: flex-start; }
+.settings-card .settings-page-head h2 { font-size: 28px; letter-spacing: -.03em; }
+.settings-card .settings-page-head p { line-height: 1.5; max-width: 42ch; }
+.settings-card .settings-disclosure { padding: 0; margin: 10px 0 0; background: white; overflow: hidden; }
+.settings-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px; min-height: 74px; box-sizing: border-box; cursor: pointer; list-style: none; }
+.settings-disclosure > summary::-webkit-details-marker { display: none; }
+.settings-disclosure > summary b { display: block; font-size: 16px; color: var(--ink); }
+.settings-disclosure > summary small { display: block; margin-top: 5px; color: #64777c; line-height: 1.4; font-size: 13px; font-weight: 400; }
+.settings-chevron { font-size: 22px; color: var(--teal); flex-shrink: 0; }
+.settings-disclosure[open] > summary { background: #f0f8f7; border-bottom: 1px solid var(--line); }
+.settings-disclosure[open] .settings-chevron { transform: rotate(180deg); }
+.settings-panel-body { padding: 16px; }
+.settings-panel-body .settings-grid, .settings-panel-body .service-options, .settings-panel-body .account-settings { margin-top: 0; }
+.settings-panel-body .settings-toggle-heading { justify-content: flex-start; }
+.settings-panel-body .default-taxi-category { font-size: 14px; }
+.settings-panel-body .account-settings { flex-wrap: wrap; gap: 12px; }
+.settings-panel-body .account-settings div { min-width: 0; overflow-wrap: anywhere; }
+.settings-panel-body .account-settings button { min-height: 44px; margin-left: 0; }
+.settings-card .settings-saved { margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; }
+.settings-card .settings-save-copy small { line-height: 1.4; }
+.settings-card .reset-settings { min-height: 44px; margin-top: 20px; font-size: 13px; }
+.settings-disclosure > summary:focus-visible, .statistics-page button:focus-visible { outline: 3px solid var(--teal); outline-offset: -3px; }
+@media (max-width: 760px) {
+ .settings-panel-body .settings-grid, .settings-panel-body .service-options { grid-template-columns: minmax(0,1fr); }
+ .settings-panel-body .setting-field { grid-template-columns: minmax(0,1fr) 104px; padding: 12px 10px; gap: 10px; }
+ .settings-panel-body .setting-number input { width: 100%; }
+ .settings-panel-body .daily-goal-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .settings-disclosure > summary, .settings-panel-body { padding: 14px; }
+ .statistics-page .statistics-header { padding: 20px; }
+ .statistics-page .statistics-card { padding: 16px; }
+ .statistics-page .comparison-summary article { padding: 12px; }
+}
+@media (max-width: 480px) {
+ .statistics-filter-panel .statistics-filter-fields { grid-template-columns: minmax(0,1fr); }
+ .statistics-page .comparison-goals { grid-template-columns: minmax(0,1fr); }
+ .statistics-page .comparison-summary small { font-size: 12px; }
+ .settings-panel-body .setting-row { flex-wrap: wrap; gap: 8px; }
+}

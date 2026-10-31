@@ -2973,19 +2973,30 @@ export default function Home() {
             <div className="form-card settings-card">
               <div className="form-title settings-page-head">
                 <div>
-                  <h2>Réglages</h2>
-                  <p>Personnalisez les services, objectifs et frais.</p>
+                  <h2>Paramètres</h2>
+                  <p>Vos préférences, à votre rythme. Ouvrez une rubrique pour la modifier.</p>
                 </div>
                 <span className="type-icon">⚙</span>
               </div>
-              <section className="settings-section settings-account-section">
-                <div className="settings-section-heading">
-                  <span>👤</span>
-                  <div>
-                    <h3>Mon compte</h3>
-                    <p>Vos données sont enregistrées dans ce compte.</p>
-                  </div>
+              <div className={`settings-saved ${syncState}`}>
+                <span>{syncState === "error" ? "!" : "✓"}</span>
+                <div className="settings-save-copy">
+                  <b>
+                    {syncState === "saving"
+                      ? "Enregistrement en cours…"
+                      : syncState === "error"
+                        ? "Erreur d’enregistrement"
+                        : "Réglages enregistrés"}
+                  </b>
+                  <small>
+                    {syncState === "error"
+                      ? "Vérifiez votre connexion puis réessayez."
+                      : "Les changements sont sauvegardés automatiquement."}
+                  </small>
                 </div>
+              </div>
+              <details className="settings-section settings-account-section settings-disclosure"><summary><span><b>Mon compte</b><small>Vos données sont enregistrées dans ce compte.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
+                
                 <div className="account-settings">
                   <span className="settings-avatar">
                     {(user.displayName || user.email || "C")
@@ -3000,15 +3011,9 @@ export default function Home() {
                     Se déconnecter
                   </button>
                 </div>
-              </section>
-              <section className="settings-section">
-                <div className="settings-section-heading">
-                  <span>🚕</span>
-                  <div>
-                    <h3>Services utilisés</h3>
-                    <p>Affichez uniquement les services que vous conduisez.</p>
-                  </div>
-                </div>
+              </div></details>
+              <details className="settings-section settings-disclosure"><summary><span><b>Services utilisés</b><small>Affichez uniquement les services que vous conduisez.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
+                
                 <div className="service-options">
                 <label>
                   <span>
@@ -3044,14 +3049,9 @@ export default function Home() {
                   />
                 </label>
                 </div>
-              </section>
-              <section className="settings-section">
-                <div className="settings-section-heading">
-                  <div>
-                    <h3>Type de course par défaut</h3>
-                    <p>Présélectionné à l’ouverture et après chaque ajout. Vous pouvez le changer pour chaque course.</p>
-                  </div>
-                </div>
+              </div></details>
+              <details className="settings-section settings-disclosure"><summary><span><b>Type de course par défaut</b><small>Présélectionné à l’ouverture et après chaque ajout. Vous pouvez le changer pour chaque course.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
+                
                 <label className="default-taxi-category">
                   Aéroport ou centre-ville
                   <select value={defaultTaxiCategory(settings)} onChange={(event) => {
@@ -3064,16 +3064,10 @@ export default function Home() {
                   </select>
                 </label>
                 {!settings.airportEnabled && <p>Activez « Courses Aéroport » ci-dessus pour choisir Aéroport par défaut.</p>}
-              </section>
-              <section className="settings-section settings-goal-section">
+              </div></details>
+              <details className="settings-section settings-goal-section settings-disclosure"><summary><span><b>Objectif quotidien</b><small>Suivez votre progression dans le résumé.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
                 <div className="settings-toggle-heading">
-                  <div className="settings-section-heading">
-                    <span>🎯</span>
-                    <div>
-                      <h3>Objectif quotidien</h3>
-                      <p>Suivez votre progression dans le résumé.</p>
-                    </div>
-                  </div>
+                  
                   <label className="settings-master-switch">
                     <input
                       type="checkbox"
@@ -3147,15 +3141,9 @@ export default function Home() {
                   )}
                 </div>
               )}
-              </section>
-              <section className="settings-section">
-                <div className="settings-section-heading">
-                  <span>%</span>
-                  <div>
-                    <h3>Frais taxi</h3>
-                    <p>Taux déduits automatiquement de vos revenus.</p>
-                  </div>
-                </div>
+              </div></details>
+              <details className="settings-section settings-disclosure"><summary><span><b>Frais taxi</b><small>Taux déduits automatiquement de vos revenus.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
+                
                 <div className="settings-grid">
                   <label className="setting-field">
                     <span>
@@ -3220,16 +3208,10 @@ export default function Home() {
                     </label>
                   )}
                 </div>
-              </section>
+              </div></details>
               {settings.adaptedEnabled && (
-                <section className="settings-section">
-                  <div className="settings-section-heading">
-                    <span>♿</span>
-                    <div>
-                      <h3>Transport adapté</h3>
-                      <p>Tarif horaire, minimum payé et frais Téo.</p>
-                    </div>
-                  </div>
+                <details className="settings-section settings-disclosure"><summary><span><b>Transport adapté</b><small>Tarif horaire, minimum payé et frais Téo.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
+                  
                   <div className="settings-grid adapted-settings-grid">
                     <label className="setting-field">
                       <span>
@@ -3277,16 +3259,10 @@ export default function Home() {
                       </div>
                     </label>
                   </div>
-                </section>
+                </div></details>
               )}
-              <section className="settings-section settings-calendar-section">
-                <div className="settings-section-heading">
-                  <span>📅</span>
-                  <div>
-                    <h3>Calendrier des calculs</h3>
-                    <p>Jours utilisés automatiquement par l’application.</p>
-                  </div>
-                </div>
+              <details className="settings-section settings-calendar-section settings-disclosure"><summary><span><b>Calendrier des calculs</b><small>Jours utilisés automatiquement par l’application.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
+                
                 <div className="settings-schedule">
                   <div className="setting-row">
                     <div>
@@ -3312,24 +3288,7 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-              </section>
-              <div className={`settings-saved ${syncState}`}>
-                <span>{syncState === "error" ? "!" : "✓"}</span>
-                <div className="settings-save-copy">
-                  <b>
-                    {syncState === "saving"
-                      ? "Enregistrement en cours…"
-                      : syncState === "error"
-                        ? "Erreur d’enregistrement"
-                        : "Réglages enregistrés"}
-                  </b>
-                  <small>
-                    {syncState === "error"
-                      ? "Vérifiez votre connexion puis réessayez."
-                      : "Les changements sont sauvegardés automatiquement."}
-                  </small>
-                </div>
-              </div>
+              </div></details>
               <button
                 type="button"
                 className="reset-settings"

@@ -1,4 +1,4 @@
-const CACHE = "mes-courses-teo-v16-yul-recognition";
+const CACHE = "mes-courses-teo-v17-stats-settings";
 const SHARE_CACHE = "mes-courses-teo-shared-pdf-v1";
 const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const HOME = `${BASE}/`;
