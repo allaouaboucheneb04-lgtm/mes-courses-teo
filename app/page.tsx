@@ -486,11 +486,17 @@ export default function Home() {
     couponAccount: "",
     category: "centre-ville" as "centre-ville" | "aeroport",
   });
-  const [adapted, setAdapted] = useState(() => ({
-    ...defaultAdaptedTimes(),
+  const [adapted, setAdapted] = useState({
+    date: "",
     hob: "",
+    start: "",
+    end: "",
     perception: "",
-  }));
+  });
+  useEffect(() => {
+    // Calculate live local defaults after hydration, not during server rendering.
+    setAdapted((current) => ({ ...current, ...defaultAdaptedTimes() }));
+  }, []);
   const [historyType, setHistoryType] = useState<HistoryTypeFilter>(
       "all",
     ),
