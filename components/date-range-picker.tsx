@@ -45,6 +45,8 @@ export default function DateRangePicker({ open, start, end, onClose, onApply }: 
   const [draftEnd, setDraftEnd] = useState<string | null>(end);
   const listRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const months = useMemo(() => {
     const anchor = /^\d{4}-\d{2}-\d{2}$/.test(start) ? parseDate(start) : new Date();
@@ -62,7 +64,7 @@ export default function DateRangePicker({ open, start, end, onClose, onApply }: 
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     };
     window.addEventListener("keydown", onKey);
     const frame = requestAnimationFrame(() => {
@@ -78,7 +80,7 @@ export default function DateRangePicker({ open, start, end, onClose, onApply }: 
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, start, end, onClose]);
+  }, [open, start, end]);
 
   if (!open || typeof document === "undefined") return null;
 
