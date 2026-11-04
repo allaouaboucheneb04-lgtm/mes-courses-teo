@@ -788,12 +788,27 @@ export default function Home() {
       ),
     [filteredHistory, settings.companyFee],
   );
-  const unverifiedHistoryCount = useMemo(
+  const unverifiedHistoryTotals = useMemo(
     () =>
-      filteredHistory.filter(
-        (course) => !course.verified && isPayrollCourse(course),
-      ).length,
-    [filteredHistory],
+      filteredHistory
+        .filter((course) => !course.verified && isPayrollCourse(course))
+        .reduce(
+          (totals, course) => {
+            const gross = round2(course.amount + course.tip);
+            const fees = serviceFee(course, settings) + (course.perception || 0);
+            const airportFee =
+              course.type === "taxi" && course.taxiCategory === "aeroport"
+                ? settings.airportFee
+                : 0;
+            return {
+              count: totals.count + 1,
+              gross: round2(totals.gross + gross),
+              net: round2(totals.net + gross - fees - airportFee),
+            };
+          },
+          { count: 0, gross: 0, net: 0 },
+        ),
+    [filteredHistory, settings],
   );
   const selectedDayCourses = useMemo(
     () => courses.filter((c) => c.date === selectedDate),
@@ -3769,16 +3784,29 @@ export default function Home() {
                 </div>
                 <div
                   className={`verification-count ${
-                    unverifiedHistoryCount === 0 ? "complete" : "pending"
+                    unverifiedHistoryTotals.count === 0 ? "complete" : "pending"
                   }`}
                 >
-                  <span>{unverifiedHistoryCount === 0 ? "✓" : "!"}</span>
+                  <span>{unverifiedHistoryTotals.count === 0 ? "✓" : "!"}</span>
                   <div>
-                    <b>{unverifiedHistoryCount}</b>
+                    <b>{unverifiedHistoryTotals.count}</b>
                     <small>
-                      course{unverifiedHistoryCount !== 1 ? "s" : ""} non
-                      vérifiée{unverifiedHistoryCount !== 1 ? "s" : ""} dans
+                      course{unverifiedHistoryTotals.count !== 1 ? "s" : ""} non
+                      vérifiée{unverifiedHistoryTotals.count !== 1 ? "s" : ""} dans
                       cette période
+                    </small>
+                    <div className="verification-amounts">
+                      <div>
+                        <span>Brut non vérifié</span>
+                        <strong>{money(unverifiedHistoryTotals.gross)}</strong>
+                      </div>
+                      <div>
+                        <span>Net non vérifié</span>
+                        <strong>{money(unverifiedHistoryTotals.net)}</strong>
+                      </div>
+                    </div>
+                    <small className="verification-net-note">
+                      Net après frais par course et redevance aéroport, hors frais fixes et dépenses communes.
                     </small>
                   </div>
                 </div>
