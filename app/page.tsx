@@ -221,6 +221,40 @@ const today = () => {
 
   return `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
 };
+const torontoDateTime = (value: Date) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Toronto",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(value)
+      .map(({ type, value: part }) => [type, part]),
+  );
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour}:${parts.minute}`,
+  };
+};
+const defaultAdaptedTimes = () => {
+  const now = new Date();
+  const twoHoursEarlier = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  return {
+    date: torontoDateTime(twoHoursEarlier).date,
+    start: torontoDateTime(twoHoursEarlier).time,
+    end: torontoDateTime(now).time,
+  };
+};
+const addHoursToTime = (time: string, hours: number) => {
+  if (!/^\d{2}:\d{2}$/.test(time)) return "";
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour > 23 || minute > 59) return "";
+  return `${String((hour + hours + 24) % 24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+};
 const courseEmoji = (course: Course) => {
   if (course.type === "adapte") return "♿";
   if (isCardPayment(course.payment)) return "💳";
@@ -452,13 +486,11 @@ export default function Home() {
     couponAccount: "",
     category: "centre-ville" as "centre-ville" | "aeroport",
   });
-  const [adapted, setAdapted] = useState({
-    date: today(),
+  const [adapted, setAdapted] = useState(() => ({
+    ...defaultAdaptedTimes(),
     hob: "",
-    start: "09:00",
-    end: "10:00",
     perception: "",
-  });
+  }));
   const [historyType, setHistoryType] = useState<HistoryTypeFilter>(
       "all",
     ),
@@ -1250,10 +1282,8 @@ export default function Home() {
       category: defaultTaxiCategory(settings),
     });
     setAdapted({
-      date: today(),
+      ...defaultAdaptedTimes(),
       hob: "",
-      start: "09:00",
-      end: "10:00",
       perception: "",
     });
   }
@@ -1598,7 +1628,7 @@ export default function Home() {
     );
     const wasEditing = Boolean(editingId);
     setEditingId(null);
-    setAdapted({ ...adapted, hob: "", perception: "" });
+    setAdapted({ ...defaultAdaptedTimes(), hob: "", perception: "" });
     setAdaptedSev(false);
     flash(
       wasEditing
@@ -1953,6 +1983,13 @@ export default function Home() {
               <button
                 className={tab === "adapte" ? "active" : ""}
                 onClick={() => {
+                  if (tab !== "adapte" || editingId) {
+                    setAdapted({
+                      ...defaultAdaptedTimes(),
+                      hob: "",
+                      perception: "",
+                    });
+                  }
                   setEditingId(null);
                   setTab("adapte");
                 }}
@@ -2306,9 +2343,14 @@ export default function Home() {
                   <input
                     type="time"
                     value={adapted.start}
-                    onChange={(e) =>
-                      setAdapted({ ...adapted, start: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const start = e.target.value;
+                      setAdapted((current) => ({
+                        ...current,
+                        start,
+                        end: addHoursToTime(start, 2),
+                      }));
+                    }}
                     required
                   />
                 </label>
