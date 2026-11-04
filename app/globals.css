@@ -3077,3 +3077,172 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
  .statistics-page .comparison-summary small { font-size: 12px; }
  .settings-panel-body .setting-row { flex-wrap: wrap; gap: 8px; }
 }
+
+
+/* Unified scrolling date-range calendar: history, payroll, expenses and SEV */
+.date-range-field {
+  display: grid;
+  grid-column: 1 / -1;
+  min-width: 0;
+  gap: 7px;
+}
+.date-range-field-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+.date-range-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 9px 12px;
+  background: #fff;
+  border: 1px solid #c9d6d8;
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  text-align: left;
+}
+.date-range-trigger > span:nth-child(2) { flex: 1; min-width: 0; }
+.date-range-trigger-icon { color: var(--teal); font-size: 20px; line-height: 1; }
+.date-range-trigger-chevron { color: var(--muted); font-size: 22px; line-height: 1; }
+.date-range-trigger:focus-visible, .date-range-day:focus-visible,
+.date-range-close:focus-visible, .date-range-apply:focus-visible {
+  outline: 3px solid #009c87;
+  outline-offset: 3px;
+}
+.date-range-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  isolation: isolate;
+}
+.date-range-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .78);
+}
+.date-range-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  height: 73dvh;
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 18px);
+  overflow: hidden;
+  border-radius: 23px 23px 0 0;
+  background: #fff;
+  color: #101c2f;
+  box-shadow: 0 -12px 36px #0003;
+}
+.date-range-sheet-head {
+  flex: 0 0 auto;
+  padding: 14px 22px 19px;
+  background: #00bf77;
+  color: #fff;
+}
+.date-range-sheet-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+}
+.date-range-sheet-actions button { border: none; background: transparent; color: #fff; }
+.date-range-sheet-actions .date-range-close {
+  padding: 0 7px 0 0;
+  font-size: 35px;
+  line-height: 1;
+}
+.date-range-sheet-actions .date-range-apply {
+  padding: 5px 0 5px 15px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.date-range-apply:disabled { opacity: .42; cursor: not-allowed; }
+.date-range-sheet-head p {
+  margin: 7px 0 5px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+.date-range-sheet-head strong {
+  display: block;
+  min-height: 30px;
+  font-size: clamp(19px, 5vw, 25px);
+  line-height: 1.25;
+  font-weight: 800;
+}
+.date-range-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  flex: 0 0 auto;
+  padding: 10px 13px;
+  border-bottom: 1px solid #ced6dc;
+  background: #fff;
+  color: #182235;
+  text-align: center;
+  font-weight: 700;
+}
+.date-range-month-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 13px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.date-range-month { padding: 18px 0 8px; }
+.date-range-month h3 {
+  margin: 10px 9px 18px;
+  font-size: 17px;
+  font-weight: 800;
+  text-transform: lowercase;
+}
+.date-range-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  row-gap: 3px;
+}
+.date-range-day, .date-range-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  border-radius: 0;
+  color: #111b2d;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 550;
+}
+.date-range-day.is-between { background: #ddf7eb; }
+.date-range-day.is-selected {
+  border-radius: 999px;
+  background: #00bf77;
+  color: #fff;
+  font-weight: 850;
+}
+.date-range-bottom-note {
+  flex: 0 0 auto;
+  padding: 7px 13px calc(9px + env(safe-area-inset-bottom, 0px));
+  background: white;
+  box-shadow: 0 -1px 0 #eef1f2;
+  color: #61737d;
+  text-align: center;
+  font-size: 12px;
+}
+@media (min-width: 720px) {
+  .date-range-overlay { align-items: center; }
+  .date-range-sheet { height: min(750px, 85dvh); border-radius: 22px; }
+}
