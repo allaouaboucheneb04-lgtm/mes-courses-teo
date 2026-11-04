@@ -23,6 +23,7 @@ import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
 import SevPage, { SevCheckbox } from "@/components/sev-page";
 import StatisticsPage from "@/components/statistics-page";
+import DateRangePicker, { DateRangeField } from "@/components/date-range-picker";
 import SharedPayroll from "@/components/shared-payroll";
 import PayrollOverview from "@/components/payroll-overview";
 import { mergeDriverData, sameData, SyncConflict } from "@/lib/sync-merge";
@@ -449,6 +450,7 @@ export default function Home() {
     ),
     [billCustomEnd, setBillCustomEnd] = useState(today());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [dateRangeTarget, setDateRangeTarget] = useState<"history" | "bill" | "expenses" | null>(null);
   const [taxiSev, setTaxiSev] = useState(false);
   const [adaptedSev, setAdaptedSev] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -2523,8 +2525,10 @@ export default function Home() {
                       <select
                         value={billPeriod}
                         onChange={(event) => {
-                          setBillPeriod(event.target.value as typeof billPeriod);
+                          const next = event.target.value as typeof billPeriod;
+                          setBillPeriod(next);
                           closeSelectedPayStatement();
+                          if (next === "custom") setDateRangeTarget("bill");
                         }}
                       >
                         <option value="all">Toutes les dates</option>
@@ -2536,30 +2540,8 @@ export default function Home() {
                   </div>
                   {billPeriod === "custom" && (
                     <div className="custom-period bill-custom-period">
-                      <label>
-                        Du
-                        <input
-                          type="date"
-                          value={billCustomStart}
-                          max={billCustomEnd}
-                          onChange={(event) => {
-                            setBillCustomStart(event.target.value);
-                            closeSelectedPayStatement();
-                          }}
-                        />
-                      </label>
-                      <label>
-                        Au
-                        <input
-                          type="date"
-                          value={billCustomEnd}
-                          min={billCustomStart}
-                          onChange={(event) => {
-                            setBillCustomEnd(event.target.value);
-                            closeSelectedPayStatement();
-                          }}
-                        />
-                      </label>
+                      <DateRangeField start={billCustomStart} end={billCustomEnd}
+                        onClick={() => setDateRangeTarget("bill")} />
                     </div>
                   )}
                   <p className="bill-filter-count">
@@ -3444,7 +3426,11 @@ export default function Home() {
                 <select
                   aria-label="Période des dépenses"
                   value={expensePeriod}
-                  onChange={(event) => setExpensePeriod(event.target.value as typeof expensePeriod)}
+                  onChange={(event) => {
+                    const next = event.target.value as typeof expensePeriod;
+                    setExpensePeriod(next);
+                    if (next === "custom") setDateRangeTarget("expenses");
+                  }}
                 >
                   <option value="week">Semaine sélectionnée</option>
                   <option value="month">Mois sélectionné</option>
@@ -3454,10 +3440,10 @@ export default function Home() {
               </div>
               <div className="expense-filters">
                 {(expensePeriod === "week" || expensePeriod === "month") && <label>Date de référence<input type="date" value={expenseAnchor} onChange={(event) => event.target.value && setExpenseAnchor(event.target.value)} /></label>}
-                {expensePeriod === "custom" && <>
-                  <label>Du<input type="date" value={expenseStart} onChange={(event) => setExpenseStart(event.target.value)} /></label>
-                  <label>Au<input type="date" min={expenseStart} value={expenseEnd} onChange={(event) => setExpenseEnd(event.target.value)} /></label>
-                </>}
+                {expensePeriod === "custom" && (
+                  <DateRangeField start={expenseStart} end={expenseEnd}
+                    onClick={() => setDateRangeTarget("expenses")} />
+                )}
                 <label>Catégorie<select value={expenseCategory} onChange={(event) => setExpenseCategory(event.target.value)}><option value="all">Toutes les catégories</option>{EXPENSE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></label>
                 <label>Paiement<select value={expensePayment} onChange={(event) => setExpensePayment(event.target.value)}><option value="all">Tous les paiements</option><option>Carte</option><option>Espèces</option><option>Compte bancaire</option></select></label>
               </div>
@@ -3746,9 +3732,11 @@ export default function Home() {
                   <span>Période</span>
                   <select
                     value={historyPeriod}
-                    onChange={(e) =>
-                      setHistoryPeriod(e.target.value as typeof historyPeriod)
-                    }
+                    onChange={(e) => {
+                      const next = e.target.value as typeof historyPeriod;
+                      setHistoryPeriod(next);
+                      if (next === "custom") setDateRangeTarget("history");
+                    }}
                   >
                     <option value="week">Cette semaine</option>
                     <option value="last-week">Semaine passée</option>
@@ -3761,24 +3749,8 @@ export default function Home() {
               </div>
               {historyPeriod === "custom" && (
                 <div className="custom-period">
-                  <label>
-                    Du
-                    <input
-                      type="date"
-                      value={customStart}
-                      max={customEnd}
-                      onChange={(e) => setCustomStart(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Au
-                    <input
-                      type="date"
-                      value={customEnd}
-                      min={customStart}
-                      onChange={(e) => setCustomEnd(e.target.value)}
-                    />
-                  </label>
+                  <DateRangeField start={customStart} end={customEnd}
+                    onClick={() => setDateRangeTarget("history")} />
                 </div>
               )}
               <section className="history-overview">
@@ -4071,6 +4043,26 @@ export default function Home() {
           )}
         </section>
       </div>
+      <DateRangePicker
+        open={dateRangeTarget !== null}
+        start={dateRangeTarget === "history" ? customStart : dateRangeTarget === "bill" ? billCustomStart : expenseStart}
+        end={dateRangeTarget === "history" ? customEnd : dateRangeTarget === "bill" ? billCustomEnd : expenseEnd}
+        onClose={() => setDateRangeTarget(null)}
+        onApply={(start, end) => {
+          if (dateRangeTarget === "history") {
+            setCustomStart(start);
+            setCustomEnd(end);
+          } else if (dateRangeTarget === "bill") {
+            setBillCustomStart(start);
+            setBillCustomEnd(end);
+            closeSelectedPayStatement();
+          } else if (dateRangeTarget === "expenses") {
+            setExpenseStart(start);
+            setExpenseEnd(end);
+          }
+          setDateRangeTarget(null);
+        }}
+      />
       {notice && <div className="toast">{notice}</div>}
       <nav className="mobile-nav" aria-label="Navigation principale">
         <button type="button" className={mobilePage === "history" ? "selected" : ""} onClick={() => {setMobilePage("history");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>▤<span>Historique</span></button>
