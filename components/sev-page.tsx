@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import DateRangePicker, { DateRangeField } from "@/components/date-range-picker";
 import { isCardPayment } from "@/lib/teo-payment";
 import { feePeriods, sevBreakdown, sevTotals } from "@/lib/sev";
 
@@ -28,6 +29,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
   const [search, setSearch] = useState("");
   const [start, setStart] = useState(week.start);
   const [end, setEnd] = useState(week.end);
+  const [rangeOpen, setRangeOpen] = useState(false);
   const lastStart = new Date(`${week.start}T12:00:00`); lastStart.setDate(lastStart.getDate() - 7);
   const lastEnd = new Date(`${week.end}T12:00:00`); lastEnd.setDate(lastEnd.getDate() - 7);
   const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
@@ -58,12 +60,21 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
     </> : <>
     <div className="sev-stats"><div><b>{rows.length - added}</b><span>À ajouter</span></div><div><b>{added}</b><span>Ajoutées</span></div><div><b>{rows.length}</b><span>Total de la sélection</span></div></div>
     <div className="sev-filters">
-      <label>Période<select value={period} onChange={(e)=>setPeriod(e.target.value)}><option value="week">Cette semaine</option><option value="previous">Semaine précédente</option><option value="month">Ce mois-ci</option><option value="custom">Dates personnalisées</option><option value="all">Toutes les dates</option></select></label>
+      <label>Période<select value={period} onChange={(e)=>{ const next = e.target.value; setPeriod(next); if (next === "custom") setRangeOpen(true); }}><option value="week">Cette semaine</option><option value="previous">Semaine précédente</option><option value="month">Ce mois-ci</option><option value="custom">Dates personnalisées</option><option value="all">Toutes les dates</option></select></label>
       {page === "courses" && <label>Statut<select value={status} onChange={(e)=>setStatus(e.target.value)}><option value="pending">À ajouter au SEV</option><option value="added">Ajoutées au SEV</option><option value="all">Tous les statuts</option></select></label>}
       <label>Type<select value={type} onChange={(e)=>setType(e.target.value)}><option value="all">Tous les types</option><option value="taxi">Carte / Compte</option><option value="adapte">Transport adapté</option></select></label>
       <label>Rechercher<input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Numéro HOB ou identifiant Téo" /></label>
-      {period === "custom" && <><label>Du<input type="date" value={start} onChange={(e)=>setStart(e.target.value)} /></label><label>Au<input type="date" min={start} value={end} onChange={(e)=>setEnd(e.target.value)} /></label></>}
+      {period === "custom" && (
+        <DateRangeField start={start} end={end} onClick={() => setRangeOpen(true)} />
+      )}
     </div>
+    <DateRangePicker open={rangeOpen} start={start} end={end}
+      onClose={() => setRangeOpen(false)}
+      onApply={(from, to) => {
+        setStart(from);
+        setEnd(to);
+        setRangeOpen(false);
+      }} />
     {period === "week" && <p>Du {week.start} au {week.end} · semaine du mardi au lundi</p>}
     {period === "custom" && start > end && <p role="alert">La date de fin doit être après la date de début.</p>}
     {page === "taxes" ? <>
