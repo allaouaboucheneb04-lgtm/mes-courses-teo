@@ -2498,9 +2498,45 @@ select:focus {
   border-radius: 50%;
   font-weight: 900;
 }
+.verification-count > div {
+  flex: 1;
+  min-width: 0;
+}
 .verification-count b,
 .verification-count small {
   display: block;
+}
+.verification-amounts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.verification-amounts > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 65%);
+}
+.verification-amounts span,
+.verification-amounts strong {
+  display: block;
+}
+.verification-amounts span {
+  font-size: 12px;
+  line-height: 1.35;
+}
+.verification-amounts strong {
+  margin-top: 3px;
+  font-size: 16px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.verification-count .verification-net-note {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.85;
 }
 .verification-count b {
   font-size: 18px;
