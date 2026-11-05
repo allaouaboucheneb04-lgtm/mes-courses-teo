@@ -3873,18 +3873,230 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .inspection-form-actions button { flex: 1 1 100%; }
   .inspection-history-head button { min-height: 44px; }
 }
-@media print {
-  @page { size: A4; margin: 15mm; }
-  body { background: white !important; }
-  body * { visibility: hidden !important; }
-  .inspection-print, .inspection-print * { visibility: visible !important; }
-  .inspection-print {
-    display: block !important; position: absolute;
-    inset: 0 auto auto 0; width: 100%; background: white !important;
-    padding: 0; font-size: 11pt; color: #111;
-  }
-  .inspection-print h1 { font-size: 18pt; margin-bottom: 16px; }
-  .inspection-print h2 { font-size: 13pt; margin: 20px 0 8px; }
-  .inspection-print p { line-height: 1.5; margin: 7px 0; }
-  .inspection-print small { display: block; margin-top: 20px; }
+
+/* Aperçu de reçu thermique pour l'imprimante Bisofice (58 mm de papier / 48 mm utiles). */
+.inspection-receipt-print-area { display: none; }
+.inspection-receipt-modal {
+  position: fixed;
+  z-index: 100000;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  isolation: isolate;
 }
+.inspection-receipt-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 23, 28, .7);
+}
+.inspection-receipt-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 600px;
+  max-height: min(94dvh, 950px);
+  overflow: hidden;
+  border-radius: 22px 22px 0 0;
+  background: #f5f8f8;
+  box-shadow: 0 -10px 35px rgba(0,0,0,.3);
+  color: #102b30;
+}
+.inspection-receipt-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px 12px;
+  background: #075d61;
+  color: #fff;
+}
+.inspection-receipt-header h3 { font-size: 20px; line-height: 1.25; margin: 0; }
+.inspection-receipt-header p { margin: 4px 0 0; font-size: 12px; color: #d7f4ef; }
+.inspection-receipt-header .inspection-receipt-close {
+  border: 0;
+  border-radius: 10px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 8px;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  font-size: 29px;
+  line-height: 1;
+}
+.inspection-receipt-controls {
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid #d9e5e5;
+  background: #fff;
+}
+.inspection-receipt-controls label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+.inspection-receipt-controls select {
+  display: block;
+  min-height: 45px;
+  height: auto;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 16px;
+}
+.inspection-receipt-controls p {
+  margin: 9px 0 0;
+  color: #51696c;
+  line-height: 1.4;
+  font-size: 12px;
+}
+.inspection-receipt-preview {
+  min-height: 90px;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px 12px;
+  text-align: center;
+  -webkit-overflow-scrolling: touch;
+}
+.inspection-receipt-paper {
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 12px;
+  background: #fff;
+  color: #000;
+  font-family: Arial, Helvetica, sans-serif;
+  text-align: left;
+  box-shadow: 0 4px 16px rgba(18,35,38,.15);
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.inspection-receipt-preview.receipt-width-58 .inspection-receipt-paper { width: min(100%, 270px); }
+.inspection-receipt-preview.receipt-width-80 .inspection-receipt-paper { width: min(100%, 365px); }
+.inspection-receipt-paper .inspection-receipt-line {
+  display: block;
+  margin: 0 0 5px;
+  color: #000;
+  line-height: 1.35;
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inspection-receipt-paper .inspection-receipt-line.title {
+  text-align: center; font-size: 15px; font-weight: 900;
+}
+.inspection-receipt-paper .inspection-receipt-line.subtitle {
+  text-align: center; font-size: 11px;
+}
+.inspection-receipt-paper .inspection-receipt-line.heading,
+.inspection-receipt-paper .inspection-receipt-line.bold {
+  font-weight: 900;
+}
+.inspection-receipt-paper .inspection-receipt-line.small { font-size: 10px; }
+.inspection-receipt-paper hr { margin: 9px 0; border: 0; border-top: 1px dashed #222; }
+.inspection-receipt-message {
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid #e1e9e8;
+  background: #fff9e9;
+  color: #755114;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.inspection-receipt-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #d6e5e4;
+  background: #fff;
+}
+.inspection-receipt-buttons button {
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 8px;
+  border: 1px solid #0c7479;
+  border-radius: 12px;
+  color: #08666b;
+  background: #f1fbf9;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+.inspection-receipt-buttons .inspection-receipt-share {
+  color: #fff;
+  background: #007779;
+}
+.inspection-receipt-modal button:focus-visible,
+.inspection-receipt-modal select:focus-visible {
+  outline: 3px solid #ffb74e;
+  outline-offset: 2px;
+}
+@media (min-width: 720px) {
+  .inspection-receipt-modal { align-items: center; }
+  .inspection-receipt-panel { border-radius: 22px; max-height: 85dvh; }
+}
+@media (max-width: 380px) {
+  .inspection-receipt-buttons { grid-template-columns: 1fr; }
+}
+
+@media print {
+  /* L'imprimante pilote la longueur du rouleau. Choisir un papier de 58 mm
+     dans son logiciel; l'image partageable est l'option la plus fiable en BT. */
+  @page { margin: 0; }
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  body * { visibility: hidden !important; }
+  .inspection-receipt-print-area,
+  .inspection-receipt-print-area * { visibility: visible !important; }
+  .inspection-receipt-print-area {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 48mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .inspection-receipt-print-area.receipt-width-80 {
+    width: 72mm !important;
+  }
+  .inspection-receipt-print-area .inspection-receipt-paper {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100%;
+    margin: 0 !important;
+    padding: 1.2mm !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  .inspection-receipt-print-area .inspection-receipt-line {
+    margin: 0 0 1mm;
+    padding: 0;
+    font-size: 8.2pt;
+    line-height: 1.25;
+    break-inside: avoid;
+    overflow-wrap: anywhere;
+    color: #000 !important;
+  }
+  .inspection-receipt-print-area .inspection-receipt-line.title {
+    font-size: 10pt; font-weight: 900;
+  }
+  .inspection-receipt-print-area .inspection-receipt-line.subtitle,
+  .inspection-receipt-print-area .inspection-receipt-line.small {
+    font-size: 7pt;
+  }
+  .inspection-receipt-print-area .inspection-receipt-line.heading,
+  .inspection-receipt-print-area .inspection-receipt-line.bold {
+    font-weight: 900;
+  }
+  .inspection-receipt-print-area hr {
+    margin: 1.5mm 0;
+    border: 0;
+    border-top: 1px dashed #000;
+  }
+}
+
