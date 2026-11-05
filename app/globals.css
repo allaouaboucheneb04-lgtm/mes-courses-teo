@@ -3656,3 +3656,235 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   min-width: 0;
   max-width: 100%;
 }
+
+
+/* Sommaire du contrôle du véhicule : nouvelle page, sans déborder sur iPhone. */
+.page-inspection > .summary,
+.page-inspection > .workspace,
+.page-inspection > .daily-courses,
+.page-inspection > .history {
+  display: none !important;
+}
+.vehicle-inspection-page {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 14px;
+  min-width: 0;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.inspection-hero {
+  padding: 24px;
+  border-radius: 22px;
+  color: #fff;
+  background: linear-gradient(125deg, #034e54, #087f7b);
+}
+.inspection-hero-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.inspection-hero h2 { margin: 5px 0 0; font-size: clamp(24px, 4vw, 32px); line-height: 1.13; }
+.inspection-kicker { font-size: 12px; letter-spacing: .07em; font-weight: 800; color: #c6f3ef; }
+.inspection-hero-icon {
+  display: grid; place-items: center; flex: 0 0 44px;
+  height: 44px; border: 1px solid #ffffff66;
+  border-radius: 13px; background: #ffffff24; font-size: 25px;
+}
+.inspection-hero p { margin: 12px 0 5px; font-size: 14px; line-height: 1.5; color: #f0ffff; }
+.inspection-hero small { display: block; font-size: 12px; line-height: 1.4; color: #c6f0ea; }
+.inspection-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 5px;
+  border-radius: 14px; background: #dceaea; padding: 5px;
+}
+.inspection-tabs button {
+  min-width: 0; min-height: 46px; padding: 10px 12px;
+  border: 0; border-radius: 11px; color: #41676b;
+  background: transparent; font-weight: 800; font-size: 14px;
+}
+.inspection-tabs button.active { color: #075c61; background: #fff; box-shadow: 0 2px 9px #0f575519; }
+.inspection-form, .inspection-history {
+  min-width: 0; padding: 20px;
+  background: #fff; border: 1px solid #dce8ea;
+  border-radius: 19px;
+}
+.inspection-section-heading { margin: 8px 0 12px; }
+.inspection-section-heading:not(:first-child) { margin-top: 24px; }
+.inspection-section-heading h3 { font-size: 18px; margin: 0 0 6px; color: #17343a; }
+.inspection-section-heading p { margin: 0; font-size: 13px; line-height: 1.45; color: #60777b; }
+.inspection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+  min-width: 0;
+}
+.inspection-grid label, .inspection-signature > label:not(.inspection-confirm) {
+  display: grid; align-content: start; min-width: 0; gap: 6px;
+  margin: 0; font-size: 13px; font-weight: 800;
+  color: #26474c;
+}
+.inspection-grid .inspection-full { grid-column: 1 / -1; }
+.inspection-grid input,
+.inspection-grid select,
+.inspection-grid textarea,
+.inspection-signature input:not([type="checkbox"]),
+.inspection-search-label input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  height: auto;
+  margin: 0;
+  padding: 11px 12px;
+  border: 1.5px solid #cbdcde;
+  border-radius: 11px;
+  background: #fbfdfd;
+  font-size: 16px;
+  color: #152c32;
+}
+.inspection-grid input, .inspection-grid select { height: 46px; }
+.inspection-grid textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+.inspection-grid input[type="date"], .inspection-grid input[type="time"] {
+  min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none;
+}
+.inspection-grid input[type="date"]::-webkit-date-and-time-value,
+.inspection-grid input[type="time"]::-webkit-date-and-time-value { text-align: left; }
+.inspection-grid input:focus-visible, .inspection-grid textarea:focus-visible,
+.inspection-grid select:focus-visible, .inspection-signature input:focus-visible,
+.inspection-tabs button:focus-visible, .inspection-form-actions button:focus-visible {
+  outline: 3px solid #00787a; outline-offset: 2px;
+}
+.inspection-defect-summary { margin: 10px 0; }
+.inspection-defect-summary span {
+  display: inline-block; padding: 6px 10px; border-radius: 99px;
+  font-size: 12px; font-weight: 800;
+}
+.inspection-defect-summary .no-defects { color: #076645; background: #e4f8ec; }
+.inspection-defect-summary .with-defects { color: #903d1b; background: #ffe8d9; }
+.inspection-groups { display: grid; gap: 12px; }
+.inspection-check-group {
+  margin: 0; min-width: 0; padding: 12px 14px 14px;
+  border: 1px solid #d5e4e5; border-radius: 15px;
+  background: #f8fbfb;
+}
+.inspection-check-group legend {
+  padding: 0 6px; color: #075e62; font-size: 15px; font-weight: 850;
+}
+.inspection-check-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.inspection-check-group .inspection-check {
+  display: flex; align-items: center; gap: 9px;
+  min-width: 0; min-height: 47px; padding: 9px 10px; margin: 0;
+  border-radius: 11px; border: 1px solid #d7e7e8;
+  background: #fff; font-size: 13px; font-weight: 650;
+  cursor: pointer; color: #203b41; line-height: 1.35;
+}
+.inspection-check-group .inspection-check.checked {
+  border-color: #df9456; background: #fff0e3; color: #873c16;
+}
+.inspection-check-group .inspection-check input {
+  width: 21px; height: 21px; min-height: 21px;
+  flex: 0 0 21px; margin: 0; padding: 0;
+  accent-color: #ca601b; appearance: auto;
+}
+.inspection-signature {
+  display: grid; gap: 12px;
+  padding: 16px; margin-top: 20px;
+  background: #f2f9f8; border: 1px solid #c2dfdc;
+  border-radius: 15px;
+}
+.inspection-signature label.inspection-confirm {
+  display: flex; align-items: start; gap: 10px; margin: 0;
+  color: #1d5255; font-size: 14px; line-height: 1.5; font-weight: 750;
+}
+.inspection-confirm input {
+  appearance: auto; width: 22px; height: 22px; min-height: 22px;
+  flex: 0 0 22px; margin: 0; padding: 0; accent-color: #007c75;
+}
+.inspection-signature > p, .inspection-save-note {
+  margin: 0; color: #526c70; font-size: 12px; line-height: 1.45;
+}
+.inspection-warning, .inspection-error {
+  padding: 11px 12px; border-radius: 12px;
+  font-size: 13px; line-height: 1.5; font-weight: 700;
+}
+.inspection-warning { background: #fff1e4; color: #91431c; border: 1px solid #eebc95; }
+.inspection-error { background: #fce7e7; color: #a3212b; border: 1px solid #ecacae; }
+.inspection-form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 10px; }
+.inspection-form-actions button {
+  min-height: 48px; padding: 11px 16px;
+  background: #05766d; color: #fff;
+  border: 0; border-radius: 12px; font-size: 14px; font-weight: 850;
+}
+.inspection-form-actions button + button {
+  background: #eef7f6; color: #075a5c; border: 1px solid #bcd9d5;
+}
+.inspection-history-head {
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: 10px; margin-bottom: 14px;
+}
+.inspection-history-head h3 { margin: 0 0 4px; font-size: 18px; }
+.inspection-history-head p { margin: 0; font-size: 13px; color: #66777b; }
+.inspection-history-head button, .inspection-record-actions button,
+.inspection-empty button {
+  min-height: 42px; padding: 8px 13px;
+  border: 1px solid #a8d0cb; border-radius: 11px;
+  background: #edf8f7; color: #075e62; font-weight: 800;
+  font-size: 13px;
+}
+.inspection-search-label { display: grid; gap: 7px; margin: 0 0 14px; font-size: 13px; font-weight: 750; }
+.inspection-empty { background: #f5faf9; border-radius: 12px; padding: 25px; color: #5a7479; text-align: center; }
+.inspection-record-list { display: grid; gap: 12px; }
+.inspection-record {
+  min-width: 0; display: grid; gap: 12px;
+  padding: 15px; border: 1px solid #d8e6e5;
+  border-left: 6px solid #088b83; border-radius: 15px; background: #fafdfe;
+}
+.inspection-record-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 8px; }
+.inspection-record-top b, .inspection-record-top small { display: block; }
+.inspection-record-top b { font-size: 18px; color: #114d54; }
+.inspection-record-top small { margin-top: 5px; font-size: 12px; color: #62797f; }
+.inspection-record-badge { padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+.inspection-record-badge.no-issue { background: #dff5e9; color: #057043; }
+.inspection-record-badge.attention { background: #fff0dd; color: #944511; }
+.inspection-record-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: #536d73; }
+.inspection-record-details { padding-top: 9px; border-top: 1px solid #dbe6e5; }
+.inspection-record-details summary { color: #04736e; font-size: 14px; font-weight: 850; cursor: pointer; }
+.inspection-record-details dl {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 8px; margin: 12px 0 0;
+}
+.inspection-record-details dl > div { min-width: 0; border-radius: 10px; padding: 9px; background: #f3f7f7; }
+.inspection-record-details dt { color: #5a7277; font-size: 12px; }
+.inspection-record-details dd { margin: 5px 0 0; overflow-wrap: anywhere; font-weight: 750; font-size: 13px; }
+.inspection-record-actions { display: flex; gap: 8px; }
+.inspection-print { display: none; }
+
+@media (max-width: 680px) {
+  .vehicle-inspection-page { gap: 11px; }
+  .inspection-hero, .inspection-form, .inspection-history { padding: 16px; border-radius: 17px; }
+  .inspection-tabs button { padding: 10px 7px; font-size: 12px; }
+  .inspection-grid, .inspection-check-grid { grid-template-columns: 1fr; }
+  .inspection-check-group { padding: 10px; }
+  .inspection-record-details dl { grid-template-columns: 1fr; }
+  .inspection-form-actions button { flex: 1 1 100%; }
+  .inspection-history-head button { min-height: 44px; }
+}
+@media print {
+  @page { size: A4; margin: 15mm; }
+  body { background: white !important; }
+  body * { visibility: hidden !important; }
+  .inspection-print, .inspection-print * { visibility: visible !important; }
+  .inspection-print {
+    display: block !important; position: absolute;
+    inset: 0 auto auto 0; width: 100%; background: white !important;
+    padding: 0; font-size: 11pt; color: #111;
+  }
+  .inspection-print h1 { font-size: 18pt; margin-bottom: 16px; }
+  .inspection-print h2 { font-size: 13pt; margin: 20px 0 8px; }
+  .inspection-print p { line-height: 1.5; margin: 7px 0; }
+  .inspection-print small { display: block; margin-top: 20px; }
+}
