@@ -4102,3 +4102,20 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   }
 }
 
+
+
+/* Status and connection guidance for direct MPT-II printing in Bluefy. */
+.vehicle-inspection-page .inspection-bluetooth-note {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #a7d9d7;
+  border-radius: 11px;
+  background: #eaf8f7;
+  color: #075960;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.vehicle-inspection-page .inspection-record-actions button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
