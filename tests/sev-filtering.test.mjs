@@ -5,7 +5,7 @@ import { createServer } from "vite";
 const vite = await createServer({configFile:false,server:{middlewareMode:true,hmr:false}});
 after(() => vite.close());
 const {
-  filterSevRides, filterSevStatuses, matchesSevSearch, matchesSevCategory,
+  filterSevRides, filterSevStatuses, matchesSevSearch, matchesSevCategory, summarizeSevCategories,
 } = await vite.ssrLoadModule("/lib/sev-filtering.ts");
 
 const rides = [
@@ -68,4 +68,28 @@ test("equal-date, equal-amount courses remain separate",()=>{
     {id:"y",type:"taxi",date:"2026-11-03",amount:32.45,tip:0},
   ];
   assert.equal(filterSevRides(two,{...opts,search:"32,45"}).length,2);
+});
+
+test("category gross totals include tips, preserve identical rides, and exclude past dates", () => {
+  const weekly = filterSevRides(rides, opts);
+  const categories = summarizeSevCategories(weekly);
+  assert.deepEqual(categories, [
+    {id:"aeroport",label:"Aéroport",count:1,amount:45.7},
+    {id:"centre-ville",label:"Centre-ville",count:2,amount:35.82},
+    {id:"adapte",label:"Transport adapté",count:1,amount:1234.56},
+  ]);
+  const duplicate = [{...rides[0],id:"second-airport"}];
+  assert.deepEqual(summarizeSevCategories([rides[0], ...duplicate])[0], {
+    id:"aeroport",label:"Aéroport",count:2,amount:91.4,
+  });
+  assert.equal(Math.round(categories.reduce((sum, c) => sum + c.amount, 0) * 100),
+    Math.round(weekly.reduce((sum, ride) => sum + ride.amount + ride.tip, 0) * 100));
+});
+
+test("category summary stays stable even after a category is selected", () => {
+  const baseRows = filterSevRides(rides, {...opts,category:"all"});
+  const airportOnly = baseRows.filter(ride => matchesSevCategory(ride,"aeroport"));
+  assert.equal(airportOnly.length,1);
+  assert.equal(summarizeSevCategories(baseRows).find(c => c.id === "adapte").count,1);
+  assert.equal(summarizeSevCategories(airportOnly).find(c => c.id === "adapte").count,0);
 });
