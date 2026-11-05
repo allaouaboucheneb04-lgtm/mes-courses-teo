@@ -31,6 +31,14 @@ jobs:
         run: npm ci
       - name: Construire le site
         run: npm run build:github
+      - name: Vérifier les fichiers publiables
+        run: |
+          if [ ! -f out/index.html ]; then
+            echo "::error::Le build Next.js n'a pas produit out/index.html"
+            exit 1
+          fi
+          touch out/.nojekyll
+          echo "GitHub Pages : page d'accueil et dossier de publication vérifiés."
       - name: Envoyer le site généré
         uses: actions/upload-pages-artifact@v4
         with:
