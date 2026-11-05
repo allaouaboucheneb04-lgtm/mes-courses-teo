@@ -2025,7 +2025,12 @@ export default function Home() {
             </button>
           </div>
           {tab === "taxi" ? (
-            <form onSubmit={addTaxi} className="form-card">
+            <form onSubmit={addTaxi}
+              className={`form-card ride-highlight ${
+                taxi.category === "aeroport"
+                  ? "ride-highlight-airport"
+                  : "ride-highlight-centre-ville"
+              }`}>
               <div className="form-title">
                 <div>
                   <h2>
@@ -2106,7 +2111,7 @@ export default function Home() {
                 />
               </label>
               {settings.airportEnabled && (
-                <label>
+                <label className="ride-type-field">
                   Type de course régulière
                   <select
                     value={taxi.category}
@@ -2302,7 +2307,7 @@ export default function Home() {
               )}
             </form>
           ) : tab === "adapte" ? (
-            <form onSubmit={addAdapted} className="form-card">
+            <form onSubmit={addAdapted} className="form-card ride-highlight ride-highlight-adapte">
               <div className="form-title">
                 <div>
                   <h2>
@@ -3552,7 +3557,16 @@ export default function Home() {
                     ? "Téo / carte"
                     : c.payment;
                 return (
-                  <div className="daily-row" key={c.id}>
+                  <div
+                    className={`daily-row ride-highlight ${
+                      c.type === "adapte"
+                        ? "ride-highlight-adapte"
+                        : c.taxiCategory === "aeroport"
+                          ? "ride-highlight-airport"
+                          : "ride-highlight-centre-ville"
+                    }`}
+                    key={c.id}
+                  >
                     <span
                       className={`course-icon ${c.type}`}
                       aria-hidden="true"
