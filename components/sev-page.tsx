@@ -200,8 +200,14 @@ function SevRideCard({
         </div>
         <strong className="sev-ride-amount">{money(gross)}</strong>
       </div>
-      <div className="sev-ride-quick">
+      <div className={`sev-ride-quick ${ride.type === "taxi" ? "sev-ride-quick-taxi" : ""}`}>
         <div><span>Brut</span><b>{money(gross)}</b></div>
+        {ride.type === "taxi" && (
+          <>
+            <div><span>Avant pourboire</span><b>{ride.tipPending ? "À confirmer" : money(ride.amount)}</b></div>
+            <div><span>Pourboire</span><b>{ride.tipPending ? "À récupérer" : money(ride.tip)}</b></div>
+          </>
+        )}
         <div><span>Frais Téo{perception > 0 ? " + STM" : ""}</span><b>− {money(fee + perception)}</b></div>
         <div className="sev-quick-net"><span>Net avant frais fixes</span><b>{money(net)}</b></div>
       </div>
