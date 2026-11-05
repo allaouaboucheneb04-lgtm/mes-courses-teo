@@ -1,6 +1,7 @@
 "use client";
 import { isExactPayrollMatch, matchPayrollRows } from "@/lib/payroll-matching";
 import { extractAdaptedPayrollRows } from "@/lib/adapted-payroll";
+import { extractPayrollTransfers, summarizePayrollTransfers, type PayrollTransfer } from "@/lib/payroll-payments";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
@@ -112,6 +113,7 @@ type PayStatement = {
   total: number;
   paidDate: string;
   paidAmount: number;
+  payments?: PayrollTransfer[];
   bankReceipt?: BankReceipt | null;
   amountDue: number;
   rows: PayRow[];
@@ -1361,9 +1363,8 @@ export default function Home() {
         text.match(
           /Date de la facture[\s\S]{0,180}?(\d{4}-\d{2}-\d{2})/i,
         )?.[1] || "";
-      const paid = text.match(
-        /Payé le\s+(\d{4}-\d{2}-\d{2})\s+([\d\s]+,\d{2})\s*\$/i,
-      );
+      const transfers = extractPayrollTransfers(text);
+      const paymentSummary = summarizePayrollTransfers(transfers);
       const dates = getPayrollCourseDates(rows);
       const statement: PayStatement = {
         id: billId,
@@ -1374,10 +1375,9 @@ export default function Home() {
         periodEnd: dates[dates.length - 1] || "",
         subtotal: valueAfter(/Sous-total\s+([\d\s]+,\d{2})\s*\$/i),
         total: valueAfter(/(?:^|\s)Total\s+([\d\s]+,\d{2})\s*\$/im),
-        paidDate: paid?.[1] || "",
-        paidAmount: paid
-          ? Number(paid[2].replace(/\s/g, "").replace(",", "."))
-          : 0,
+        paidDate: paymentSummary.paidDate,
+        paidAmount: paymentSummary.paidAmount,
+        payments: transfers,
         amountDue: valueAfter(/Montant dû\s+([\d\s]+,\d{2})\s*\$/i),
         rows,
         rawText: text,
@@ -2711,6 +2711,12 @@ export default function Home() {
                         <span>Montant payé</span>
                         <b>{money(selectedPayStatement.paidAmount)}</b>
                       </div>
+                      {Boolean(selectedPayStatement.payments?.length) && (
+                        <div>
+                          <span>Versements indiqués dans le PDF</span>
+                          <b>{selectedPayStatement.payments!.map(payment => `${payment.date} : ${money(payment.amount)}`).join(" · ")}</b>
+                        </div>
+                      )}
                       <div>
                         <span>Montant dû</span>
                         <b>{money(selectedPayStatement.amountDue)}</b>
