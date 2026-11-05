@@ -45,7 +45,7 @@ test("SEV date is one compact selector, with calendar and all supported periods"
   assert.match(html, /<strong>Période<\/strong>/);
   assert.match(html, /Du 3 nov\.? au 9 nov\.?/);
   assert.match(html, /aria-label="Choisir une période"/);
-  assert.match(html, /value="week">Cette semaine<\/option>/);
+  assert.match(html, /value="week"[^>]*>Cette semaine<\/option>/);
   assert.match(html, /value="previous">Semaine passée<\/option>/);
   assert.match(html, /value="month">Ce mois<\/option>/);
   assert.match(html, /value="all">Toutes les dates<\/option>/);
