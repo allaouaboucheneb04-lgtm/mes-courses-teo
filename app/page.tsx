@@ -22,6 +22,8 @@ import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
 import SevPage, { SevCheckbox } from "@/components/sev-page";
+import VehicleInspectionPage from "@/components/vehicle-inspection-page";
+import type { VehicleInspection } from "@/lib/vehicle-inspection";
 import StatisticsPage from "@/components/statistics-page";
 import DateRangePicker, { DateRangeField } from "@/components/date-range-picker";
 import SharedPayroll from "@/components/shared-payroll";
@@ -439,6 +441,7 @@ export default function Home() {
     ),
     [courses, setCourses] = useState<Course[]>([]),
     [expenses, setExpenses] = useState<TaxiExpense[]>([]),
+    [inspections, setInspections] = useState<VehicleInspection[]>([]),
     [loaded, setLoaded] = useState(false),
     [notice, setNotice] = useState("");
   const [payView, setPayView] = useState<"statements" | "courses">("statements");
@@ -465,7 +468,7 @@ export default function Home() {
   const [adaptedSev, setAdaptedSev] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [mobilePage, setMobilePage] = useState<
-    "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics"
+    "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics" | "inspection"
   >("add");
   const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
   useEffect(() => {
@@ -529,10 +532,10 @@ export default function Home() {
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [syncError, setSyncError] = useState("");
   const [syncRetry, setSyncRetry] = useState(0);
-  type DriverData = { courses: Course[]; expenses: TaxiExpense[]; settings: AppSettings; payStatements: PayStatement[] };
+  type DriverData = { courses: Course[]; expenses: TaxiExpense[]; settings: AppSettings; payStatements: PayStatement[]; inspections: VehicleInspection[] };
   const baseline = useRef<DriverData | null>(null);
-  const liveData = useRef<DriverData>({ courses, expenses, settings, payStatements });
-  liveData.current = { courses, expenses, settings, payStatements };
+  const liveData = useRef<DriverData>({ courses, expenses, settings, payStatements, inspections });
+  liveData.current = { courses, expenses, settings, payStatements, inspections };
   const saving = useRef(false);
   const syncOwner = useRef(user?.uid);
   syncOwner.current = user?.uid;
@@ -541,10 +544,11 @@ export default function Home() {
     expenses: Array.isArray(remote.expenses) ? remote.expenses : [],
     settings: { ...DEFAULT_SETTINGS, ...(remote.settings || {}) },
     payStatements: Array.isArray(remote.payStatements) ? remote.payStatements : [],
+    inspections: Array.isArray(remote.inspections) ? remote.inspections : [],
   });
   const applyData = (data: DriverData) => {
     liveData.current = data;
-    setCourses(data.courses); setExpenses(data.expenses); setSettings(data.settings); setPayStatements(data.payStatements);
+    setCourses(data.courses); setExpenses(data.expenses); setSettings(data.settings); setPayStatements(data.payStatements); setInspections(data.inspections);
   };
   const [photoCourses, setPhotoCourses] = useState<PhotoCourse[]>([]);
   const [photoReading, setPhotoReading] = useState(false);
@@ -660,7 +664,7 @@ export default function Home() {
       }
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [courses, expenses, settings, payStatements, loaded, user, syncRetry]);
+  }, [courses, expenses, settings, payStatements, inspections, loaded, user, syncRetry]);
   useEffect(() => {
     const retry = () => setSyncRetry(value => value + 1);
     window.addEventListener("online", retry);
@@ -1889,7 +1893,7 @@ export default function Home() {
         </div>
         <details className="more-navigation" onKeyDown={event=>{if(event.key === "Escape")event.currentTarget.open=false;}}>
           <summary aria-label="Autres pages">☰ Plus</summary>
-          <nav aria-label="Autres pages">{([{id:"statistics",label:"📊 Statistiques"},{id:"sev",label:"☑ SEV"},{id:"expenses",label:"🧾 Dépenses"},{id:"settings",label:"⚙ Réglages"}] as const).map(item=><button type="button" key={item.id} aria-current={mobilePage===item.id?"page":undefined} onClick={event=>{setMobilePage(item.id);setEditingId(null);if(item.id === "settings")setTab("settings");const menu=event.currentTarget.closest("details");if(menu)menu.open=false;window.scrollTo({top:0,behavior:"smooth"});}}>{item.label}</button>)}</nav>
+          <nav aria-label="Autres pages">{([{id:"statistics",label:"📊 Statistiques"},{id:"sev",label:"☑ SEV"},{id:"inspection",label:"🚕 Vérification sommaire"},{id:"expenses",label:"🧾 Dépenses"},{id:"settings",label:"⚙ Réglages"}] as const).map(item=><button type="button" key={item.id} aria-current={mobilePage===item.id?"page":undefined} onClick={event=>{setMobilePage(item.id);setEditingId(null);if(item.id === "settings")setTab("settings");const menu=event.currentTarget.closest("details");if(menu)menu.open=false;window.scrollTo({top:0,behavior:"smooth"});}}>{item.label}</button>)}</nav>
         </details>
       </header>
       {syncError && <section className="error-box" role="alert">
@@ -1908,6 +1912,18 @@ export default function Home() {
       </section>}
       <div className={`shell page-${mobilePage} tab-${tab}`}>
         {mobilePage === "statistics" && <StatisticsPage courses={courses.map(course=>({...course,serviceFee:serviceFee(course,settings),airportFee:course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0}))} today={today()} dailyGoals={settings.dailyGoals} goalsEnabled={settings.dailyGoalEnabled} onSettings={()=>{setMobilePage("settings");setTab("settings");window.scrollTo({top:0,behavior:"smooth"});}} />}
+        {mobilePage === "inspection" && (
+          <VehicleInspectionPage
+            inspections={inspections}
+            accountName={user.displayName || ""}
+            onSave={(record) => {
+              setInspections((current) => current.some((item) => item.id === record.id)
+                ? current.map((item) => item.id === record.id ? record : item)
+                : [record, ...current]);
+              flash("Vérification enregistrée, synchronisation en cours.");
+            }}
+          />
+        )}
         {mobilePage === "sev" && <SevPage expenses={expenses} companyFee={settings.companyFee} onFiscalChange={(id, patch) => setCourses(current => current.map(course => course.id === id ? {...course, ...patch} : course))} courses={courses.map((course) => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0, billedDuration: course.type === "adapte" ? course.billedDuration ?? Math.max(course.duration || 0, settings.adaptedMinimum) : course.billedDuration }))} onChange={setSevStatus} onEdit={(id) => { const course = courses.find((item) => item.id === id); if (course) editCourse(course); }} today={today()} week={currentTuesdayWeek()} />}
         <section className="summary">
           <div>
