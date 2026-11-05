@@ -2101,7 +2101,7 @@ export default function Home() {
                   )}
                 </section>
               )}
-              <label>
+              <label className="course-date-field">
                 Date
                 <input
                   type="date"
@@ -2339,7 +2339,7 @@ export default function Home() {
                   required
                 />
               </label>
-              <label>
+              <label className="course-date-field">
                 Date
                 <input
                   type="date"
