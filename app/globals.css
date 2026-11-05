@@ -4119,3 +4119,37 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   opacity: .55;
   cursor: wait;
 }
+
+
+/* SEV: independent Téo payroll verification indicators */
+.sev-page .sev-payroll-section { margin: 4px 0 13px; }
+.sev-page .sev-payroll-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 3px 12px; margin: 0 0 7px; }
+.sev-page .sev-payroll-heading h3 { margin: 0; font-size: 14px; font-weight: 850; color: var(--ink); }
+.sev-page .sev-payroll-heading small { font-size: 11px; line-height: 1.3; color: var(--muted); }
+.sev-page .sev-payroll-status-cards { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+.sev-page .sev-payroll-card {
+  display: grid; align-content: center; justify-items: start; min-width: 0; gap: 3px;
+  min-height: 73px; padding: 9px 12px; border: 1.5px solid #bdd2d4; border-radius: 13px;
+  background: #fff; color: #28474b; cursor: pointer; text-align: left; font: inherit;
+}
+.sev-page .sev-payroll-card span { font-size: 12px; font-weight: 800; }
+.sev-page .sev-payroll-card b { font-size: 21px; line-height: 1.1; font-weight: 850; }
+.sev-page .sev-payroll-card small { font-size: 12px; font-weight: 750; color: inherit; overflow-wrap: anywhere; }
+.sev-page .sev-payroll-card.is-verified { border-color: #acd9c6; color: #086643; }
+.sev-page .sev-payroll-card.is-unverified { border-color: #eed1ad; color: #80511b; }
+.sev-page .sev-payroll-card.is-active { box-shadow: inset 0 0 0 1.5px currentColor; background: #f5faf9; }
+.sev-page .sev-payroll-card:focus-visible { outline: 3px solid #007a8d; outline-offset: 2px; }
+.sev-page .sev-payroll-caption { margin: 6px 1px 0; font-size: 11px; color: var(--muted); line-height: 1.4; }
+.sev-page .sev-ride-statuses { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 3px; }
+.sev-page .sev-ride-statuses .sev-ride-status { margin-top: 0; }
+.sev-page .sev-ride-payroll-status {
+  width: fit-content; padding: 3px 7px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; line-height: 1.3;
+}
+.sev-page .sev-ride-payroll-status.is-verified { color: #086643; background: #dcf5e9; }
+.sev-page .sev-ride-payroll-status.is-unverified { color: #89551e; background: #fff1d9; }
+@media (max-width: 390px) {
+  .sev-page .sev-payroll-card { padding: 9px; }
+  .sev-page .sev-payroll-card b { font-size: 19px; }
+  .sev-page .sev-payroll-card small { font-size: 11px; }
+}
