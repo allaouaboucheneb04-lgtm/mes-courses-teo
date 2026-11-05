@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   INSPECTION_GROUPS,
   inspectionDefectLabels,
@@ -104,7 +104,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const save = (event: React.FormEvent<HTMLFormElement>) => {
+  const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const validation = validateInspection(draft);
     if (validation) {
