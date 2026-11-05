@@ -87,7 +87,16 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
       <p className="sev-net-note">Les taxes sur la redevance sont déjà comprises dans le total des taxes. Une tournée représente un enregistrement, pas le nombre de passagers ou de courses qu’elle contient. Pour les tournées, aucune redevance n’est comptée par défaut : renseignez les courses assujetties dans leurs paramètres.</p>
     </> : <>
     <div className="sev-list-head"><b>{visible.length} élément{visible.length > 1 ? "s" : ""} affiché{visible.length > 1 ? "s" : ""}</b><span>{money(visible.reduce((sum, ride) => sum + ride.amount + ride.tip, 0))}</span></div>
-    {!visible.length ? <p className="sev-empty">Aucune course pour ces filtres.</p> : <div className="sev-list">{visible.map((ride) => <article key={ride.id}>
+    {!visible.length ? <p className="sev-empty">Aucune course pour ces filtres.</p> : <div className="sev-list">{visible.map((ride) => <article
+      key={ride.id}
+      className={`sev-ride-card ride-highlight ${
+        ride.type === "adapte"
+          ? "ride-highlight-adapte"
+          : ride.taxiCategory === "aeroport"
+            ? "ride-highlight-airport"
+            : "ride-highlight-centre-ville"
+      }`}
+    >
       <div><b>{ride.type === "adapte" ? ride.hob || "Tournée adaptée" : ride.taxiCategory === "aeroport" ? "Course aéroport" : "Course centre-ville"}</b><small>{new Date(`${ride.date}T12:00:00`).toLocaleDateString("fr-CA", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</small></div><strong>{money(ride.amount + ride.tip)}</strong>
       <dl className="sev-ride-details">
         <div><dt>Paiement</dt><dd>{ride.type === "adapte" ? "Transport adapté" : "Téo · Carte / Compte"}</dd></div>
