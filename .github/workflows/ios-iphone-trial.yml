@@ -45,7 +45,7 @@ jobs:
           xcodebuild \
             -project MesCoursesTeo.xcodeproj \
             -scheme MesCoursesTeo \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath "$RUNNER_TEMP/TeoDerivedData" \
@@ -57,10 +57,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          app="$RUNNER_TEMP/TeoDerivedData/Build/Products/Debug-iphoneos/MesCoursesTeo.app"
+          app="$RUNNER_TEMP/TeoDerivedData/Build/Products/Release-iphoneos/MesCoursesTeo.app"
           test -d "$app"
           test -f "$app/Info.plist"
           /usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print NSBluetoothAlwaysUsageDescription' "$app/Info.plist"
           mkdir -p "$RUNNER_TEMP/ipa/Payload" "$GITHUB_WORKSPACE/ios-output"
           cp -R "$app" "$RUNNER_TEMP/ipa/Payload/"
           (
