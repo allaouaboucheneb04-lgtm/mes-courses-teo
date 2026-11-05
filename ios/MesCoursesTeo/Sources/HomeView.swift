@@ -5,6 +5,9 @@ struct HomeView: View {
     @AppStorage("mesCoursesTeoURL") private var siteURL =
         "https://allaouaboucheneb04-lgtm.github.io/mes-courses-teo/"
     @State private var showSettings = false
+    @State private var printer = MPTIIPrinter()
+    @State private var testPrinting = false
+    @State private var testMessage = ""
 
     private var validURL: URL? {
         guard let url = URL(string: siteURL),
@@ -57,8 +60,34 @@ struct HomeView: View {
                                 .font(.footnote)
                         }
                         Section("Bisofice MPT-II") {
-                            Text("Allumez l’imprimante, fermez nRF Connect, puis appuyez sur « Imprimer » dans l’historique des vérifications. Le jumelage est automatique dans l’application iPhone.")
+                            Text("Test direct Bluetooth, sans Bluefy ni nRF Connect. Allumez l’imprimante et fermez nRF Connect avant ce test.")
                                 .font(.footnote)
+                            Button {
+                                guard !testPrinting else { return }
+                                testPrinting = true
+                                testMessage = "Recherche de MPT-II et envoi du ticket…"
+                                printer.printReceipt([
+                                    ReceiptLine(text: "MES COURSES TEO", kind: "title"),
+                                    ReceiptLine(text: "TEST MPT-II", kind: "bold"),
+                                    ReceiptLine(text: "Impression Bluetooth directe", kind: "text")
+                                ]) { result in
+                                    DispatchQueue.main.async {
+                                        testPrinting = false
+                                        switch result {
+                                        case .success:
+                                            testMessage = "Commande envoyée. Vérifiez qu’un ticket est sorti."
+                                        case .failure(let error):
+                                            testMessage = error.localizedDescription
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Label(testPrinting ? "Impression en cours…" : "Tester mon imprimante", systemImage: "printer.fill")
+                            }
+                            .disabled(testPrinting)
+                            if !testMessage.isEmpty {
+                                Text(testMessage).font(.footnote)
+                            }
                         }
                     }
                     .navigationTitle("Configuration")
