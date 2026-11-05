@@ -1,0 +1,48 @@
+name: Vérifier paie — tests de non-régression
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/page.tsx"
+      - "lib/*payroll*.ts"
+      - "lib/verification.ts"
+      - "tests/*payroll*.test.mjs"
+      - "tests/verify-one-cent.test.mjs"
+      - ".github/workflows/payroll-regression.yml"
+  push:
+    branches:
+      - "fix/verifier-paie-nov-2026"
+    paths:
+      - "app/page.tsx"
+      - "lib/*payroll*.ts"
+      - "lib/verification.ts"
+      - "tests/*payroll*.test.mjs"
+      - "tests/verify-one-cent.test.mjs"
+      - ".github/workflows/payroll-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  payroll-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Installer les dépendances verrouillées
+        run: npm ci --ignore-scripts
+      - name: Contrôler TypeScript
+        run: npx tsc --noEmit --pretty false
+      - name: Tester la lecture et la comparaison de paie Téo
+        run: |
+          node --test --test-concurrency=1 \
+            tests/payroll-matching.test.mjs \
+            tests/adapted-payroll.test.mjs \
+            tests/verify-one-cent.test.mjs \
+            tests/card-payroll.test.mjs \
+            tests/coupon-payroll.test.mjs
