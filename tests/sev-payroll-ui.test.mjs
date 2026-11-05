@@ -69,3 +69,24 @@ test("mobile SEV quick filters and reset controls appear before status cards", (
   assert.ok(html.indexOf("sev-quick-period") < html.indexOf("sev-stats sev-status-cards"));
   assert.ok(html.indexOf("sev-filter-accordion") < html.indexOf("sev-stats sev-status-cards"));
 });
+
+test("SEV category cards show separate course counts and gross amounts next to verification", () => {
+  const courses = [
+    {id:"airport",type:"taxi",date:"2026-11-05",amount:30,tip:2,payment:"Carte",taxiCategory:"aeroport",verified:true},
+    {id:"downtown",type:"taxi",date:"2026-11-04",amount:25,tip:5,payment:"Téo / carte",taxiCategory:"centre-ville"},
+    {id:"adapted",type:"adapte",date:"2026-11-04",amount:118.92,tip:0,payment:"",hob:"HOB0397"},
+    {id:"cash",type:"taxi",date:"2026-11-05",amount:500,tip:0,payment:"Espèces",taxiCategory:"centre-ville"},
+    {id:"old",type:"adapte",date:"2026-10-28",amount:999,tip:0,payment:""},
+  ];
+  const html = renderToStaticMarkup(React.createElement(SevPage,{...base,courses}));
+  assert.match(html,/aria-label="Montants des courses par catégorie"/);
+  assert.match(html,/Montants par catégorie/);
+  assert.match(html,/Aéroport<\/span><b>1<\/b><small>32,00[^<]*\$/);
+  assert.match(html,/Centre-ville<\/span><b>1<\/b><small>30,00[^<]*\$/);
+  assert.match(html,/Transport adapté<\/span><b>1<\/b><small>118,92[^<]*\$/);
+  assert.match(html,/Filtrer cette catégorie/);
+  assert.match(html,/aria-pressed="false"/);
+  assert.ok(html.indexOf("sev-payroll-status-cards") < html.indexOf("sev-category-cards"));
+  assert.doesNotMatch(html,/500,00[^<]*\$/);
+  assert.doesNotMatch(html,/999,00[^<]*\$/);
+});
