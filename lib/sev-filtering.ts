@@ -93,3 +93,22 @@ export function filterSevStatuses<T extends SevFilterRide>(
     (payroll === "all" || (payroll === "verified" ? ride.verified === true : ride.verified !== true))
   );
 }
+
+/** Totals for the chosen period and search, across every category.
+ * The current category choice must not zero the other category cards.
+ * Counts use ride IDs as individual rides, never aggregate identical amounts. */
+export function summarizeSevCategories<T extends SevFilterRide>(rides: T[]) {
+  const categories = [
+    { id: "aeroport", label: "Aéroport" },
+    { id: "centre-ville", label: "Centre-ville" },
+    { id: "adapte", label: "Transport adapté" },
+  ] as const;
+  return categories.map(category => {
+    const selected = rides.filter(ride => matchesSevCategory(ride, category.id));
+    const amountCents = selected.reduce(
+      (sum, ride) => sum + Math.round(ride.amount * 100) + Math.round(ride.tip * 100),
+      0
+    );
+    return { ...category, count: selected.length, amount: amountCents / 100 };
+  });
+}
