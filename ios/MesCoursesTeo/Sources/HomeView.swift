@@ -21,11 +21,14 @@ struct HomeView: View {
                     TaxiWebView(url: url)
                         .ignoresSafeArea(edges: .bottom)
                 } else {
-                    ContentUnavailableView(
-                        "Adresse incorrecte",
-                        systemImage: "wifi.exclamationmark",
-                        description: Text("Renseignez l’adresse HTTPS de Mes Courses Téo.")
-                    )
+                    VStack(spacing: 12) {
+                        Image(systemName: "wifi.exclamationmark")
+                            .font(.largeTitle)
+                        Text("Adresse incorrecte").font(.headline)
+                        Text("Renseignez l’adresse HTTPS de Mes Courses Téo.")
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -33,7 +36,7 @@ struct HomeView: View {
                 ToolbarItem(placement: .principal) {
                     Text("Mes Courses Téo").fontWeight(.bold)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showSettings = true
                     } label: {
