@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import VehicleInspectionReceipt from "@/components/vehicle-inspection-receipt";
 import {
   INSPECTION_GROUPS,
   inspectionDefectLabels,
@@ -65,17 +66,6 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
       driverName: current.driverName || accountName,
     }));
   }, [accountName]);
-
-  useEffect(() => {
-    if (!printRecord) return;
-    const frame = window.requestAnimationFrame(() => window.print());
-    const done = () => setPrintRecord(null);
-    window.addEventListener("afterprint", done);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("afterprint", done);
-    };
-  }, [printRecord]);
 
   const update = <K extends keyof InspectionDraft>(key: K, value: InspectionDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -348,7 +338,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
                     </details>
                     <div className="inspection-record-actions">
                       <button type="button" onClick={() => edit(record)}>Corriger</button>
-                      <button type="button" onClick={() => setPrintRecord(record)}>Imprimer / PDF</button>
+                      <button type="button" onClick={() => setPrintRecord(record)}>Ticket 58 mm / Imprimer</button>
                     </div>
                   </article>
                 );
@@ -358,23 +348,10 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
         </section>
       )}
       {printRecord && (
-        <article className="inspection-print" aria-hidden="true">
-          <h1>Vérification sommaire du véhicule</h1>
-          <p><strong>Chauffeur :</strong> {printRecord.driverName} · <strong>Permis :</strong> {printRecord.permitNumber}</p>
-          <p><strong>Date :</strong> {displayDate(printRecord.date)} · <strong>Heure :</strong> {printRecord.time}</p>
-          <p><strong>Immatriculation :</strong> {printRecord.plate} · <strong>Odomètre :</strong> {printRecord.odometer} km</p>
-          <p><strong>Accessoire gouvernemental :</strong> {printRecord.governmentAccessory || "—"} · <strong>Batterie :</strong> {printRecord.batteryPercent ? printRecord.batteryPercent + " %" : "—"}</p>
-          <h2>Défectuosités constatées</h2>
-          <p>{printRecord.defects.map((key) => inspectionDefectLabels[key] || key).join(", ") || "Aucune défectuosité cochée"}</p>
-          <p><strong>Description :</strong> {printRecord.defectDescription || "—"}</p>
-          <h2>État intérieur et extérieur</h2>
-          <p><strong>Extérieur :</strong> {printRecord.exteriorCondition} · {printRecord.exteriorDamage || "Aucun dommage indiqué"}</p>
-          <p><strong>Intérieur :</strong> {printRecord.interiorCondition} · {printRecord.interiorDamage || "Aucun dommage indiqué"}</p>
-          <p><strong>Équipement absent ou endommagé :</strong> {printRecord.missingEquipment || "—"}</p>
-          <p><strong>Déclaration :</strong> Le chauffeur a confirmé avoir effectué les vérifications.</p>
-          <p><strong>Signature saisie :</strong> {printRecord.signature}</p>
-          <small>Relevé numérique issu de Mes Courses Téo. Ne remplace pas nécessairement la feuille réglementaire.</small>
-        </article>
+        <VehicleInspectionReceipt
+          record={printRecord}
+          onClose={() => setPrintRecord(null)}
+        />
       )}
     </section>
   );
