@@ -34,7 +34,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
   const lastEnd = new Date(`${week.end}T12:00:00`); lastEnd.setDate(lastEnd.getDate() - 7);
   const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
   const query = search.trim().toLowerCase();
-  const amountQuery = query.replace(/[\\s$\\u00a0\\u202f]/g, "").replace(",", ".");
+  const amountQuery = query.replace(/[\s$\u00a0\u202f]/g, "").replace(",", ".");
   const rows = courses.filter(sevEligible).filter((ride) =>
     (type === "all" || ride.type === type) &&
     (!query ||
