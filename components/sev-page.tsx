@@ -4,6 +4,7 @@ import DateRangePicker, { DateRangeField } from "@/components/date-range-picker"
 import { isCardPayment } from "@/lib/teo-payment";
 import { feePeriods, sevBreakdown, sevTotals } from "@/lib/sev";
 import { summarizePayroll } from "@/lib/payroll-summary";
+import { filterSevRides, filterSevStatuses, type SevCategory, type SevPeriod, type SevDeclarationStatus, type SevPayrollStatus } from "@/lib/sev-filtering";
 
 type Ride = {
   id: string; type: string; date: string; amount: number; tip: number;
@@ -24,29 +25,37 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
   const [page, setPage] = useState("courses");
   const [feePeriod, setFeePeriod] = useState("month");
   const [feeYear, setFeeYear] = useState(today.slice(0,4));
-  const [period, setPeriod] = useState("week");
-  const [status, setStatus] = useState("all");
-  const [payStatus, setPayStatus] = useState<"all" | "verified" | "unverified">("all");
-  const [type, setType] = useState("all");
+  const [period, setPeriod] = useState<SevPeriod>("week");
+  const [status, setStatus] = useState<SevDeclarationStatus>("all");
+  const [payStatus, setPayStatus] = useState<SevPayrollStatus>("all");
+  const [type, setType] = useState<SevCategory>("all");
   const [search, setSearch] = useState("");
   const [start, setStart] = useState(week.start);
   const [end, setEnd] = useState(week.end);
   const [rangeOpen, setRangeOpen] = useState(false);
-  const lastStart = new Date(`${week.start}T12:00:00`); lastStart.setDate(lastStart.getDate() - 7);
-  const lastEnd = new Date(`${week.end}T12:00:00`); lastEnd.setDate(lastEnd.getDate() - 7);
-  const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
-  const query = search.trim().toLowerCase();
-  const amountQuery = query.replace(/[\s$\u00a0\u202f]/g, "").replace(",", ".");
-  const rows = courses.filter(sevEligible).filter((ride) =>
-    (type === "all" || ride.type === type) &&
-    (!query ||
-      `${ride.hob || ""} ${ride.teoId || ""} ${ride.taxiCategory || ""}`.toLowerCase().includes(query) ||
-      (amountQuery.length > 0 && (ride.amount + ride.tip).toFixed(2).includes(amountQuery))) &&
-    (period === "all" || (period === "week" && ride.date >= week.start && ride.date <= week.end) ||
-      (period === "previous" && ride.date >= key(lastStart) && ride.date <= key(lastEnd)) ||
-      (period === "month" && ride.date.startsWith(today.slice(0,7))) ||
-      (period === "custom" && ride.date >= start && ride.date <= end))
-  ).sort((a,b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
+  const resetFilters = () => {
+    setPeriod("week"); setType("all"); setStatus("all");
+    setPayStatus("all"); setSearch("");
+    setStart(week.start); setEnd(week.end);
+  };
+  const rows = filterSevRides(courses.filter(sevEligible), {
+    category: type, period, week, today, start, end, search,
+  });
+  const categoryLabel = {
+    all: "Toutes les catégories", taxi: "Toutes les courses taxi",
+    aeroport: "Aéroport", "centre-ville": "Centre-ville", adapte: "Transport adapté",
+  }[type];
+  const declarationLabel = {
+    all: "Tous statuts SEV", pending: "À ajouter au SEV", added: "Ajoutées au SEV",
+  }[status];
+  const payrollLabel = {
+    all: "Toutes les paies", verified: "Paie vérifiée", unverified: "Paie non vérifiée",
+  }[payStatus];
+  const activeAdvancedCount = Number(type !== "all") +
+    (page === "courses" ? Number(status !== "all") + Number(payStatus !== "all") : 0);
+  const hasNonDefaultFilters =
+    period !== "week" || type !== "all" || status !== "all" ||
+    payStatus !== "all" || !!search.trim();
   const added = rows.filter((ride) => ride.sevAdded).length;
   const pending = rows.length - added;
   const grossTotal = rows.reduce((sum, ride) => sum + ride.amount + ride.tip, 0);
@@ -56,10 +65,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
   // Le résumé porte sur toutes les courses éligibles de la période, avant
   // l'application des filtres de statut SEV et de vérification de paie.
   const payroll = summarizePayroll(rows);
-  const visible = rows.filter((ride) =>
-    (status === "all" || (status === "added" ? ride.sevAdded : !ride.sevAdded)) &&
-    (payStatus === "all" || (payStatus === "verified" ? ride.verified === true : ride.verified !== true))
-  );
+  const visible = filterSevStatuses(rows, status, payStatus);
   const money = (amount: number) => new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(amount);
   const feeRows = feePeriods(courses, expenses, feePeriod === "year", companyFee).filter(row => feeYear === "all" || row.period.startsWith(feeYear));
   const years = [...new Set([today.slice(0,4), ...courses.map(r=>r.date.slice(0,4)), ...expenses.map(e=>e.date.slice(0,4)), ...feePeriods(courses, expenses, true, companyFee).map(r=>r.period)])].sort().reverse();
@@ -81,6 +87,94 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
       {!feeRows.length && <p className="sev-empty">Aucun frais enregistré pour cette période.</p>}
       <p className="sev-net-note">Les frais de compagnie sont comptés une fois par semaine avec des courses, au mardi de cette semaine. Les frais sont calculés selon les réglages actuels. Les perceptions STM et la redevance taxi comprise dans le prix client ne sont pas des frais ajoutés ici. Ne saisissez pas une seconde fois ces frais automatiques dans Dépenses.</p>
     </> : <>
+    <div className="sev-quick-period" role="group" aria-label="Période des courses">
+      {([
+        ["week", "Cette semaine"], ["previous", "Semaine passée"],
+        ["month", "Ce mois"], ["all", "Toutes"],
+      ] as const).map(([value, label]) => (
+        <button key={value} type="button" className={period === value ? "is-active" : ""}
+          aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>
+      ))}
+      <button type="button" className={period === "custom" ? "is-active" : ""}
+        aria-pressed={period === "custom"} onClick={() => { setPeriod("custom"); setRangeOpen(true); }}>
+        Dates…
+      </button>
+    </div>
+    <div className="sev-search-row">
+      <label className="sev-search-label">
+        <span>Rechercher une course</span>
+        <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="HOB, ID Téo, BILL, date ou montant…" />
+      </label>
+      {search && <button type="button" className="sev-search-clear"
+        aria-label="Effacer la recherche" onClick={() => setSearch("")}>×</button>}
+      <button type="button" className="sev-filters-clear"
+        onClick={resetFilters} disabled={!hasNonDefaultFilters}>Effacer les filtres</button>
+    </div>
+    <details className="sev-filter-accordion">
+      <summary>Filtres avancés{activeAdvancedCount ? " (" + activeAdvancedCount + ")" : ""}<span>{categoryLabel}{page === "courses" ? " · " + declarationLabel + " · " + payrollLabel : ""}</span></summary>
+      <div className="sev-filters">
+        <label>Période
+          <select value={period} onChange={e => {
+            const next = e.target.value;
+            setPeriod(next as SevPeriod);
+            if (next === "custom") setRangeOpen(true);
+          }}>
+            <option value="week">Cette semaine</option>
+            <option value="previous">Semaine précédente</option>
+            <option value="month">Ce mois-ci</option>
+            <option value="custom">Dates personnalisées</option>
+            <option value="all">Toutes les dates</option>
+          </select>
+        </label>
+        {page === "courses" && <label>Statut
+          <select value={status} onChange={e=>setStatus(e.target.value as SevDeclarationStatus)}>
+            <option value="all">Tous les statuts</option>
+            <option value="pending">À ajouter au SEV</option>
+            <option value="added">Ajoutées au SEV</option>
+          </select>
+        </label>}
+        {page === "courses" && <label>Vérification paie Téo
+          <select value={payStatus} onChange={e => setPayStatus(e.target.value as SevPayrollStatus)}>
+            <option value="all">Toutes les courses</option>
+            <option value="verified">Vérifiées</option>
+            <option value="unverified">Non vérifiées</option>
+          </select>
+        </label>}
+        <label>Catégorie de course
+          <select value={type} onChange={e=>setType(e.target.value as SevCategory)}>
+            <option value="all">Toutes les catégories</option>
+            <option value="taxi">Toutes les courses taxi</option>
+            <option value="aeroport">Aéroport</option>
+            <option value="centre-ville">Centre-ville</option>
+            <option value="adapte">Transport adapté</option>
+          </select>
+        </label>
+        {period === "custom" && (
+          <DateRangeField start={start} end={end} onClick={() => setRangeOpen(true)} />
+        )}
+        <button type="button" className="sev-reset-filters" onClick={resetFilters} disabled={!hasNonDefaultFilters}>Réinitialiser les filtres</button>
+      </div>
+    </details>
+    <DateRangePicker open={rangeOpen} start={start} end={end}
+      onClose={() => setRangeOpen(false)}
+      onApply={(from, to) => {
+        setStart(from);
+        setEnd(to);
+        setRangeOpen(false);
+      }} />
+    {page === "courses" && (type !== "all" || status !== "all" || payStatus !== "all" || search.trim() || period === "custom") && (
+      <div className="sev-active-chips" aria-label="Filtres actifs">
+        {type !== "all" && <button type="button" onClick={() => setType("all")}>{categoryLabel} ×</button>}
+        {status !== "all" && <button type="button" onClick={() => setStatus("all")}>{declarationLabel} ×</button>}
+        {payStatus !== "all" && <button type="button" onClick={() => setPayStatus("all")}>{payrollLabel} ×</button>}
+        {!!search.trim() && <button type="button" onClick={() => setSearch("")}>Recherche : {search.trim()} ×</button>}
+        {period === "custom" && <button type="button" onClick={() => setPeriod("week")}>Dates personnalisées ×</button>}
+      </div>
+    )}
+    {page === "courses" && <p className="sev-filter-count" role="status">
+      {visible.length} course{visible.length === 1 ? "" : "s"} correspond{visible.length === 1 ? "" : "ent"} aux filtres
+    </p>}
     <div className="sev-stats sev-status-cards" aria-label="État des courses de la période">
       <button type="button" className={`sev-stat sev-stat-pending ${status === "pending" && page === "courses" ? "is-active" : ""}`}
         aria-pressed={status === "pending" && page === "courses"}
@@ -119,65 +213,6 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
         <p className="sev-payroll-caption">« Vérifiée » signifie comparée à une fiche de paie Téo, et non ajoutée au SEV ni reçue en banque.</p>
       </section>
     )}
-    <div className="sev-search-row">
-      <label className="sev-search-label">
-        <span>Rechercher une course</span>
-        <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="HOB, ID Téo ou montant…" />
-      </label>
-    </div>
-    <details className="sev-filter-accordion">
-      <summary>Filtres <span>{period === "week" ? "Cette semaine" : period === "previous" ? "Semaine précédente" : period === "month" ? "Ce mois-ci" : period === "custom" ? "Dates personnalisées" : "Toutes les dates"} · {type === "all" ? "Tous types" : type === "taxi" ? "Taxi" : "Adapté"}</span></summary>
-      <div className="sev-filters">
-        <label>Période
-          <select value={period} onChange={e => {
-            const next = e.target.value;
-            setPeriod(next);
-            if (next === "custom") setRangeOpen(true);
-          }}>
-            <option value="week">Cette semaine</option>
-            <option value="previous">Semaine précédente</option>
-            <option value="month">Ce mois-ci</option>
-            <option value="custom">Dates personnalisées</option>
-            <option value="all">Toutes les dates</option>
-          </select>
-        </label>
-        {page === "courses" && <label>Statut
-          <select value={status} onChange={e=>setStatus(e.target.value)}>
-            <option value="all">Tous les statuts</option>
-            <option value="pending">À ajouter au SEV</option>
-            <option value="added">Ajoutées au SEV</option>
-          </select>
-        </label>}
-        {page === "courses" && <label>Vérification paie Téo
-          <select value={payStatus} onChange={e => setPayStatus(e.target.value as "all" | "verified" | "unverified")}>
-            <option value="all">Toutes les courses</option>
-            <option value="verified">Vérifiées</option>
-            <option value="unverified">Non vérifiées</option>
-          </select>
-        </label>}
-        <label>Type de course
-          <select value={type} onChange={e=>setType(e.target.value)}>
-            <option value="all">Tous les types</option>
-            <option value="taxi">Taxi / compte</option>
-            <option value="adapte">Transport adapté</option>
-          </select>
-        </label>
-        {period === "custom" && (
-          <DateRangeField start={start} end={end} onClick={() => setRangeOpen(true)} />
-        )}
-        <button type="button" className="sev-reset-filters" onClick={()=>{
-          setPeriod("week"); setType("all"); setStatus("all"); setPayStatus("all"); setSearch("");
-        }}>Réinitialiser les filtres</button>
-      </div>
-    </details>
-    <DateRangePicker open={rangeOpen} start={start} end={end}
-      onClose={() => setRangeOpen(false)}
-      onApply={(from, to) => {
-        setStart(from);
-        setEnd(to);
-        setRangeOpen(false);
-      }} />
     {period === "week" && <p>Du {week.start} au {week.end} · semaine du mardi au lundi</p>}
     {period === "custom" && start > end && <p role="alert">La date de fin doit être après la date de début.</p>}
     {page === "taxes" ? <>
@@ -197,7 +232,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
       ? <div className="sev-empty">
           <b>Aucune course trouvée</b>
           <p>Changez la période ou les filtres pour retrouver vos courses.</p>
-          <button type="button" onClick={() => { setPeriod("all"); setStatus("all"); setPayStatus("all"); setType("all"); setSearch(""); }}>Afficher toutes les courses</button>
+          <button type="button" onClick={() => { resetFilters(); setPeriod("all"); }}>Afficher toutes les courses</button>
         </div>
       : <div className="sev-list sev-ride-list">
           {visible.map((ride) => (
