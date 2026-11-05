@@ -25,3 +25,17 @@ test('supports wrapped text and price before date without mixing equal-price rid
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map(r => r.amount), [1234.5, 1234.5]);
 });
+
+test('corporate-account TIPA tips are included, even across invoice page breaks', () => {
+  const rows = extractCardPayrollRows([
+    ride('INV', '29176627A', '10,70'),
+    '[TIPA] Pourboire à bord - Comptes corporatifs (29176627A to 16962) 1 2,14 2,14 $',
+    ride('CRD', '29168043A', '14,70'),
+    'Page: 1 / 2',
+    '[TIPC] Pourboire à bord - Carte (29168043A to 999999) 1 2,21 2,21 $',
+  ].join(' '));
+  assert.deepEqual(rows.map(r => [r.key,r.amount,r.tip]), [
+    ['29176627A',10.70,2.14],
+    ['29168043A',14.70,2.21],
+  ]);
+});
