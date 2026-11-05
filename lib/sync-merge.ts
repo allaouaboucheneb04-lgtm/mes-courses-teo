@@ -17,7 +17,13 @@ export function mergeRecords<T extends {id:string}>(base:T[],local:T[],remote:T[
   const ids=[...new Set([...local.map(x=>x.id),...remote.map(x=>x.id),...base.map(x=>x.id)])];
   return ids.map(id=>mergeValue(b.get(id),l.get(id),r.get(id)) as T|undefined).filter((v):v is T=>!!v);
 }
-export type DriverSyncData={courses:{id:string}[];expenses:{id:string}[];payStatements:{id:string}[];settings:object};
+export type DriverSyncData={courses:{id:string}[];expenses:{id:string}[];payStatements:{id:string}[];inspections?:{id:string}[];settings:object};
 export function mergeDriverData<T extends DriverSyncData>(base:T,local:T,remote:T):T {
-  return {...remote,courses:mergeRecords(base.courses,local.courses,remote.courses),expenses:mergeRecords(base.expenses,local.expenses,remote.expenses),payStatements:mergeRecords(base.payStatements,local.payStatements,remote.payStatements),settings:mergeValue(base.settings,local.settings,remote.settings)} as T;
+  return {...remote,
+    courses:mergeRecords(base.courses,local.courses,remote.courses),
+    expenses:mergeRecords(base.expenses,local.expenses,remote.expenses),
+    payStatements:mergeRecords(base.payStatements,local.payStatements,remote.payStatements),
+    inspections:mergeRecords(base.inspections ?? [],local.inspections ?? [],remote.inspections ?? []),
+    settings:mergeValue(base.settings,local.settings,remote.settings),
+  } as T;
 }
