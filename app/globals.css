@@ -4350,3 +4350,59 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .sev-page .sev-date-filter-top .sev-quick-period button { font-size: 11px; }
   .sev-page .sev-inline-filters { gap: 5px; }
 }
+
+
+/* SEV: a single period selector plus the calendar replaces five date buttons.
+   Category/SEV/payroll are filtered by tapping their existing summary cards. */
+.sev-page .sev-date-filter-top {
+  margin: 8px 0 7px;
+  padding: 11px 12px 12px;
+  gap: 8px;
+}
+.sev-page .sev-date-filter-heading strong { font-size: 14px; }
+.sev-page .sev-date-filter-heading small { font-size: 12px; }
+.sev-page .sev-date-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.sev-page .sev-date-select-label { min-width: 0; display: block; }
+.sev-page .sev-date-select-label select {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  border: 1px solid #bfd2d5;
+  border-radius: 12px;
+  background: #f8fbfb;
+  color: #145e65;
+  padding: 9px 11px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.sev-page .sev-date-calendar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  border: 1px solid #a7ccce;
+  border-radius: 12px;
+  padding: 8px 11px;
+  background: #eaf7f6;
+  color: #086770;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+.sev-page .sev-date-calendar span { font-size: 20px; line-height: 1; }
+.sev-page .sev-date-control-row button:focus-visible,
+.sev-page .sev-date-control-row select:focus-visible {
+  outline: 3px solid #007a8d;
+  outline-offset: 2px;
+}
+@media (max-width: 370px) {
+  .sev-page .sev-date-calendar { padding: 8px; font-size: 12px; }
+}

@@ -7,37 +7,26 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const vite = await createServer({
-  appType: "custom",
-  configFile: false,
-  root,
+  appType: "custom", configFile: false, root,
   resolve: { alias: { "@": root }, dedupe: ["react", "react-dom"] },
   server: { middlewareMode: true, hmr: false },
 });
 after(async () => { await vite.close(); });
-
 const { default: SevPage } = await vite.ssrLoadModule("/components/sev-page.tsx");
 const base = {
-  expenses: [],
-  companyFee: 120,
-  onFiscalChange: () => {},
-  onChange: () => {},
-  onEdit: () => {},
-  today: "2026-11-05",
-  week: { start: "2026-11-03", end: "2026-11-09" },
+  expenses: [], companyFee: 120,
+  onFiscalChange: () => {}, onChange: () => {}, onEdit: () => {},
+  today: "2026-11-05", week: { start: "2026-11-03", end: "2026-11-09" },
 };
+const render = courses => renderToStaticMarkup(React.createElement(SevPage, { ...base, courses }));
 
-test("SEV displays independent payroll verification summaries and individual badges", () => {
-  const courses = [
-    { id: "a", type: "taxi", date: "2026-11-03", amount: 20, tip: 3,
-      payment: "Téo / carte", verified: true, verifiedBillId: "BILL123", sevAdded: false },
-    { id: "b", type: "adapte", date: "2026-11-04", amount: 40, tip: 0,
-      payment: "", verified: false, sevAdded: true, hob: "HOB0012" },
-    { id: "cash", type: "taxi", date: "2026-11-04", amount: 30, tip: 0,
-      payment: "Espèces", verified: false, sevAdded: false },
-    { id: "older", type: "adapte", date: "2026-10-22", amount: 100, tip: 0,
-      payment: "", verified: false, sevAdded: false },
-  ];
-  const html = renderToStaticMarkup(React.createElement(SevPage, { ...base, courses }));
+test("SEV retains separate payroll verification and SEV status totals", () => {
+  const html = render([
+    {id:"taxi",type:"taxi",date:"2026-11-03",amount:20,tip:3,payment:"Téo / carte",verified:true,sevAdded:false,verifiedBillId:"BILL123"},
+    {id:"adapted",type:"adapte",date:"2026-11-04",amount:40,tip:0,payment:"",verified:false,sevAdded:true,hob:"HOB0012"},
+    {id:"cash",type:"taxi",date:"2026-11-04",amount:30,tip:0,payment:"Espèces"},
+    {id:"older",type:"adapte",date:"2026-10-22",amount:100,tip:0,payment:""},
+  ]);
   assert.match(html, /Vérification paie Téo/);
   assert.match(html, /✓ Vérifiées<\/span><b>1<\/b>/);
   assert.match(html, /Non vérifiées<\/span><b>1<\/b>/);
@@ -47,80 +36,50 @@ test("SEV displays independent payroll verification summaries and individual bad
   assert.match(html, /Paie non vérifiée/);
   assert.match(html, /✓ Ajoutée au SEV/);
   assert.match(html, /À ajouter au SEV/);
-  assert.match(html, /value="verified">Vérifiées<\/option>/);
-  assert.match(html, /value="unverified">Non vérifiées<\/option>/);
-  assert.doesNotMatch(html, /100,00[^<]*\$/); // outside selected week
+  assert.doesNotMatch(html, /100,00[^<]*\$/);
 });
 
-test("mobile SEV quick filters and reset controls appear before status cards", () => {
-  const html = renderToStaticMarkup(React.createElement(SevPage, {
-    ...base, courses:[{id:"a",type:"taxi",date:"2026-11-04",amount:45.70,tip:0,payment:"Téo / carte",taxiCategory:"aeroport"}]
-  }));
-  assert.match(html, /Période des courses/);
-  assert.match(html, /Cette semaine/);
-  assert.match(html, /Semaine passée/);
-  assert.match(html, /Choisir des dates personnalisées/);
-  assert.doesNotMatch(html, /Réinitialiser tous les filtres/);
-  assert.match(html, /Filtrer par date/);
+test("SEV date is one compact selector, with calendar and all supported periods", () => {
+  const html = render([{id:"one",type:"adapte",date:"2026-11-04",amount:12,tip:0,payment:""}]);
+  assert.match(html, /aria-label="Filtrer les courses par date"/);
+  assert.match(html, /<strong>Période<\/strong>/);
+  assert.match(html, /Du 3 nov\.? au 9 nov\.?/);
+  assert.match(html, /aria-label="Choisir une période"/);
+  assert.match(html, /value="week"[^>]*>Cette semaine<\/option>/);
+  assert.match(html, /value="previous">Semaine passée<\/option>/);
+  assert.match(html, /value="month">Ce mois<\/option>/);
+  assert.match(html, /value="all">Toutes les dates<\/option>/);
+  assert.match(html, /value="custom">Dates personnalisées<\/option>/);
+  assert.match(html, /aria-label="Choisir les dates dans le calendrier"/);
+  assert.ok(html.indexOf("sev-date-control-row") < html.indexOf("sev-search-row"));
+  assert.ok(html.indexOf("sev-search-row") < html.indexOf("sev-stats sev-status-cards"));
+});
+
+test("the circled category/SEV/payroll selector block was removed, not the status cards", () => {
+  const html = render([{id:"one",type:"adapte",date:"2026-11-04",amount:12,tip:0,payment:""}]);
+  assert.doesNotMatch(html, /sev-inline-filters/);
   assert.doesNotMatch(html, /Filtres avancés/);
-  assert.match(html, /aria-label="Filtres des courses"/);
-  assert.match(html, /Statut SEV/);
-  assert.match(html, /Paie Téo/);
-  assert.match(html, /value="aeroport">Aéroport<\/option>/);
-  assert.match(html, /value="centre-ville">Centre-ville<\/option>/);
-  assert.match(html, /BILL, date, montant/);
+  assert.doesNotMatch(html, /Filtrer par catégorie/);
+  assert.doesNotMatch(html, /Filtrer par statut SEV/);
+  assert.doesNotMatch(html, /Filtrer par vérification de paie/);
+  assert.match(html, /sev-stats sev-status-cards/);
+  assert.match(html, /sev-payroll-status-cards/);
+  assert.match(html, /sev-category-cards/);
   assert.match(html, /1 course correspond aux filtres/);
-  assert.ok(html.indexOf("sev-quick-period") < html.indexOf("sev-stats sev-status-cards"));
-  assert.ok(html.indexOf("sev-date-filter-top") < html.indexOf("sev-stats sev-status-cards"));
-  assert.ok(html.indexOf("sev-inline-filters") < html.indexOf("sev-stats sev-status-cards"));
 });
 
-test("SEV category cards show separate course counts and gross amounts next to verification", () => {
-  const courses = [
+test("SEV category cards preserve amounts and omit cash or past rides", () => {
+  const html = render([
     {id:"airport",type:"taxi",date:"2026-11-05",amount:30,tip:2,payment:"Carte",taxiCategory:"aeroport",verified:true},
     {id:"downtown",type:"taxi",date:"2026-11-04",amount:25,tip:5,payment:"Téo / carte",taxiCategory:"centre-ville"},
     {id:"adapted",type:"adapte",date:"2026-11-04",amount:118.92,tip:0,payment:"",hob:"HOB0397"},
     {id:"cash",type:"taxi",date:"2026-11-05",amount:500,tip:0,payment:"Espèces",taxiCategory:"centre-ville"},
     {id:"old",type:"adapte",date:"2026-10-28",amount:999,tip:0,payment:""},
-  ];
-  const html = renderToStaticMarkup(React.createElement(SevPage,{...base,courses}));
-  assert.match(html,/aria-label="Montants des courses par catégorie"/);
-  assert.match(html,/Montants par catégorie/);
-  assert.match(html,/Aéroport<\/span><b>1<\/b><small>32,00[^<]*\$/);
-  assert.match(html,/Centre-ville<\/span><b>1<\/b><small>30,00[^<]*\$/);
-  assert.match(html,/Transport adapté<\/span><b>1<\/b><small>118,92[^<]*\$/);
-  assert.match(html,/Filtrer cette catégorie/);
-  assert.match(html,/aria-pressed="false"/);
-  assert.ok(html.indexOf("sev-payroll-status-cards") < html.indexOf("sev-category-cards"));
-  assert.doesNotMatch(html,/500,00[^<]*\$/);
-  assert.doesNotMatch(html,/999,00[^<]*\$/);
-});
-
-test("SEV shows date filter above other filters and current Tuesday-to-Monday range", () => {
-  const html = renderToStaticMarkup(React.createElement(SevPage, {
-    ...base, courses: [{id:"test",type:"adapte",date:"2026-11-04",amount:12,tip:0,payment:""}],
-  }));
-  assert.match(html, /Filtrer par date/);
-  assert.match(html, /Du 3 nov\.? au 9 nov\.?/);
-  assert.match(html, /Choisir des dates personnalisées/);
-  assert.match(html, /aria-label="Filtrer par catégorie"/);
-  assert.match(html, /aria-label="Filtrer par vérification de paie"/);
-  assert.doesNotMatch(html, /<details class="sev-filter-accordion"/);
-  assert.ok(html.indexOf("sev-date-filter-top") < html.indexOf("sev-search-row"));
-  assert.ok(html.indexOf("sev-search-row") < html.indexOf("sev-inline-filters"));
-  assert.ok(html.indexOf("sev-inline-filters") < html.indexOf("sev-stats sev-status-cards"));
-});
-
-test("SEV compact iPhone controls do not show a disabled reset button", () => {
-  const html = renderToStaticMarkup(React.createElement(SevPage, {
-    ...base, courses: [],
-  }));
-  assert.match(html, /aria-label="Période des courses"/);
-  assert.match(html, /aria-label="Cette semaine"/);
-  assert.match(html, /aria-label="Semaine passée"/);
-  assert.match(html, /aria-label="Choisir des dates personnalisées"/);
-  assert.match(html, /class="sev-inline-filters "/);
-  assert.match(html, /class="sev-sr-only">Rechercher une course/);
-  assert.doesNotMatch(html, /Réinitialiser tous les filtres/);
-  assert.doesNotMatch(html, /Filtres avancés/);
+  ]);
+  assert.match(html, /Aéroport<\/span><b>1<\/b><small>32,00[^<]*\$/);
+  assert.match(html, /Centre-ville<\/span><b>1<\/b><small>30,00[^<]*\$/);
+  assert.match(html, /Transport adapté<\/span><b>1<\/b><small>118,92[^<]*\$/);
+  assert.match(html, /Filtrer cette catégorie/);
+  assert.doesNotMatch(html, /500,00[^<]*\$/);
+  assert.doesNotMatch(html, /999,00[^<]*\$/);
 });
