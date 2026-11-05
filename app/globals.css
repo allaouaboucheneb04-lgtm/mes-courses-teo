@@ -4249,3 +4249,43 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .sev-page .sev-category-card b { font-size: 21px; }
   .sev-page .sev-category-card small { font-size: 12px; }
 }
+
+
+/* SEV: date always visible on top; no hidden advanced filter accordion. */
+.sev-page .sev-date-filter-top {
+  display: grid; gap: 6px; min-width: 0;
+  margin: 12px 0 8px; padding: 11px 12px 7px;
+  border: 1px solid #d2e1e3; border-radius: 16px;
+  background: #fff;
+}
+.sev-page .sev-date-filter-heading {
+  display: flex; justify-content: space-between; align-items: baseline;
+  flex-wrap: wrap; gap: 2px 12px; padding: 0 2px;
+}
+.sev-page .sev-date-filter-heading strong { color: #125e64; font-size: 14px; font-weight: 850; }
+.sev-page .sev-date-filter-heading small { color: #61767b; font-size: 12px; font-weight: 700; }
+.sev-page .sev-date-filter-top .sev-quick-period { margin: 0; padding: 5px 0 5px; }
+.sev-page .sev-date-filter-top .date-range-field { margin: 3px 0 5px; }
+.sev-page .sev-inline-filters {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px; padding: 10px; margin: 0 0 8px;
+  border: 1px solid #d2e1e3; border-radius: 13px; background: #fff;
+}
+.sev-page .sev-inline-filters label {
+  display: grid; gap: 5px; min-width: 0;
+  color: #405c62; font-size: 12px; font-weight: 800;
+}
+.sev-page .sev-inline-filters select {
+  width: 100%; min-width: 0; box-sizing: border-box;
+  min-height: 43px; padding: 8px 10px;
+  color: #193f46; background: #fff;
+  border: 1px solid #bbd0d3; border-radius: 10px;
+  font-size: 14px;
+}
+.sev-page .sev-inline-filters select:focus-visible {
+  outline: 3px solid #007a8d; outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .sev-page .sev-inline-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .sev-page .sev-inline-filters label:last-child:nth-child(3) { grid-column: 1 / -1; }
+}
