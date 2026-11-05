@@ -102,30 +102,30 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
     </> : <>
     <section className="sev-date-filter-top" aria-label="Filtrer les courses par date">
       <div className="sev-date-filter-heading">
-        <strong>Filtrer par date</strong>
+        <strong>Période</strong>
         <small>{dateLabel}</small>
       </div>
-      <div className="sev-quick-period" role="group" aria-label="Période des courses">
-        {([
-          ["week", "Semaine", "Cette semaine"], ["previous", "Passée", "Semaine passée"],
-          ["month", "Mois", "Ce mois"], ["all", "Toutes", "Toutes les dates"],
-        ] as const).map(([value, label, fullLabel]) => (
-          <button key={value} type="button" className={period === value ? "is-active" : ""}
-            aria-label={fullLabel} aria-pressed={period === value}
-            onClick={() => setPeriod(value)}>{label}</button>
-        ))}
-        <button type="button" className={period === "custom" ? "is-active" : ""}
-          aria-label="Choisir des dates personnalisées"
-          aria-pressed={period === "custom"} onClick={() => setRangeOpen(true)}>
-          Dates
+      <div className="sev-date-control-row">
+        <label className="sev-date-select-label">
+          <span className="sev-sr-only">Choisir une période</span>
+          <select aria-label="Choisir une période" value={period} onChange={event => {
+            const next = event.target.value as SevPeriod;
+            if (next === "custom") setRangeOpen(true);
+            else setPeriod(next);
+          }}>
+            <option value="week">Cette semaine</option>
+            <option value="previous">Semaine passée</option>
+            <option value="month">Ce mois</option>
+            <option value="all">Toutes les dates</option>
+            <option value="custom">Dates personnalisées</option>
+          </select>
+        </label>
+        <button type="button" className="sev-date-calendar"
+          aria-label="Choisir les dates dans le calendrier"
+          onClick={() => setRangeOpen(true)}>
+          <span aria-hidden="true">▦</span> Calendrier
         </button>
       </div>
-      {period === "custom" && (
-        <DateRangeField start={start} end={end} onClick={() => setRangeOpen(true)} />
-      )}
-      {period === "custom" && start > end && (
-        <p role="alert">La date de fin doit être après la date de début.</p>
-      )}
     </section>
     <div className="sev-search-row">
       <label className="sev-search-label">
@@ -137,31 +137,6 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
         aria-label="Effacer la recherche" onClick={() => setSearch("")}>×</button>}
       {hasNonDefaultFilters && <button type="button" className="sev-filters-clear"
         aria-label="Réinitialiser tous les filtres" onClick={resetFilters}>Effacer</button>}
-    </div>
-    <div className={`sev-inline-filters ${page === "courses" ? "" : "is-taxes"}`} aria-label="Filtres des courses">
-      <label>Catégorie
-        <select aria-label="Filtrer par catégorie" value={type} onChange={e=>setType(e.target.value as SevCategory)}>
-          <option value="all">Toutes</option>
-          <option value="taxi">Taxi</option>
-          <option value="aeroport">Aéroport</option>
-          <option value="centre-ville">Centre-ville</option>
-          <option value="adapte">Adapté</option>
-        </select>
-      </label>
-      {page === "courses" && <label>Statut SEV
-        <select aria-label="Filtrer par statut SEV" value={status} onChange={e=>setStatus(e.target.value as SevDeclarationStatus)}>
-          <option value="all">Tous</option>
-          <option value="pending">À ajouter</option>
-          <option value="added">Ajoutées</option>
-        </select>
-      </label>}
-      {page === "courses" && <label>Paie Téo
-        <select aria-label="Filtrer par vérification de paie" value={payStatus} onChange={e => setPayStatus(e.target.value as SevPayrollStatus)}>
-          <option value="all">Toutes</option>
-          <option value="verified">Vérifiées</option>
-          <option value="unverified">Non vérifiées</option>
-        </select>
-      </label>}
     </div>
     <DateRangePicker open={rangeOpen} start={start} end={end}
       onClose={() => setRangeOpen(false)}
