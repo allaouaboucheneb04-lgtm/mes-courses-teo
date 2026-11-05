@@ -327,10 +327,22 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
               placeholder="Plaque, date, nom, kilométrage…" />
           </label>
           {browserBle && (
-            <p className="inspection-bluetooth-note">
-              Bluetooth direct disponible. Allumez la Bisofice MPT-II et déconnectez-la de nRF Connect.
-              Au premier clic sur Imprimer, sélectionnez MPT-II dans la fenêtre Bluetooth.
-            </p>
+            <div className="inspection-bluetooth-note">
+              <p>Bluetooth direct disponible. Allumez la Bisofice MPT-II et déconnectez-la de nRF Connect.
+                Au premier clic sur Imprimer, sélectionnez MPT-II dans la fenêtre Bluetooth.</p>
+              <button type="button" disabled={printingInspectionId !== null}
+                onClick={() => {
+                  if (printingInspectionId) return;
+                  setPrintingInspectionId("test");
+                  setPrintingMessage("Connexion Bluetooth et envoi du test…");
+                  void printMPTIIInBrowser([{ text: "TEST MPT-II", kind: "bold" }])
+                    .then(() => setPrintingMessage("Test envoyé. Vérifiez que le ticket TEST MPT-II est sorti."))
+                    .catch((error: unknown) => setPrintingMessage(error instanceof Error ? error.message : "Le test a échoué."))
+                    .finally(() => setPrintingInspectionId(null));
+                }}>
+                {printingInspectionId === "test" ? "Test en cours…" : "Tester mon imprimante MPT-II"}
+              </button>
+            </div>
           )}
           {printingMessage && (
             <p className="inspection-bluetooth-note" role="status">{printingMessage}</p>
