@@ -5,14 +5,18 @@ on:
   pull_request:
     paths:
       - "components/sev-page.tsx"
+      - "lib/sev-filtering.ts"
       - "app/globals.css"
+      - "tests/sev-filtering.test.mjs"
       - "tests/sev-payroll-ui.test.mjs"
       - ".github/workflows/sev-payroll-status.yml"
   push:
-    branches: [fix/sev-payroll-status-nov-2026]
+    branches: [fix/sev-payroll-status-nov-2026, improve/sev-filters-iphone-nov-2026]
     paths:
       - "components/sev-page.tsx"
+      - "lib/sev-filtering.ts"
       - "app/globals.css"
+      - "tests/sev-filtering.test.mjs"
       - "tests/sev-payroll-ui.test.mjs"
       - ".github/workflows/sev-payroll-status.yml"
 
@@ -34,4 +38,4 @@ jobs:
       - name: Vérifier TypeScript
         run: npx tsc --noEmit --pretty false
       - name: Tests SEV et paie
-        run: node --test --test-concurrency=1 tests/sev-payroll-ui.test.mjs tests/sev.test.mjs tests/payroll-summary.test.mjs
+        run: node --test --test-concurrency=1 tests/sev-filtering.test.mjs tests/sev-payroll-ui.test.mjs tests/sev.test.mjs tests/payroll-summary.test.mjs

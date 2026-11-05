@@ -4153,3 +4153,65 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .sev-page .sev-payroll-card b { font-size: 19px; }
   .sev-page .sev-payroll-card small { font-size: 11px; }
 }
+
+
+/* SEV filter redesign: fast access, large touch targets and compact iPhone layout */
+.sev-page .sev-quick-period {
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  overflow-x: auto; overscroll-behavior-x: contain;
+  padding: 3px 1px 8px; margin: 10px 0 3px;
+  scroll-snap-type: x proximity; scrollbar-width: none;
+}
+.sev-page .sev-quick-period::-webkit-scrollbar { display: none; }
+.sev-page .sev-quick-period button {
+  flex: 0 0 auto; min-height: 39px; padding: 8px 12px;
+  border: 1px solid #c4d7d9; border-radius: 999px;
+  background: #fff; color: #294c52; white-space: nowrap;
+  font-size: 12px; font-weight: 800; cursor: pointer; scroll-snap-align: start;
+}
+.sev-page .sev-quick-period button.is-active {
+  background: #056c72; color: white; border-color: #056c72;
+}
+.sev-page .sev-search-row {
+  display: grid; grid-template-columns: minmax(0,1fr) 36px auto;
+  align-items: end; gap: 7px; margin: 2px 0 8px;
+}
+.sev-page .sev-search-row .sev-search-label { min-width: 0; }
+.sev-page .sev-search-row .sev-search-label input { box-sizing: border-box; width: 100%; }
+.sev-page .sev-search-row button {
+  min-height: 46px; border: 1px solid #b9ced1; border-radius: 11px;
+  background: #f5fafa; color: #0a5a61; font-size: 12px; font-weight: 800;
+}
+.sev-page .sev-search-row .sev-search-clear { font-size: 22px; line-height: 1; }
+.sev-page .sev-search-row .sev-filters-clear { padding: 6px 10px; }
+.sev-page .sev-search-row button:disabled,
+.sev-page .sev-filters .sev-reset-filters:disabled {
+  opacity: .4; cursor: default;
+}
+.sev-page .sev-active-chips {
+  display: flex; gap: 6px; min-width: 0; overflow-x: auto;
+  padding: 3px 1px 6px; scrollbar-width: none;
+}
+.sev-page .sev-active-chips::-webkit-scrollbar { display: none; }
+.sev-page .sev-active-chips button {
+  flex: 0 0 auto; min-height: 32px; padding: 5px 10px;
+  border: 1px solid #b4d5d5; border-radius: 999px;
+  background: #ebf7f7; color: #0d5b60;
+  font-size: 11px; font-weight: 800; white-space: nowrap;
+}
+.sev-page .sev-filter-count {
+  margin: 3px 1px 0; font-size: 12px; color: #536c70;
+  font-weight: 750; line-height: 1.4;
+}
+.sev-page .sev-quick-period button:focus-visible,
+.sev-page .sev-search-row button:focus-visible,
+.sev-page .sev-active-chips button:focus-visible {
+  outline: 3px solid #007a8d; outline-offset: 2px;
+}
+@media (max-width: 440px) {
+  .sev-page .sev-search-row { grid-template-columns: minmax(0,1fr) 38px; }
+  .sev-page .sev-search-row .sev-filters-clear {
+    grid-column: 1 / -1; justify-self: end; min-height: 31px; padding: 4px 6px;
+  }
+  .sev-page .sev-quick-period button { min-height: 40px; }
+}

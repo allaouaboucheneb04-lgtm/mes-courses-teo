@@ -51,3 +51,21 @@ test("SEV displays independent payroll verification summaries and individual bad
   assert.match(html, /value="unverified">Non vérifiées<\/option>/);
   assert.doesNotMatch(html, /100,00[^<]*\$/); // outside selected week
 });
+
+test("mobile SEV quick filters and reset controls appear before status cards", () => {
+  const html = renderToStaticMarkup(React.createElement(SevPage, {
+    ...base, courses:[{id:"a",type:"taxi",date:"2026-11-04",amount:45.70,tip:0,payment:"Téo / carte",taxiCategory:"aeroport"}]
+  }));
+  assert.match(html, /Période des courses/);
+  assert.match(html, /Cette semaine/);
+  assert.match(html, /Semaine passée/);
+  assert.match(html, /Dates…/);
+  assert.match(html, /Effacer les filtres/);
+  assert.match(html, /Filtres avancés/);
+  assert.match(html, /value="aeroport">Aéroport<\/option>/);
+  assert.match(html, /value="centre-ville">Centre-ville<\/option>/);
+  assert.match(html, /BILL, date ou montant/);
+  assert.match(html, /1 course correspond aux filtres/);
+  assert.ok(html.indexOf("sev-quick-period") < html.indexOf("sev-stats sev-status-cards"));
+  assert.ok(html.indexOf("sev-filter-accordion") < html.indexOf("sev-stats sev-status-cards"));
+});
