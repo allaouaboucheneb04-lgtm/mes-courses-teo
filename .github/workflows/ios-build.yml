@@ -1,0 +1,55 @@
+name: iPhone – vérification de compilation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ios/MesCoursesTeo/**"
+      - ".github/workflows/ios-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Compiler iOS sur un Mac GitHub
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Télécharger Mes Courses Téo
+        uses: actions/checkout@v4
+
+      - name: Préparer le Mac et Xcode
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+
+      - name: Générer le projet Xcode
+        working-directory: ios/MesCoursesTeo
+        run: |
+          xcodegen generate
+          xcodebuild -list -project MesCoursesTeo.xcodeproj
+
+      - name: Vérifier la compilation de l’application iPhone
+        working-directory: ios/MesCoursesTeo
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project MesCoursesTeo.xcodeproj \
+            -scheme MesCoursesTeo \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/MesCoursesTeoDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee "$RUNNER_TEMP/mes-courses-teo-build.log"
+
+      - name: Garder les résultats pour débogage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log
+          path: ${{ runner.temp }}/mes-courses-teo-build.log
+          if-no-files-found: ignore
+          retention-days: 7
