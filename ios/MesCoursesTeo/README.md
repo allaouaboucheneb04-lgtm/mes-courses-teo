@@ -18,7 +18,22 @@ Cette version iOS native affiche le site Mes Courses Téo dans une WKWebView et 
 - Un retour d'envoi réussi indique l'envoi des données BLE, pas la confirmation
   qu'une feuille de papier est sortie de l'imprimante.
 
-## Préparer et installer sur l'iPhone
+## Compiler sans posséder de Mac (GitHub Actions)
+
+Une compilation iOS **sans signature** est préparée dans
+`/.github/workflows/ios-build.yml` sur un Mac hébergé par GitHub.
+
+1. Ouvrir **Actions → iPhone – vérification de compilation** dans le dépôt.
+2. Choisir **Run workflow**, branche `main`, puis déclencher la compilation.
+3. Consulter les journaux et les éventuelles erreurs dans **ios-build-log**.
+
+**Attention :** cette compilation destinée au simulateur ne crée **pas** une application
+signée installable sur iPhone. L'installation sans Mac physique est envisageable
+par **TestFlight** avec un compte payant Apple Developer, des certificats
+de signature et une chaîne de distribution iOS configurée. Ne partagez pas vos
+clés ou certificats privés dans un dépôt public.
+
+## Préparer et installer sur l'iPhone depuis un Mac (méthode alternative)
 
 **Requis : Mac, Xcode récent, XcodeGen, identifiant Apple pour signer et iPhone physique.**
 
