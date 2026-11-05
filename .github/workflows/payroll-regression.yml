@@ -43,6 +43,7 @@ jobs:
           node --test --test-concurrency=1 \
             tests/payroll-matching.test.mjs \
             tests/adapted-payroll.test.mjs \
+            tests/payroll-payments.test.mjs \
             tests/verify-one-cent.test.mjs \
             tests/card-payroll.test.mjs \
             tests/coupon-payroll.test.mjs
