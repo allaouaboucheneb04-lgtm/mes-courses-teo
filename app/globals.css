@@ -3246,3 +3246,71 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .date-range-overlay { align-items: center; }
   .date-range-sheet { height: min(750px, 85dvh); border-radius: 22px; }
 }
+
+
+/* Distinct high-visibility styles for the three ride types in History. */
+.history-day-courses .history-course.history-course-airport {
+  border: 2px solid #2563eb;
+  border-left: 8px solid #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.11);
+}
+.history-course-airport .course-icon.taxi {
+  background: #bfdbfe;
+  color: #1d4ed8;
+}
+.history-course-airport .course-info > b {
+  color: #1d4ed8;
+}
+.history-course-airport .history-course-values > div:not(.history-net) {
+  background: #fff;
+  border: 1px solid #c7ddff;
+}
+.history-course-airport .history-course-values .history-net {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.history-day-courses .history-course.history-course-centre-ville {
+  border: 2px solid #059669;
+  border-left: 8px solid #059669;
+  background: #ecfdf5;
+  box-shadow: 0 3px 12px rgba(5, 150, 105, 0.11);
+}
+.history-course-centre-ville .course-icon.taxi {
+  background: #a7f3d0;
+  color: #047857;
+}
+.history-course-centre-ville .course-info > b {
+  color: #047857;
+}
+.history-course-centre-ville .history-course-values > div:not(.history-net) {
+  background: #fff;
+  border: 1px solid #b7e9d2;
+}
+.history-course-centre-ville .history-course-values .history-net {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.history-day-courses .history-course.history-course-adapte {
+  border: 2px solid #d97706;
+  border-left: 8px solid #d97706;
+  background: #fff7ed;
+  box-shadow: 0 3px 12px rgba(217, 119, 6, 0.11);
+}
+.history-course-adapte .course-icon.adapte {
+  background: #fde68a;
+  color: #92400e;
+}
+.history-course-adapte .course-info > b {
+  color: #92400e;
+}
+.history-course-adapte .history-course-values > div:not(.history-net) {
+  background: #fff;
+  border: 1px solid #f5d5a4;
+}
+.history-course-adapte .history-course-values .history-net {
+  background: #ffedd5;
+  color: #9a3412;
+}
