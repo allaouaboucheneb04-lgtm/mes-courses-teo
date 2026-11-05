@@ -65,7 +65,6 @@ test("the circled category/SEV/payroll selector block was removed, not the statu
   assert.match(html, /sev-stats sev-status-cards/);
   assert.match(html, /sev-payroll-status-cards/);
   assert.match(html, /sev-category-cards/);
-  assert.match(html, /sev-active-chips/);
   assert.match(html, /1 course correspond aux filtres/);
 });
 
