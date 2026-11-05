@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import test, { after } from "node:test";
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+const root = fileURLToPath(new URL("..", import.meta.url));
+const vite = await createServer({
+  appType: "custom",
+  configFile: false,
+  root,
+  resolve: { alias: { "@": root }, dedupe: ["react", "react-dom"] },
+  server: { middlewareMode: true, hmr: false },
+});
+after(async () => { await vite.close(); });
+
+const { default: SevPage } = await vite.ssrLoadModule("/components/sev-page.tsx");
+const base = {
+  expenses: [],
+  companyFee: 120,
+  onFiscalChange: () => {},
+  onChange: () => {},
+  onEdit: () => {},
+  today: "2026-11-05",
+  week: { start: "2026-11-03", end: "2026-11-09" },
+};
+
+test("SEV displays independent payroll verification summaries and individual badges", () => {
+  const courses = [
+    { id: "a", type: "taxi", date: "2026-11-03", amount: 20, tip: 3,
+      payment: "Téo / carte", verified: true, verifiedBillId: "BILL123", sevAdded: false },
+    { id: "b", type: "adapte", date: "2026-11-04", amount: 40, tip: 0,
+      payment: "", verified: false, sevAdded: true, hob: "HOB0012" },
+    { id: "cash", type: "taxi", date: "2026-11-04", amount: 30, tip: 0,
+      payment: "Espèces", verified: false, sevAdded: false },
+    { id: "older", type: "adapte", date: "2026-10-22", amount: 100, tip: 0,
+      payment: "", verified: false, sevAdded: false },
+  ];
+  const html = renderToStaticMarkup(React.createElement(SevPage, { ...base, courses }));
+  assert.match(html, /Vérification paie Téo/);
+  assert.match(html, /✓ Vérifiées<\/span><b>1<\/b>/);
+  assert.match(html, /Non vérifiées<\/span><b>1<\/b>/);
+  assert.match(html, /23,00[^<]*\$/);
+  assert.match(html, /40,00[^<]*\$/);
+  assert.match(html, /✓ Paie vérifiée/);
+  assert.match(html, /Paie non vérifiée/);
+  assert.match(html, /✓ Ajoutée au SEV/);
+  assert.match(html, /À ajouter au SEV/);
+  assert.match(html, /value="verified">Vérifiées<\/option>/);
+  assert.match(html, /value="unverified">Non vérifiées<\/option>/);
+  assert.doesNotMatch(html, /100,00[^<]*\$/); // outside selected week
+});
