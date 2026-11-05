@@ -61,13 +61,18 @@ test("mobile SEV quick filters and reset controls appear before status cards", (
   assert.match(html, /Semaine passée/);
   assert.match(html, /Dates…/);
   assert.match(html, /Effacer les filtres/);
-  assert.match(html, /Filtres avancés/);
+  assert.match(html, /Filtrer par date/);
+  assert.doesNotMatch(html, /Filtres avancés/);
+  assert.match(html, /aria-label="Filtres des courses"/);
+  assert.match(html, /Statut SEV/);
+  assert.match(html, /Vérification paie/);
   assert.match(html, /value="aeroport">Aéroport<\/option>/);
   assert.match(html, /value="centre-ville">Centre-ville<\/option>/);
   assert.match(html, /BILL, date ou montant/);
   assert.match(html, /1 course correspond aux filtres/);
   assert.ok(html.indexOf("sev-quick-period") < html.indexOf("sev-stats sev-status-cards"));
-  assert.ok(html.indexOf("sev-filter-accordion") < html.indexOf("sev-stats sev-status-cards"));
+  assert.ok(html.indexOf("sev-date-filter-top") < html.indexOf("sev-stats sev-status-cards"));
+  assert.ok(html.indexOf("sev-inline-filters") < html.indexOf("sev-stats sev-status-cards"));
 });
 
 test("SEV category cards show separate course counts and gross amounts next to verification", () => {
@@ -89,4 +94,19 @@ test("SEV category cards show separate course counts and gross amounts next to v
   assert.ok(html.indexOf("sev-payroll-status-cards") < html.indexOf("sev-category-cards"));
   assert.doesNotMatch(html,/500,00[^<]*\$/);
   assert.doesNotMatch(html,/999,00[^<]*\$/);
+});
+
+test("SEV shows date filter above other filters and current Tuesday-to-Monday range", () => {
+  const html = renderToStaticMarkup(React.createElement(SevPage, {
+    ...base, courses: [{id:"test",type:"adapte",date:"2026-11-04",amount:12,tip:0,payment:""}],
+  }));
+  assert.match(html, /Filtrer par date/);
+  assert.match(html, /Du 3 nov\.? au 9 nov\.?/);
+  assert.match(html, /Dates…/);
+  assert.match(html, /Toutes les catégories/);
+  assert.match(html, /Toutes les paies/);
+  assert.doesNotMatch(html, /<details class="sev-filter-accordion"/);
+  assert.ok(html.indexOf("sev-date-filter-top") < html.indexOf("sev-search-row"));
+  assert.ok(html.indexOf("sev-search-row") < html.indexOf("sev-inline-filters"));
+  assert.ok(html.indexOf("sev-inline-filters") < html.indexOf("sev-stats sev-status-cards"));
 });
