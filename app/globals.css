@@ -3587,3 +3587,26 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .sev-ride-expanded > summary::after { content: "⌄"; font-size: 19px; }
   .sev-ride-expanded[open] > summary::after { content: "⌃"; }
 }
+
+
+/* Prevent native iPhone date controls from exceeding the Add form width. */
+.workspace .form-card .course-date-field {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.workspace .form-card .course-date-field input[type="date"] {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  font-size: 16px;
+}
+.workspace .form-card.ride-highlight {
+  min-width: 0;
+  max-width: 100%;
+}
