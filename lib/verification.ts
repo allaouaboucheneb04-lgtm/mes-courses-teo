@@ -1,3 +1,5 @@
+import { isExactPayrollMatch } from "./payroll-matching";
+
 export type VerifiableCourse = { id: string; verified?: boolean; verifiedBillId?: string; verifiedAt?: string; teoId?: string; tipPending?: boolean };
 export function reconcileVerification<C extends VerifiableCourse, R, S extends {id:string;importedAt:string;rows:R[]}>(
   courses:C[], statements:S[], matches:(course:C,row:R)=>boolean, difference:(course:C,row:R)=>number, resolve:(course:C,row:R)=>Partial<C>,
@@ -10,7 +12,7 @@ export function reconcileVerification<C extends VerifiableCourse, R, S extends {
     let found = false;
     const preferred = [...statements].sort((a,b)=>Number(b.id===course.verifiedBillId)-Number(a.id===course.verifiedBillId));
     for(const statement of preferred) {
-      const index = statement.rows.findIndex((row,index)=>!used.has(`${statement.id}:${index}`)&&matches(course,row)&&difference(course,row)<0.02);
+      const index = statement.rows.findIndex((row,index)=>!used.has(`${statement.id}:${index}`)&&matches(course,row)&&isExactPayrollMatch(difference(course,row)));
       if(index<0) continue;
       used.add(`${statement.id}:${index}`); found=true;
       next={...course,...resolve(course,statement.rows[index]),verified:true,verifiedBillId:statement.id,verifiedAt:course.verifiedBillId===statement.id&&course.verifiedAt?course.verifiedAt:statement.importedAt};
