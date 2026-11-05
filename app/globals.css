@@ -4024,6 +4024,8 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   font-weight: 850;
   line-height: 1.35;
 }
+.inspection-receipt-buttons > button:only-child { grid-column: 1 / -1; }
+.inspection-receipt-buttons button:disabled { opacity: .6; cursor: wait; }
 .inspection-receipt-buttons .inspection-receipt-share {
   color: #fff;
   background: #007779;
