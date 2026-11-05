@@ -4215,3 +4215,37 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   }
   .sev-page .sev-quick-period button { min-height: 40px; }
 }
+
+
+/* SEV categories: compact, tappable count and gross totals matching payroll summaries */
+.sev-page .sev-category-summary { margin: 10px 0 15px; }
+.sev-page .sev-category-cards {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+}
+.sev-page .sev-category-card {
+  display: flex; flex-direction: column; align-items: flex-start;
+  min-width: 0; min-height: 98px; gap: 3px; padding: 10px;
+  border: 1.5px solid #bbd1d4; border-radius: 15px;
+  background: #fff; text-align: left; font: inherit; cursor: pointer;
+  transition: box-shadow .15s ease;
+}
+.sev-page .sev-category-card span {
+  font-size: 12px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere;
+}
+.sev-page .sev-category-card b { font-size: 23px; font-weight: 850; line-height: 1.12; }
+.sev-page .sev-category-card small {
+  color: inherit; font-size: 13px; font-weight: 800; line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.sev-page .sev-category-aeroport { background: #eef5ff; color: #144f9e; border-color: #aacbf4; }
+.sev-page .sev-category-centre-ville { background: #eaf9f0; color: #087048; border-color: #9dddbd; }
+.sev-page .sev-category-adapte { background: #fff4e8; color: #9b4f0e; border-color: #f0c399; }
+.sev-page .sev-category-card.is-active { box-shadow: inset 0 0 0 2px currentColor; }
+.sev-page .sev-category-card:focus-visible { outline: 3px solid #007a8d; outline-offset: 2px; }
+@media (max-width: 390px) {
+  .sev-page .sev-category-cards { gap: 6px; }
+  .sev-page .sev-category-card { padding: 8px; min-height: 100px; }
+  .sev-page .sev-category-card span { font-size: 11px; }
+  .sev-page .sev-category-card b { font-size: 21px; }
+  .sev-page .sev-category-card small { font-size: 12px; }
+}
