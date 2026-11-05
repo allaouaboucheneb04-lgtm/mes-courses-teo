@@ -3886,7 +3886,16 @@ export default function Home() {
                           ? "Machine crédit"
                           : c.payment;
                     return (
-                      <article className="course history-course" key={c.id}>
+                      <article
+                        className={`course history-course ${
+                          c.type === "adapte"
+                            ? "history-course-adapte"
+                            : c.taxiCategory === "aeroport"
+                              ? "history-course-airport"
+                              : "history-course-centre-ville"
+                        }`}
+                        key={c.id}
+                      >
                         <div
                           className={`course-icon ${c.type}`}
                           aria-hidden="true"
