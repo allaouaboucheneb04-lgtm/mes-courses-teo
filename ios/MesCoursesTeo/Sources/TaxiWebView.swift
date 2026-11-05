@@ -21,6 +21,7 @@ struct TaxiWebView: UIViewRepresentable {
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.allowsBackForwardNavigationGestures = true
         context.coordinator.webView = webView
+        context.coordinator.currentURL = url
         webView.load(URLRequest(url: url, cachePolicy: .reloadRevalidatingCacheData))
         return webView
     }
