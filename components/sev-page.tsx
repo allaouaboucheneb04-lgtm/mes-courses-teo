@@ -3,6 +3,7 @@ import { useState } from "react";
 import DateRangePicker, { DateRangeField } from "@/components/date-range-picker";
 import { isCardPayment } from "@/lib/teo-payment";
 import { feePeriods, sevBreakdown, sevTotals } from "@/lib/sev";
+import { summarizePayroll } from "@/lib/payroll-summary";
 
 type Ride = {
   id: string; type: string; date: string; amount: number; tip: number;
@@ -25,6 +26,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
   const [feeYear, setFeeYear] = useState(today.slice(0,4));
   const [period, setPeriod] = useState("week");
   const [status, setStatus] = useState("all");
+  const [payStatus, setPayStatus] = useState<"all" | "verified" | "unverified">("all");
   const [type, setType] = useState("all");
   const [search, setSearch] = useState("");
   const [start, setStart] = useState(week.start);
@@ -50,7 +52,14 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
   const grossTotal = rows.reduce((sum, ride) => sum + ride.amount + ride.tip, 0);
   const pendingGross = rows.filter((ride) => !ride.sevAdded).reduce((sum, ride) => sum + ride.amount + ride.tip, 0);
   const addedGross = grossTotal - pendingGross;
-  const visible = rows.filter((ride) => status === "all" || (status === "added" ? ride.sevAdded : !ride.sevAdded));
+  // Paie Téo et déclaration SEV sont deux statuts indépendants.
+  // Le résumé porte sur toutes les courses éligibles de la période, avant
+  // l'application des filtres de statut SEV et de vérification de paie.
+  const payroll = summarizePayroll(rows);
+  const visible = rows.filter((ride) =>
+    (status === "all" || (status === "added" ? ride.sevAdded : !ride.sevAdded)) &&
+    (payStatus === "all" || (payStatus === "verified" ? ride.verified === true : ride.verified !== true))
+  );
   const money = (amount: number) => new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(amount);
   const feeRows = feePeriods(courses, expenses, feePeriod === "year", companyFee).filter(row => feeYear === "all" || row.period.startsWith(feeYear));
   const years = [...new Set([today.slice(0,4), ...courses.map(r=>r.date.slice(0,4)), ...expenses.map(e=>e.date.slice(0,4)), ...feePeriods(courses, expenses, true, companyFee).map(r=>r.period)])].sort().reverse();
@@ -89,6 +98,27 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
         <span>Toutes</span><b>{rows.length}</b><small>{money(grossTotal)}</small>
       </button>
     </div>
+    {page === "courses" && (
+      <section className="sev-payroll-section" aria-label="Vérification avec les fiches Téo">
+        <div className="sev-payroll-heading">
+          <h3>Vérification paie Téo</h3>
+          <small>Selon les dates, le type et la recherche sélectionnés · indépendant du SEV</small>
+        </div>
+        <div className="sev-payroll-status-cards">
+          <button type="button" className={`sev-payroll-card is-verified ${payStatus === "verified" ? "is-active" : ""}`}
+            aria-pressed={payStatus === "verified"}
+            onClick={() => setPayStatus(current => current === "verified" ? "all" : "verified")}>
+            <span>✓ Vérifiées</span><b>{payroll.verified.length}</b><small>{money(payroll.verifiedTotal)}</small>
+          </button>
+          <button type="button" className={`sev-payroll-card is-unverified ${payStatus === "unverified" ? "is-active" : ""}`}
+            aria-pressed={payStatus === "unverified"}
+            onClick={() => setPayStatus(current => current === "unverified" ? "all" : "unverified")}>
+            <span>• Non vérifiées</span><b>{payroll.unverified.length}</b><small>{money(payroll.unverifiedTotal)}</small>
+          </button>
+        </div>
+        <p className="sev-payroll-caption">« Vérifiée » signifie comparée à une fiche de paie Téo, et non ajoutée au SEV ni reçue en banque.</p>
+      </section>
+    )}
     <div className="sev-search-row">
       <label className="sev-search-label">
         <span>Rechercher une course</span>
@@ -119,6 +149,13 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
             <option value="added">Ajoutées au SEV</option>
           </select>
         </label>}
+        {page === "courses" && <label>Vérification paie Téo
+          <select value={payStatus} onChange={e => setPayStatus(e.target.value as "all" | "verified" | "unverified")}>
+            <option value="all">Toutes les courses</option>
+            <option value="verified">Vérifiées</option>
+            <option value="unverified">Non vérifiées</option>
+          </select>
+        </label>}
         <label>Type de course
           <select value={type} onChange={e=>setType(e.target.value)}>
             <option value="all">Tous les types</option>
@@ -130,7 +167,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
           <DateRangeField start={start} end={end} onClick={() => setRangeOpen(true)} />
         )}
         <button type="button" className="sev-reset-filters" onClick={()=>{
-          setPeriod("week"); setType("all"); setStatus("all"); setSearch("");
+          setPeriod("week"); setType("all"); setStatus("all"); setPayStatus("all"); setSearch("");
         }}>Réinitialiser les filtres</button>
       </div>
     </details>
@@ -160,7 +197,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
       ? <div className="sev-empty">
           <b>Aucune course trouvée</b>
           <p>Changez la période ou les filtres pour retrouver vos courses.</p>
-          <button type="button" onClick={() => { setPeriod("all"); setStatus("all"); setType("all"); setSearch(""); }}>Afficher toutes les courses</button>
+          <button type="button" onClick={() => { setPeriod("all"); setStatus("all"); setPayStatus("all"); setType("all"); setSearch(""); }}>Afficher toutes les courses</button>
         </div>
       : <div className="sev-list sev-ride-list">
           {visible.map((ride) => (
@@ -196,7 +233,12 @@ function SevRideCard({
         <div className="sev-ride-identity">
           <b>{ride.type === "adapte" ? ride.hob || "Tournée adaptée" : ride.taxiCategory === "aeroport" ? "Course aéroport" : "Course centre-ville"}</b>
           <small>{new Date(`${ride.date}T12:00:00`).toLocaleDateString("fr-CA", {weekday: "short", day: "numeric", month: "short", year: "numeric"})}</small>
-          <span className={`sev-ride-status ${ride.sevAdded ? "is-done" : "is-pending"}`}>{ride.sevAdded ? "✓ Ajoutée au SEV" : "• À ajouter au SEV"}</span>
+          <div className="sev-ride-statuses">
+            <span className={`sev-ride-status ${ride.sevAdded ? "is-done" : "is-pending"}`}>{ride.sevAdded ? "✓ Ajoutée au SEV" : "• À ajouter au SEV"}</span>
+            <span className={`sev-ride-payroll-status ${ride.verified === true ? "is-verified" : "is-unverified"}`}>
+              {ride.verified === true ? "✓ Paie vérifiée" : "• Paie non vérifiée"}
+            </span>
+          </div>
         </div>
         <strong className="sev-ride-amount">{money(gross)}</strong>
       </div>

@@ -1,0 +1,37 @@
+name: SEV — états des fiches de paie
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "components/sev-page.tsx"
+      - "app/globals.css"
+      - "tests/sev-payroll-ui.test.mjs"
+      - ".github/workflows/sev-payroll-status.yml"
+  push:
+    branches: [fix/sev-payroll-status-nov-2026]
+    paths:
+      - "components/sev-page.tsx"
+      - "app/globals.css"
+      - "tests/sev-payroll-ui.test.mjs"
+      - ".github/workflows/sev-payroll-status.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check-sev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Installer les dépendances
+        run: npm ci --ignore-scripts
+      - name: Vérifier TypeScript
+        run: npx tsc --noEmit --pretty false
+      - name: Tests SEV et paie
+        run: node --test --test-concurrency=1 tests/sev-payroll-ui.test.mjs tests/sev.test.mjs tests/payroll-summary.test.mjs
