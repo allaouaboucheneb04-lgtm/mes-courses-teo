@@ -1,3 +1,9 @@
+// A one-cent discrepancy is real and must not be marked as an exact match.
+// Comparing rounded cents avoids floating point noise from decimal CAD amounts.
+export function isExactPayrollMatch(difference: number): boolean {
+  return Number.isFinite(difference) && Math.round(Math.abs(difference) * 100) === 0;
+}
+
 // Match exact amounts before assigning discrepancies. A mismatched row must never
 // consume the only course that exactly matches a later row in the same PDF.
 export function matchPayrollRows<C, R>(courses: C[], rows: R[], matches: (course: C, row: R) => boolean, difference: (course: C, row: R) => number) {
@@ -7,7 +13,7 @@ export function matchPayrollRows<C, R>(courses: C[], rows: R[], matches: (course
   const owners = new Map<number, number>();
   function assignExact(rowIndex: number, seen: Set<number>): boolean {
     for (const candidate of candidates[rowIndex]) {
-      if (candidate.delta >= 0.02 || seen.has(candidate.index)) continue;
+      if (!isExactPayrollMatch(candidate.delta) || seen.has(candidate.index)) continue;
       seen.add(candidate.index);
       const owner = owners.get(candidate.index);
       if (owner === undefined || assignExact(owner, seen)) {
