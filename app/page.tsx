@@ -1,5 +1,6 @@
 "use client";
-import { matchPayrollRows } from "@/lib/payroll-matching";
+import { isExactPayrollMatch, matchPayrollRows } from "@/lib/payroll-matching";
+import { extractAdaptedPayrollRows } from "@/lib/adapted-payroll";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createUserWithEmailAndPassword,
@@ -943,7 +944,7 @@ export default function Home() {
       return {
         ...row,
         status:
-          difference(course) < 0.02 ? ("ok" as const) : ("different" as const),
+          isExactPayrollMatch(difference(course)) ? ("ok" as const) : ("different" as const),
         appAmount: course.amount,
         appTip: course.tip,
         courseId: course.id,
@@ -998,7 +999,7 @@ export default function Home() {
       let missing = eligible.length - allocation.used.size;
       statement.rows.forEach((row, index) => {
         const courseIndex = allocation.assigned.get(index);
-        if (courseIndex === undefined || payrollDifference(eligible[courseIndex], row) >= 0.02) missing++;
+        if (courseIndex === undefined || !isExactPayrollMatch(payrollDifference(eligible[courseIndex], row))) missing++;
       });
       warnings[statement.id] = missing;
     }
@@ -1313,8 +1314,8 @@ export default function Home() {
     if (!file) return;
     setPayLoading(true);
     setPayError("");
-    setPayRows([]);
-    setPayFile(file.name);
+    // Do not clear the currently selected statement until parsing succeeds:
+    // a corrupt PDF must not turn its comparison into false missing rides.
     try {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
       await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
@@ -1329,18 +1330,10 @@ export default function Home() {
             .map((item) => item.str || "")
             .join(" ") + "\n";
       }
-      let match: RegExpExecArray | null;
-      const rows: PayRow[] = extractCardPayrollRows(text);
-      const adaptedRows =
-        /\[PTR\][\s\S]*?\((HOB\d{4})_(\d{2})\/(\d{2})\/(\d{4}) to[^)]*\)[\s\S]*?\s1\s+([\d,]+)\s+TPS/g;
-      while ((match = adaptedRows.exec(text)))
-        rows.push({
-          key: match[1],
-          type: "adapte",
-          date: `${match[4]}-${match[3]}-${match[2]}`,
-          amount: Number(match[5].replace(",", ".")),
-          tip: 0,
-        });
+      const rows: PayRow[] = [
+        ...extractCardPayrollRows(text),
+        ...extractAdaptedPayrollRows(text),
+      ];
       for (const coupon of extractCouponPayrollRows(text))
         rows.push({
           key:
@@ -1390,6 +1383,7 @@ export default function Home() {
         rawText: text,
       };
       setPayRows(rows);
+      setPayFile(file.name);
       setSelectedStatementId(billId);
       setPayStatements((current) => [
         retainBankReceipt(statement, current.find(item => item.id === billId)),
