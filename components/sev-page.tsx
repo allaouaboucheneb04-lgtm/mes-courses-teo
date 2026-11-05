@@ -107,15 +107,17 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
       </div>
       <div className="sev-quick-period" role="group" aria-label="Période des courses">
         {([
-          ["week", "Cette semaine"], ["previous", "Semaine passée"],
-          ["month", "Ce mois"], ["all", "Toutes"],
-        ] as const).map(([value, label]) => (
+          ["week", "Semaine", "Cette semaine"], ["previous", "Passée", "Semaine passée"],
+          ["month", "Mois", "Ce mois"], ["all", "Toutes", "Toutes les dates"],
+        ] as const).map(([value, label, fullLabel]) => (
           <button key={value} type="button" className={period === value ? "is-active" : ""}
-            aria-pressed={period === value} onClick={() => setPeriod(value)}>{label}</button>
+            aria-label={fullLabel} aria-pressed={period === value}
+            onClick={() => setPeriod(value)}>{label}</button>
         ))}
         <button type="button" className={period === "custom" ? "is-active" : ""}
+          aria-label="Choisir des dates personnalisées"
           aria-pressed={period === "custom"} onClick={() => setRangeOpen(true)}>
-          <span aria-hidden="true">▦</span> Dates…
+          Dates
         </button>
       </div>
       {period === "custom" && (
@@ -127,35 +129,35 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
     </section>
     <div className="sev-search-row">
       <label className="sev-search-label">
-        <span>Rechercher une course</span>
+        <span className="sev-sr-only">Rechercher une course</span>
         <input type="search" value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="HOB, ID Téo, BILL, date ou montant…" />
+          placeholder="HOB, Téo, BILL, date, montant…" />
       </label>
-      {search && <button type="button" className="sev-search-clear"
+      {!!search && <button type="button" className="sev-search-clear"
         aria-label="Effacer la recherche" onClick={() => setSearch("")}>×</button>}
-      <button type="button" className="sev-filters-clear"
-        onClick={resetFilters} disabled={!hasNonDefaultFilters}>Effacer les filtres</button>
+      {hasNonDefaultFilters && <button type="button" className="sev-filters-clear"
+        aria-label="Réinitialiser tous les filtres" onClick={resetFilters}>Effacer</button>}
     </div>
-    <div className="sev-inline-filters" aria-label="Filtres des courses">
+    <div className={`sev-inline-filters ${page === "courses" ? "" : "is-taxes"}`} aria-label="Filtres des courses">
       <label>Catégorie
-        <select value={type} onChange={e=>setType(e.target.value as SevCategory)}>
-          <option value="all">Toutes les catégories</option>
-          <option value="taxi">Toutes les courses taxi</option>
+        <select aria-label="Filtrer par catégorie" value={type} onChange={e=>setType(e.target.value as SevCategory)}>
+          <option value="all">Toutes</option>
+          <option value="taxi">Taxi</option>
           <option value="aeroport">Aéroport</option>
           <option value="centre-ville">Centre-ville</option>
-          <option value="adapte">Transport adapté</option>
+          <option value="adapte">Adapté</option>
         </select>
       </label>
       {page === "courses" && <label>Statut SEV
-        <select value={status} onChange={e=>setStatus(e.target.value as SevDeclarationStatus)}>
-          <option value="all">Tous les statuts</option>
-          <option value="pending">À ajouter au SEV</option>
-          <option value="added">Ajoutées au SEV</option>
+        <select aria-label="Filtrer par statut SEV" value={status} onChange={e=>setStatus(e.target.value as SevDeclarationStatus)}>
+          <option value="all">Tous</option>
+          <option value="pending">À ajouter</option>
+          <option value="added">Ajoutées</option>
         </select>
       </label>}
-      {page === "courses" && <label>Vérification paie
-        <select value={payStatus} onChange={e => setPayStatus(e.target.value as SevPayrollStatus)}>
-          <option value="all">Toutes les paies</option>
+      {page === "courses" && <label>Paie Téo
+        <select aria-label="Filtrer par vérification de paie" value={payStatus} onChange={e => setPayStatus(e.target.value as SevPayrollStatus)}>
+          <option value="all">Toutes</option>
           <option value="verified">Vérifiées</option>
           <option value="unverified">Non vérifiées</option>
         </select>
