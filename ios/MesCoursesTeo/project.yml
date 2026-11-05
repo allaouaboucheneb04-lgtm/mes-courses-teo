@@ -1,0 +1,33 @@
+name: MesCoursesTeo
+options:
+  bundleIdPrefix: ca.mescoursteo
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: fr
+targets:
+  MesCoursesTeo:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: "Mes Courses Téo"
+        UILaunchScreen:
+          UIColorName: SystemBackgroundColor
+        NSBluetoothAlwaysUsageDescription: "Mes Courses Téo utilise le Bluetooth pour imprimer les vérifications sommaires sur votre Bisofice MPT-II."
+        NSBluetoothPeripheralUsageDescription: "Impression des tickets sur Bisofice MPT-II."
+        UIRequiredDeviceCapabilities:
+          - arm64
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIUserInterfaceStyle: Light
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ca.mescoursteo.iphone
+        SWIFT_VERSION: "5.9"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
