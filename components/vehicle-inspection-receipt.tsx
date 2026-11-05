@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   inspectionDefectLabels,
   inspectionIssues,
@@ -13,7 +13,7 @@ type ReceiptLine = {
   kind?: "title" | "subtitle" | "heading" | "rule" | "bold" | "small";
 };
 
-function printableLines(record: VehicleInspection): ReceiptLine[] {
+export function printableLines(record: VehicleInspection): ReceiptLine[] {
   const defects = record.defects.map((key) => inspectionDefectLabels[key] || key);
   const issueCount = inspectionIssues(record);
   const lines: ReceiptLine[] = [
@@ -192,12 +192,18 @@ function dataUrlToFile(dataUrl: string, name: string) {
 export default function VehicleInspectionReceipt({
   record,
   onClose,
+  autoPrint = false,
 }: {
   record: VehicleInspection;
   onClose: () => void;
+  autoPrint?: boolean;
 }) {
   const [paper, setPaper] = useState<ReceiptWidth>("58");
   const [message, setMessage] = useState("");
+  const [nativePrinter, setNativePrinter] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const requested = useRef(false);
+  const jobId = useRef<string | null>(null);
   const lines = useMemo(() => printableLines(record), [record]);
   const close = useCallback(() => onClose(), [onClose]);
 
@@ -213,6 +219,53 @@ export default function VehicleInspectionReceipt({
       document.removeEventListener("keydown", onKey);
     };
   }, [close]);
+
+
+  // Only the signed iOS wrapper adds this message handler. Safari / PWA does not.
+  useEffect(() => {
+    setNativePrinter(Boolean(
+      (window as Window & { webkit?: { messageHandlers?: { teoPrinter?: { postMessage: (data: unknown) => void } } } })
+        .webkit?.messageHandlers?.teoPrinter,
+    ));
+  }, []);
+
+  const printDirectly = useCallback(() => {
+    const handler = (window as Window & {
+      webkit?: { messageHandlers?: { teoPrinter?: { postMessage: (data: unknown) => void } } }
+    }).webkit?.messageHandlers?.teoPrinter;
+    if (!handler || printing) return;
+    const id = crypto.randomUUID();
+    jobId.current = id;
+    setPrinting(true);
+    setMessage("Connexion à la Bisofice MPT-II et envoi du ticket…");
+    try {
+      handler.postMessage({
+        type: "print",
+        jobId: id,
+        lines,
+      });
+    } catch {
+      setPrinting(false);
+      setMessage("Impossible de joindre le module Bluetooth de l'application iPhone.");
+    }
+  }, [lines, printing]);
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<{ jobId: string; ok: boolean; message: string }>).detail;
+      if (!detail || detail.jobId !== jobId.current) return;
+      setPrinting(false);
+      setMessage(detail.ok ? "Commande transmise à la MPT-II. Vérifiez que le ticket est sorti." : detail.message);
+    };
+    window.addEventListener("teo-native-print-result", listener);
+    return () => window.removeEventListener("teo-native-print-result", listener);
+  }, []);
+
+  useEffect(() => {
+    if (!nativePrinter || !autoPrint || requested.current) return;
+    requested.current = true;
+    printDirectly();
+  }, [nativePrinter, autoPrint, printDirectly]);
 
   const shareImage = () => {
     setMessage("");
@@ -263,19 +316,29 @@ export default function VehicleInspectionReceipt({
                 <option value="80">80 mm — autre imprimante</option>
               </select>
             </label>
-            <p>Sur iPhone, « Imprimer » utilise les imprimantes reconnues par iOS (AirPrint). Pour une Bisofice Bluetooth non AirPrint, partagez l’image vers une application d’impression compatible.</p>
+            <p>{nativePrinter
+              ? "La version iPhone envoie directement le ticket ESC/POS en Bluetooth BLE à la Bisofice MPT-II. Gardez l’imprimante allumée et déconnectez-la de nRF Connect."
+              : "Dans Safari, l’impression Bluetooth directe n’est pas disponible. Le bouton AirPrint ou le partage d’image reste utilisable."}</p>
           </div>
           <div className={"inspection-receipt-preview receipt-width-" + paper}>
             <ReceiptPaper lines={lines} />
           </div>
           {message && <p className="inspection-receipt-message" role="status">{message}</p>}
           <div className="inspection-receipt-buttons">
-            <button type="button" className="inspection-receipt-native" onClick={() => window.print()}>
-              Imprimer (AirPrint)
-            </button>
-            <button type="button" className="inspection-receipt-share" onClick={shareImage}>
-              Partager le ticket en image
-            </button>
+            {nativePrinter ? (
+              <button type="button" className="inspection-receipt-share" onClick={printDirectly} disabled={printing}>
+                {printing ? "Envoi en cours…" : "Imprimer directement (MPT-II)"}
+              </button>
+            ) : (
+              <>
+                <button type="button" className="inspection-receipt-native" onClick={() => window.print()}>
+                  Imprimer (AirPrint)
+                </button>
+                <button type="button" className="inspection-receipt-share" onClick={shareImage}>
+                  Partager le ticket en image
+                </button>
+              </>
+            )}
           </div>
         </section>
       </div>
