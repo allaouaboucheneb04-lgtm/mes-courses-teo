@@ -350,6 +350,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
       {printRecord && (
         <VehicleInspectionReceipt
           record={printRecord}
+          autoPrint
           onClose={() => setPrintRecord(null)}
         />
       )}
