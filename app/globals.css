@@ -3314,3 +3314,82 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   background: #ffedd5;
   color: #9a3412;
 }
+
+
+/* Color coding across SEV and Ajouter; same palette as History. */
+.ride-highlight-airport {
+  --ride-accent: #2563eb;
+  --ride-text: #1d4ed8;
+  --ride-surface: #eff6ff;
+  --ride-soft: #dbeafe;
+  --ride-detail-border: #bfdbfe;
+}
+.ride-highlight-centre-ville {
+  --ride-accent: #059669;
+  --ride-text: #047857;
+  --ride-surface: #ecfdf5;
+  --ride-soft: #d1fae5;
+  --ride-detail-border: #a7f3d0;
+}
+.ride-highlight-adapte {
+  --ride-accent: #d97706;
+  --ride-text: #92400e;
+  --ride-surface: #fff7ed;
+  --ride-soft: #ffedd5;
+  --ride-detail-border: #fcd34d;
+}
+.sev-list > article.sev-ride-card.ride-highlight,
+.daily-courses .daily-row.ride-highlight,
+.workspace .form-card.ride-highlight {
+  border: 2px solid var(--ride-accent);
+  border-left: 8px solid var(--ride-accent);
+  border-radius: 16px;
+  background: var(--ride-surface);
+  box-shadow: 0 4px 14px rgba(18, 38, 45, 0.09);
+}
+.sev-list > article.sev-ride-card.ride-highlight > div:first-child > b,
+.sev-list > article.sev-ride-card.ride-highlight > strong,
+.daily-row.ride-highlight .daily-info > b,
+.workspace .form-card.ride-highlight .form-title h2 {
+  color: var(--ride-text);
+}
+.sev-list > article.sev-ride-card.ride-highlight .sev-ride-details > div {
+  background: #fff;
+  border: 1px solid var(--ride-detail-border);
+}
+.sev-list > article.sev-ride-card.ride-highlight .sev-ride-details .sev-net {
+  background: var(--ride-soft);
+  color: var(--ride-text);
+  border-color: var(--ride-accent);
+}
+.daily-courses .daily-row.ride-highlight {
+  padding: 12px;
+  margin: 9px 0;
+  grid-template-columns: 42px minmax(0, 1fr) 28px;
+}
+.daily-row.ride-highlight .course-icon {
+  background: var(--ride-soft);
+  color: var(--ride-text);
+}
+.daily-row.ride-highlight .daily-details > span {
+  background: #fff;
+  border: 1px solid var(--ride-detail-border);
+}
+.daily-row.ride-highlight .daily-details > .net-detail {
+  background: var(--ride-soft);
+  color: var(--ride-text);
+  border-color: var(--ride-accent);
+}
+.workspace .form-card.ride-highlight {
+  border-radius: 22px;
+}
+.workspace .form-card.ride-highlight .form-title .type-icon {
+  background: var(--ride-soft);
+  color: var(--ride-text);
+}
+.workspace .form-card.ride-highlight .ride-type-field select {
+  background: #fff;
+  color: var(--ride-text);
+  border: 2px solid var(--ride-accent);
+  font-weight: 750;
+}
