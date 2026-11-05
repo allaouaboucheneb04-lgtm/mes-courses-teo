@@ -209,6 +209,16 @@ const formatMoneyInput = (value: string | number) => {
   if (value === "") return "";
   return parseMoneyInput(String(value)).toFixed(2).replace(".", ",");
 };
+const formatCourseDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Sélectionner une date";
+  return new Intl.DateTimeFormat("fr-CA", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T12:00:00Z`));
+};
+
 const today = () => {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Toronto",
@@ -2103,12 +2113,17 @@ export default function Home() {
               )}
               <label className="course-date-field">
                 Date
-                <input
-                  type="date"
-                  value={taxi.date}
-                  onChange={(e) => setTaxi({ ...taxi, date: e.target.value })}
-                  required
-                />
+                <span className="course-date-control">
+                  <span className="course-date-value" aria-hidden="true">{formatCourseDate(taxi.date)}</span>
+                  <span className="course-date-icon" aria-hidden="true">▦</span>
+                  <input
+                    type="date"
+                    aria-label="Date de la course taxi"
+                    value={taxi.date}
+                    onChange={(e) => setTaxi({ ...taxi, date: e.target.value })}
+                    required
+                  />
+                </span>
               </label>
               {settings.airportEnabled && (
                 <label className="ride-type-field">
@@ -2341,14 +2356,19 @@ export default function Home() {
               </label>
               <label className="course-date-field">
                 Date
-                <input
-                  type="date"
-                  value={adapted.date}
-                  onChange={(e) =>
-                    setAdapted({ ...adapted, date: e.target.value })
-                  }
-                  required
-                />
+                <span className="course-date-control">
+                  <span className="course-date-value" aria-hidden="true">{formatCourseDate(adapted.date)}</span>
+                  <span className="course-date-icon" aria-hidden="true">▦</span>
+                  <input
+                    type="date"
+                    aria-label="Date de la tournée adaptée"
+                    value={adapted.date}
+                    onChange={(e) =>
+                      setAdapted({ ...adapted, date: e.target.value })
+                    }
+                    required
+                  />
+                </span>
               </label>
               <div className="two">
                 <label>
