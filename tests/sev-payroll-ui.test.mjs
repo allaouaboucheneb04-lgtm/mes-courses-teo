@@ -59,16 +59,16 @@ test("mobile SEV quick filters and reset controls appear before status cards", (
   assert.match(html, /Période des courses/);
   assert.match(html, /Cette semaine/);
   assert.match(html, /Semaine passée/);
-  assert.match(html, /Dates…/);
-  assert.match(html, /Effacer les filtres/);
+  assert.match(html, /Choisir des dates personnalisées/);
+  assert.doesNotMatch(html, /Réinitialiser tous les filtres/);
   assert.match(html, /Filtrer par date/);
   assert.doesNotMatch(html, /Filtres avancés/);
   assert.match(html, /aria-label="Filtres des courses"/);
   assert.match(html, /Statut SEV/);
-  assert.match(html, /Vérification paie/);
+  assert.match(html, /Paie Téo/);
   assert.match(html, /value="aeroport">Aéroport<\/option>/);
   assert.match(html, /value="centre-ville">Centre-ville<\/option>/);
-  assert.match(html, /BILL, date ou montant/);
+  assert.match(html, /BILL, date, montant/);
   assert.match(html, /1 course correspond aux filtres/);
   assert.ok(html.indexOf("sev-quick-period") < html.indexOf("sev-stats sev-status-cards"));
   assert.ok(html.indexOf("sev-date-filter-top") < html.indexOf("sev-stats sev-status-cards"));
@@ -102,11 +102,25 @@ test("SEV shows date filter above other filters and current Tuesday-to-Monday ra
   }));
   assert.match(html, /Filtrer par date/);
   assert.match(html, /Du 3 nov\.? au 9 nov\.?/);
-  assert.match(html, /Dates…/);
-  assert.match(html, /Toutes les catégories/);
-  assert.match(html, /Toutes les paies/);
+  assert.match(html, /Choisir des dates personnalisées/);
+  assert.match(html, /aria-label="Filtrer par catégorie"/);
+  assert.match(html, /aria-label="Filtrer par vérification de paie"/);
   assert.doesNotMatch(html, /<details class="sev-filter-accordion"/);
   assert.ok(html.indexOf("sev-date-filter-top") < html.indexOf("sev-search-row"));
   assert.ok(html.indexOf("sev-search-row") < html.indexOf("sev-inline-filters"));
   assert.ok(html.indexOf("sev-inline-filters") < html.indexOf("sev-stats sev-status-cards"));
+});
+
+test("SEV compact iPhone controls do not show a disabled reset button", () => {
+  const html = renderToStaticMarkup(React.createElement(SevPage, {
+    ...base, courses: [],
+  }));
+  assert.match(html, /aria-label="Période des courses"/);
+  assert.match(html, /aria-label="Cette semaine"/);
+  assert.match(html, /aria-label="Semaine passée"/);
+  assert.match(html, /aria-label="Choisir des dates personnalisées"/);
+  assert.match(html, /class="sev-inline-filters "/);
+  assert.match(html, /class="sev-sr-only">Rechercher une course/);
+  assert.doesNotMatch(html, /Réinitialiser tous les filtres/);
+  assert.doesNotMatch(html, /Filtres avancés/);
 });
