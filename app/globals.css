@@ -3521,6 +3521,8 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
 }
 .sev-ride-quick span { font-size: 11px; color: #697b80; line-height: 1.2; }
 .sev-ride-quick b { font-size: 14px; line-height: 1.25; font-weight: 850; overflow-wrap: anywhere; }
+.sev-ride-quick.sev-ride-quick-taxi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sev-ride-quick.sev-ride-quick-taxi .sev-quick-net { grid-column: 1 / -1; }
 .sev-ride-quick .sev-quick-net { background: var(--ride-soft,#d8f4f0); border-color: var(--ride-accent,#087d7c); color: var(--ride-text,#075e61); }
 .sev-ride-quick .sev-quick-net span { color: inherit; opacity: .9; }
 
