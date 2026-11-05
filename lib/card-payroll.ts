@@ -7,7 +7,7 @@ export function extractCardPayrollRows(text: string) {
   const amountPattern = /\s1\s+([\d\u00a0 ]+[,.]\d{2})(?=\s|\$|$)/;
   const amountOf = (value: string) => Number(value.replace(/\s/g, "").replace(",", "."));
   for (const block of blocks) {
-    if (!block.startsWith("[TIPC]")) continue;
+    if (!/^(?:\[TIPC\]|\[TIPA\])/.test(block)) continue;
     const key = block.match(/\((\d+A)\s+to\b/)?.[1];
     const amount = block.match(amountPattern)?.[1];
     if (key && amount) tips.set(key, amountOf(amount));
