@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import VehicleInspectionReceipt from "@/components/vehicle-inspection-receipt";
+import VehicleInspectionReceipt, { printableLines } from "@/components/vehicle-inspection-receipt";
+import { browserSupportsBLEPrinting, printMPTIIInBrowser } from "@/lib/mptii-web-bluetooth";
 import {
   INSPECTION_GROUPS,
   inspectionDefectLabels,
@@ -51,10 +52,34 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [printRecord, setPrintRecord] = useState<VehicleInspection | null>(null);
+  const [browserBle, setBrowserBle] = useState(false);
+  const [printingInspectionId, setPrintingInspectionId] = useState<string | null>(null);
+  const [printingMessage, setPrintingMessage] = useState("");
 
   const history = useMemo(() => [...inspections].sort(
     (a, b) => (b.date + b.time + b.createdAt).localeCompare(a.date + a.time + a.createdAt),
   ), [inspections]);
+
+  useEffect(() => {
+    setBrowserBle(browserSupportsBLEPrinting());
+  }, []);
+
+  const printInspection = (record: VehicleInspection) => {
+    if (!browserBle) {
+      setPrintRecord(record);
+      return;
+    }
+    if (printingInspectionId) return;
+    // Called on the actual user tap so Bluefy can show the Bluetooth picker.
+    setPrintingInspectionId(record.id);
+    setPrintingMessage("Connexion à la MPT-II…");
+    void printMPTIIInBrowser(printableLines(record))
+      .then(() => setPrintingMessage("Commande envoyée à MPT-II. Vérifiez la sortie du ticket."))
+      .catch((error: unknown) => {
+        setPrintingMessage(error instanceof Error ? error.message : "L’impression Bluetooth a échoué.");
+      })
+      .finally(() => setPrintingInspectionId(null));
+  };
 
   // Fill date/time on the device so server rendering does not differ from Safari.
   useEffect(() => {
@@ -301,6 +326,15 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
             <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="Plaque, date, nom, kilométrage…" />
           </label>
+          {browserBle && (
+            <p className="inspection-bluetooth-note">
+              Bluetooth direct disponible. Allumez la Bisofice MPT-II et déconnectez-la de nRF Connect.
+              Au premier clic sur Imprimer, sélectionnez MPT-II dans la fenêtre Bluetooth.
+            </p>
+          )}
+          {printingMessage && (
+            <p className="inspection-bluetooth-note" role="status">{printingMessage}</p>
+          )}
           {!filtered.length ? (
             <div className="inspection-empty">Aucune vérification trouvée pour cette recherche.</div>
           ) : (
@@ -338,7 +372,10 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
                     </details>
                     <div className="inspection-record-actions">
                       <button type="button" onClick={() => edit(record)}>Corriger</button>
-                      <button type="button" onClick={() => setPrintRecord(record)}>Ticket 58 mm / Imprimer</button>
+                      <button type="button" disabled={printingInspectionId !== null}
+                        onClick={() => printInspection(record)}>
+                        {printingInspectionId === record.id ? "Connexion / impression…" : "Imprimer le ticket"}
+                      </button>
                     </div>
                   </article>
                 );
