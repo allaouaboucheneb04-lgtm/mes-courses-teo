@@ -4,7 +4,7 @@ import DateRangePicker, { DateRangeField } from "@/components/date-range-picker"
 import { isCardPayment } from "@/lib/teo-payment";
 import { feePeriods, sevBreakdown, sevTotals } from "@/lib/sev";
 import { summarizePayroll } from "@/lib/payroll-summary";
-import { filterSevRides, filterSevStatuses, type SevCategory, type SevPeriod, type SevDeclarationStatus, type SevPayrollStatus } from "@/lib/sev-filtering";
+import { filterSevRides, filterSevStatuses, matchesSevCategory, summarizeSevCategories, type SevCategory, type SevPeriod, type SevDeclarationStatus, type SevPayrollStatus } from "@/lib/sev-filtering";
 
 type Ride = {
   id: string; type: string; date: string; amount: number; tip: number;
@@ -38,9 +38,13 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
     setPayStatus("all"); setSearch("");
     setStart(week.start); setEnd(week.end);
   };
-  const rows = filterSevRides(courses.filter(sevEligible), {
-    category: type, period, week, today, start, end, search,
+  const categoryBaseRows = filterSevRides(courses.filter(sevEligible), {
+    category: "all", period, week, today, start, end, search,
   });
+  const categoryTotals = summarizeSevCategories(categoryBaseRows);
+  const rows = type === "all"
+    ? categoryBaseRows
+    : categoryBaseRows.filter(ride => matchesSevCategory(ride, type));
   const categoryLabel = {
     all: "Toutes les catégories", taxi: "Toutes les courses taxi",
     aeroport: "Aéroport", "centre-ville": "Centre-ville", adapte: "Transport adapté",
@@ -211,6 +215,27 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
           </button>
         </div>
         <p className="sev-payroll-caption">« Vérifiée » signifie comparée à une fiche de paie Téo, et non ajoutée au SEV ni reçue en banque.</p>
+      </section>
+    )}
+    {page === "courses" && (
+      <section className="sev-category-summary" aria-label="Montants des courses par catégorie">
+        <div className="sev-payroll-heading">
+          <h3>Montants par catégorie</h3>
+          <small>Brut avec pourboire · selon la période et la recherche</small>
+        </div>
+        <div className="sev-category-cards">
+          {categoryTotals.map(category => (
+            <button type="button" key={category.id}
+              className={`sev-category-card sev-category-${category.id} ${type === category.id ? "is-active" : ""}`}
+              aria-pressed={type === category.id}
+              aria-label={`${category.label} : ${category.count} courses, ${money(category.amount)}. ${type === category.id ? "Retirer le filtre" : "Filtrer cette catégorie"}`}
+              onClick={() => setType(current => current === category.id ? "all" : category.id)}>
+              <span>{category.label}</span>
+              <b>{category.count}</b>
+              <small>{money(category.amount)}</small>
+            </button>
+          ))}
+        </div>
       </section>
     )}
     {period === "week" && <p>Du {week.start} au {week.end} · semaine du mardi au lundi</p>}
