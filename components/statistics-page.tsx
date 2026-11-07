@@ -1,46 +1,153 @@
 "use client";
 import {useState} from "react";
-import {comparisonTotals,periodDates,previousAnchor,periodGoal,percentageChange,type ComparisonRide,type PeriodMode} from "@/lib/comparison";
-const money=(n:number)=>n.toLocaleString("fr-CA",{style:"currency",currency:"CAD"});
-const label=(d:string)=>new Date(`${d}T12:00:00`).toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
-const range=(dates:string[])=>dates.length ? dates.length===1 ? label(dates[0]) : `${label(dates[0])} → ${label(dates.at(-1)!)}` : "—";
-type Metric="net"|"gross"|"count"|"tips";
-export default function StatisticsPage({courses,today,dailyGoals,goalsEnabled,onSettings}:{courses:ComparisonRide[];today:string;dailyGoals:number[];goalsEnabled:boolean;onSettings:()=>void}){
- const [view,setView]=useState<"comparison"|"goals">("comparison");
- const [mode,setMode]=useState<PeriodMode>("week"),[anchor,setAnchor]=useState(today),[reference,setReference]=useState("");
- const [metric,setMetric]=useState<Metric>("net"),[type,setType]=useState("all"),[elapsed,setElapsed]=useState(true);
- const valid=/^\d{4}-\d{2}-\d{2}$/.test(anchor) && periodDates(anchor,mode).length>0;
- const safeAnchor=valid?anchor:today,currentDates=periodDates(safeAnchor,mode),previousDates=periodDates(reference||previousAnchor(safeAnchor,mode),mode);
- const running=currentDates.includes(today),limit=elapsed&&running ? currentDates.indexOf(today)+1 : currentDates.length;
- const shown=currentDates.slice(0,limit),oldShown=elapsed&&running?previousDates.slice(0,limit):previousDates;
- const filtered=courses.filter(r=>type==="all"||r.type===type);
- const current=comparisonTotals(filtered,shown),previous=comparisonTotals(filtered,oldShown);
+import DateRangePicker from "@/components/date-range-picker";
+import {comparisonTotals,periodDates,previousAnchor,periodGoal,percentageChange,type ComparisonRide} from "@/lib/comparison";
+import {statisticsPeriodDates,statisticsGraphGroups,type StatisticsPeriod} from "@/lib/statistics-period";
+
+const money = (n:number) => n.toLocaleString("fr-CA",{style:"currency",currency:"CAD"});
+const formatDate = (d:string) => new Date(d+"T12:00:00").toLocaleDateString("fr-CA",{day:"numeric",month:"short",year:"numeric"});
+const label = (d:string) => new Date(d+"T12:00:00").toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+const range = (dates:string[]) => dates.length ? dates.length===1 ? label(dates[0]) : label(dates[0])+" → "+label(dates.at(-1)!) : "—";
+const shortRange = (dates:string[]) => dates.length ? dates.length===1 ? formatDate(dates[0]) : formatDate(dates[0])+" – "+formatDate(dates.at(-1)!) : "Aucune course";
+type Metric = "net"|"gross"|"count"|"tips";
+type Category = "all"|"taxi"|"aeroport"|"centre-ville"|"adapte";
+const metricLabels:Record<Metric,string> = {net:"Revenu net",gross:"Revenu brut",count:"Courses / tournées",tips:"Pourboires connus"};
+
+export default function StatisticsPage({courses,today,dailyGoals,goalsEnabled,onSettings}:{
+  courses:ComparisonRide[];today:string;dailyGoals:number[];goalsEnabled:boolean;onSettings:()=>void
+}){
+ const [view,setView] = useState<"comparison"|"goals">("comparison");
+ const [period,setPeriod] = useState<StatisticsPeriod>("week");
+ const [start,setStart] = useState(periodDates(today,"week")[0]||today);
+ const [end,setEnd] = useState(periodDates(today,"week").at(-1)||today);
+ const [rangeOpen,setRangeOpen] = useState(false);
+ const [metric,setMetric] = useState<Metric>("net");
+ const [type,setType] = useState<Category>("all");
+ const [elapsed,setElapsed] = useState(true);
+
+ const filtered = courses.filter(ride =>
+  type==="all" ||
+  (type==="taxi" && ride.type==="taxi") ||
+  (type==="adapte" && ride.type==="adapte") ||
+  (type==="aeroport" && ride.type==="taxi" && ride.taxiCategory==="aeroport") ||
+  (type==="centre-ville" && ride.type==="taxi" && ride.taxiCategory!=="aeroport")
+ );
+ const selection = statisticsPeriodDates(period,today,start,end,filtered.map(ride=>ride.date));
+ const currentDates=selection.current,previousDates=selection.previous;
+ const running=period!=="all"&&currentDates.includes(today);
+ const limit=elapsed&&running?currentDates.indexOf(today)+1:currentDates.length;
+ const shown=currentDates.slice(0,limit);
+ const oldShown=elapsed&&running?previousDates.slice(0,limit):previousDates;
+ const current=comparisonTotals(filtered,shown);
+ const previous=comparisonTotals(filtered,oldShown);
  const format=(n:number)=>metric==="count"?n.toLocaleString("fr-CA"):money(n);
  const diff=current[metric]-previous[metric],percent=percentageChange(current[metric],previous[metric]);
- const pairs=Array.from({length:Math.max(shown.length,oldShown.length)},(_,i)=>({now:shown[i],old:oldShown[i],a:shown[i]?comparisonTotals(filtered,[shown[i]])[metric]:null,b:oldShown[i]?comparisonTotals(filtered,[oldShown[i]])[metric]:null}));
- const maximum=Math.max(1,...pairs.flatMap(p=>[p.a||0,p.b||0]));
- const todayWeek=periodDates(today,"week"),todayMonth=periodDates(today,"month"),lastWeek=periodDates(previousAnchor(today,"week"),"week"),lastMonth=periodDates(previousAnchor(today,"month"),"month");
+ const groups=statisticsGraphGroups(shown,oldShown,period==="all");
+ const pairs=groups.map(group=>({
+   label:group.label,
+   a:group.now.length?comparisonTotals(filtered,group.now)[metric]:null,
+   b:group.old.length?comparisonTotals(filtered,group.old)[metric]:null,
+   first:group.now[0]||group.old[0]||"",
+   last:group.now.at(-1)||group.old.at(-1)||"",
+ }));
+ const maximum=Math.max(1,...pairs.flatMap(item=>[item.a||0,item.b||0]));
+ const todayWeek=periodDates(today,"week"),todayMonth=periodDates(today,"month");
+ const lastWeek=periodDates(previousAnchor(today,"week"),"week"),lastMonth=periodDates(previousAnchor(today,"month"),"month");
  const weekNet=comparisonTotals(courses,todayWeek.filter(d=>d<=today)).net,lastWeekNet=comparisonTotals(courses,lastWeek).net;
  const goals:{title:string;days:string[]}[]=[{title:"Cette semaine",days:todayWeek},{title:"Semaine passée",days:lastWeek},{title:"Ce mois-ci",days:todayMonth},{title:"Mois passé",days:lastMonth}];
+ const referenceText=period==="week"?"semaine précédente":period==="previous"?"semaine encore précédente":period==="month"?"mois précédent":period==="day"?"même jour de la semaine passée":"période précédente de même durée";
+ const selectedLabel=period==="all"?"Toutes les dates enregistrées":shortRange(currentDates);
+ const chartTitle=period==="all"?"Activité par mois":"Évolution de l’activité";
  return <section className="statistics-page">
-  <header className="statistics-header"><span>VOTRE ACTIVITÉ EN UN COUP D’ŒIL</span><h2>Statistiques</h2><p>Suivez vos revenus et votre progression.</p></header>
-  <div className="statistics-view-switch" role="group" aria-label="Vue des statistiques"><button type="button" aria-pressed={view==="comparison"} onClick={()=>setView("comparison")}>Comparaison</button><button type="button" aria-pressed={view==="goals"} onClick={()=>setView("goals")}>Objectifs</button></div>
+  <header className="statistics-header"><span>VOTRE ACTIVITÉ EN UN COUP D’ŒIL</span><h2>Statistiques</h2><p>Revenus, courses et évolution, avec des périodes faciles à comparer.</p></header>
+  <div className="statistics-view-switch" role="group" aria-label="Vue des statistiques">
+   <button type="button" aria-pressed={view==="comparison"} onClick={()=>setView("comparison")}>Résultats</button>
+   <button type="button" aria-pressed={view==="goals"} onClick={()=>setView("goals")}>Objectifs</button>
+  </div>
   {view==="comparison" && <>
-  <nav className="sev-tabs" aria-label="Comparer par">{(["day","week","month"] as const).map((m,i)=><button type="button" key={m} aria-current={mode===m?"page":undefined} onClick={()=>{setMode(m);setReference("");}}>{["Journées","Semaines","Mois"][i]}</button>)}</nav>
-  <details className="statistics-filter-panel">
-   <summary><span><b>Filtres</b><small>{({net:"Revenu net",gross:"Revenu brut",count:"Nombre de courses",tips:"Pourboires"} as const)[metric]} · {type==="all"?"Toutes les courses":type==="taxi"?"Taxi":"Transport adapté"}</small></span><span className="statistics-filter-toggle" aria-hidden="true">⌄</span></summary>
-  <div className="sev-filters statistics-filter-fields"><label>{mode==="day"?"Journée à comparer":"Période choisie"}<input type="date" value={anchor} onChange={e=>{setAnchor(e.target.value);setReference("");}}/></label><label>Comparer avec<input type="date" value={reference||previousAnchor(safeAnchor,mode)} onChange={e=>setReference(e.target.value)}/></label><label>Indicateur<select value={metric} onChange={e=>setMetric(e.target.value as Metric)}><option value="net">Revenu net pour l’objectif</option><option value="gross">Revenu brut</option><option value="count">Nombre de courses / tournées</option><option value="tips">Pourboires connus</option></select></label><label>Activité<select value={type} onChange={e=>setType(e.target.value)}><option value="all">Toutes les courses</option><option value="taxi">Taxi</option><option value="adapte">Transport adapté</option></select></label></div>
-  <p className="statistics-note">{mode==="day"?"Par défaut : le même jour de la semaine précédente (lundi contre lundi, par exemple).":mode==="week"?"Semaines du mardi au lundi, comparées jour par jour.":"Mois comparés par numéro de jour. Les jours absents d’un mois sont indiqués « — »."}</p>
-  {running&&mode!=="day"&&<label className="comparison-check"><input type="checkbox" checked={elapsed} onChange={e=>setElapsed(e.target.checked)}/>Comparer au même stade : jusqu’à aujourd’hui, inclus</label>}
-  </details>
-  {!valid?<p role="alert">Choisis une date valide.</p>:<>
-  <div className="comparison-summary"><article><span>Période choisie</span><small>{range(shown)}</small><strong>{format(current[metric])}</strong><small>{current.count} courses / tournées enregistrées</small></article><article><span>Période de référence</span><small>{range(oldShown)}</small><strong>{format(previous[metric])}</strong><small>{previous.count} courses / tournées enregistrées</small></article></div>
-  <div className={`comparison-gap ${diff>=0?"positive":"negative"}`}><b>{diff>=0?"+":"−"}{format(Math.abs(diff))}</b><span>{percent===null?"Pas de pourcentage : la référence est à zéro.":`${percent>=0?"+":""}${percent.toLocaleString("fr-CA",{maximumFractionDigits:1})} % par rapport à la référence`}</span></div>
-  {running&&<p className="statistics-note">Aujourd’hui peut être incomplet : comparaison des courses enregistrées, sans alignement par heure.</p>}
-  {!!(current.unknownTips+previous.unknownTips)&&<p className="statistics-tip">Pourboires encore inconnus dans certaines captures : leurs totaux sont inclus dans les revenus, mais les pourboires connus restent provisoires.</p>}
-  <section className="statistics-card"><h3>{mode==="day"?"Comparaison des deux journées":"Comparaison jour par jour"}</h3><p className="comparison-legend"><span>● Période choisie</span><span>● Référence</span></p><div className="comparison-graph">{pairs.map((p,i)=><div className="comparison-pair" key={i}>{mode!=="day"&&<b>{mode==="week"?new Date(`${p.now||p.old}T12:00:00`).toLocaleDateString("fr-CA",{weekday:"long"}):`Jour ${i+1}`}</b>}{[{date:p.now,value:p.a},{date:p.old,value:p.b}].map((bar,j)=><div className={`comparison-bar bar-${j}`} key={j}><div><small>{bar.date?label(bar.date):"Jour absent"}</small><strong>{bar.value===null?"—":format(bar.value)}</strong></div><div className="comparison-track"><i style={{width:`${Math.max(0,bar.value||0)/maximum*100}%`}}/></div></div>)}</div>)}</div></section>
-  {!current.count&&!previous.count&&<p className="sev-empty">Aucune course enregistrée dans ces deux périodes.</p>}
-  </>}
+   <section className="statistics-period-card" aria-label="Filtrer les statistiques par date">
+    <div className="statistics-period-heading"><strong>Période</strong><small>{selectedLabel}</small></div>
+    <div className="statistics-period-row">
+     <label className="statistics-period-select">
+      <span className="statistics-sr-only">Choisir une période</span>
+      <select aria-label="Choisir une période" value={period} onChange={event=>{
+       const next=event.target.value as StatisticsPeriod;
+       if(next==="custom")setRangeOpen(true);else setPeriod(next);
+      }}>
+       <option value="day">Aujourd’hui</option>
+       <option value="week">Cette semaine</option>
+       <option value="previous">Semaine passée</option>
+       <option value="month">Ce mois</option>
+       <option value="all">Toutes les dates</option>
+       <option value="custom">Dates personnalisées</option>
+      </select>
+     </label>
+     <button className="statistics-calendar-button" type="button" onClick={()=>setRangeOpen(true)}
+      aria-label="Choisir les dates dans le calendrier"><span aria-hidden="true">▦</span> Calendrier</button>
+    </div>
+   </section>
+   <DateRangePicker open={rangeOpen} start={start} end={end}
+    onClose={()=>setRangeOpen(false)} onApply={(from,to)=>{
+     setStart(from);setEnd(to);setPeriod("custom");setRangeOpen(false);
+    }}/>
+   <div className="statistics-simple-filters" aria-label="Personnaliser les statistiques">
+    <label>Indicateur
+     <select aria-label="Indicateur statistique" value={metric} onChange={event=>setMetric(event.target.value as Metric)}>
+      <option value="net">Revenu net estimé</option><option value="gross">Revenu brut</option>
+      <option value="count">Courses / tournées</option><option value="tips">Pourboires connus</option>
+     </select>
+    </label>
+    <label>Activité
+     <select aria-label="Type d’activité" value={type} onChange={event=>setType(event.target.value as Category)}>
+      <option value="all">Toutes</option><option value="taxi">Taxi</option>
+      <option value="aeroport">Aéroport</option><option value="centre-ville">Centre-ville</option>
+      <option value="adapte">Transport adapté</option>
+     </select>
+    </label>
+   </div>
+   {running && period!=="day" && <label className="statistics-elapsed">
+    <input type="checkbox" checked={elapsed} onChange={event=>setElapsed(event.target.checked)}/>
+    Comparer uniquement jusqu’à aujourd’hui
+   </label>}
+   {!selection.valid?<p className="statistics-validation" role="alert">Choisis des dates valides (maximum 10 ans) dans le calendrier.</p>:<>
+    <section className="statistics-overview" aria-label="Chiffres de la période">
+     <article className="statistics-overview-main"><span>Revenu net estimé</span><strong>{money(current.net)}</strong><small>Après frais Téo, perceptions et redevances</small></article>
+     <article><span>Revenu brut</span><strong>{money(current.gross)}</strong><small>Taxes comprises</small></article>
+     <article><span>Courses / tournées</span><strong>{current.count.toLocaleString("fr-CA")}</strong><small>{current.days} jour{current.days===1?"":"s"} avec activité</small></article>
+     <article><span>Pourboires connus</span><strong>{money(current.tips)}</strong><small>{current.unknownTips?"Certains pourboires restent inconnus":"Pourboires renseignés"}</small></article>
+    </section>
+    <div className="statistics-comparison-head"><h3>Comparaison</h3><small>{selection.comparable?"Par rapport à la "+referenceText:"Vue globale de l’activité"}</small></div>
+    <div className={"comparison-summary"+(selection.comparable?"":" only-current")}>
+     <article><span>Période choisie</span><small>{range(shown)}</small><strong>{format(current[metric])}</strong><small>{metricLabels[metric]}</small></article>
+     {selection.comparable && <article><span>Période de référence</span><small>{range(oldShown)}</small><strong>{format(previous[metric])}</strong><small>{previous.count} courses / tournées</small></article>}
+    </div>
+    {selection.comparable && <div className={"comparison-gap "+(diff>=0?"positive":"negative")}>
+     <b>{diff>=0?"+":"−"}{format(Math.abs(diff))}</b>
+     <span>{percent===null?"Référence à zéro : variation en pourcentage non calculable":(percent>=0?"+":"")+percent.toLocaleString("fr-CA",{maximumFractionDigits:1})+" % par rapport à la référence"}</span>
+    </div>}
+    {running && <p className="statistics-note">La journée en cours peut être incomplète. Les valeurs proviennent des courses enregistrées.</p>}
+    {!!(current.unknownTips+previous.unknownTips) && <p className="statistics-tip">Des pourboires sont inconnus dans certaines captures. Les pourboires connus peuvent être incomplets.</p>}
+    <section className="statistics-card statistics-graph-card">
+     <div className="statistics-graph-head"><h3>{chartTitle}</h3><small>{metricLabels[metric]}</small></div>
+     {selection.comparable && <p className="comparison-legend"><span>● Période choisie</span><span>● Référence</span></p>}
+     {period==="all" && groups.length>0 && <p className="statistics-note">Les chiffres ci-dessus couvrent toutes les dates. Le graphique montre les 12 derniers mois avec activité.</p>}
+     {pairs.length===0?<p className="statistics-empty-chart">Aucune course pour cette période.</p>:
+      <div className="comparison-graph">{pairs.map((pair,index)=>(
+       <div className="comparison-pair" key={index}>
+        <b>{period==="all"?pair.label:
+          pair.first===pair.last?new Date(pair.first+"T12:00:00").toLocaleDateString("fr-CA",{weekday:"short",day:"numeric",month:"short"}):
+          formatDate(pair.first)+" – "+formatDate(pair.last)}</b>
+        {[{value:pair.a},{value:pair.b}].slice(0,selection.comparable?2:1).map((bar,j)=>(
+         <div className={"comparison-bar bar-"+j} key={j}>
+          <div><small>{j===0?"Période choisie":"Référence"}</small><strong>{bar.value===null?"—":format(bar.value)}</strong></div>
+          <div className="comparison-track"><i style={{width:String(Math.max(0,bar.value||0)/maximum*100)+"%"}}/></div>
+         </div>
+        ))}
+       </div>
+      ))}</div>}
+    </section>
+    {!current.count && !previous.count && <p className="sev-empty">Aucune course enregistrée dans ces périodes.</p>}
+   </>}
   </>}
   {view==="goals" && <section className="statistics-card statistics-goal-card"><h3>Mes objectifs</h3><p>Sur toutes les courses, indépendamment des filtres. Les objectifs de semaine et de mois additionnent tes objectifs quotidiens des Réglages.</p>
   {!goalsEnabled?<><p>Active tes objectifs quotidiens pour voir ce qu’il reste à gagner.</p><button type="button" className="comparison-settings" onClick={onSettings}>Définir mes objectifs</button></>:<><div className="comparison-goals">{goals.map(({title,days})=>{
