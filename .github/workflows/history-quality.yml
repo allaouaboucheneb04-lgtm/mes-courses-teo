@@ -1,0 +1,40 @@
+name: Historique — interface iPhone et recherches
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/page.tsx"
+      - "app/globals.css"
+      - "lib/history-search.ts"
+      - "tests/history-*.test.mjs"
+      - ".github/workflows/history-quality.yml"
+  push:
+    branches:
+      - feat/historique-compact-iphone-20261106
+    paths:
+      - "app/page.tsx"
+      - "app/globals.css"
+      - "lib/history-search.ts"
+      - "tests/history-*.test.mjs"
+      - ".github/workflows/history-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  history-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Installer les dépendances
+        run: npm ci --ignore-scripts
+      - name: Contrôler TypeScript et JSX
+        run: npx tsc --noEmit --pretty false
+      - name: Tester l'historique, les filtres et les actions
+        run: node --test --test-concurrency=1 tests/history-search.test.mjs tests/history-ui.test.mjs
