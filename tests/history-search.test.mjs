@@ -22,3 +22,13 @@ test('existing identifiers and blank searches remain supported', () => {
  assert.equal(matchesHistorySearch({...city,couponNumber:'123456'},'2345'),true);
  assert.equal(matchesHistorySearch(city,''),true);
 });
+
+test('search includes Téo BILL and course date, including Quebec DD/MM/YYYY',()=>{
+ const course={...city,date:'2026-11-05',verifiedBillId:'BILL001233135'};
+ assert.equal(matchesHistorySearch(course,'BILL001233135'),true);
+ assert.equal(matchesHistorySearch(course,'001233'),true);
+ assert.equal(matchesHistorySearch(course,'2026-11-05'),true);
+ assert.equal(matchesHistorySearch(course,'05/11/2026'),true);
+ assert.equal(matchesHistorySearch(course,'05/11/2025'),false);
+ assert.equal(matchesHistorySearch(city,'BILL001233135'),false);
+});
