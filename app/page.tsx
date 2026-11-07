@@ -3948,8 +3948,8 @@ export default function Home() {
                     )}
                   </span>
                   <small>
-                    {group.courses.length} course
-                    {group.courses.length !== 1 ? "s" : ""}
+                    {group.courses.length} course{group.courses.length !== 1 ? "s" : ""} ·{" "}
+                    {money(round2(group.courses.reduce((sum, course) => sum + course.amount + course.tip, 0)))}
                   </small>
                 </header>
                 <div className="history-day-courses">
@@ -4023,6 +4023,9 @@ export default function Home() {
                                 : ""}
                             </span>
                           )}
+                          {!c.verified && isPayrollCourse(c) && (
+                            <span className="history-unverified">• Paie non vérifiée</span>
+                          )}
                         </div>
                         <div className="course-actions">
                           <button
@@ -4042,8 +4045,16 @@ export default function Home() {
                             ×
                           </button>
                         </div>
-                        <div className="history-course-values">
+                        <div className="history-course-quick">
+                          <div className="history-course-quick-money">
+                            <span>Total</span><strong>{money(gross)}</strong>
+                            <small>Net après frais par course : {money(gross - deductions)}</small>
+                          </div>
                           <SevCheckbox ride={c} onChange={setSevStatus} />
+                        </div>
+                        <details className="history-course-breakdown">
+                          <summary>Détail des montants <span aria-hidden="true">⌄</span></summary>
+                          <div className="history-course-values">
                           <div>
                             <span>
                               {c.type === "taxi"
@@ -4079,6 +4090,7 @@ export default function Home() {
                             <b>{money(gross - deductions)}</b>
                           </div>
                         </div>
+                        </details>
                       </article>
                     );
                   })}
@@ -4139,6 +4151,7 @@ export default function Home() {
           if (dateRangeTarget === "history") {
             setCustomStart(start);
             setCustomEnd(end);
+            setHistoryPeriod("custom");
           } else if (dateRangeTarget === "bill") {
             setBillCustomStart(start);
             setBillCustomEnd(end);
