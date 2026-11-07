@@ -4406,3 +4406,127 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
 @media (max-width: 370px) {
   .sev-page .sev-date-calendar { padding: 8px; font-size: 12px; }
 }
+
+
+/* Statistiques 2026: même choix de période que SEV, KPI lisibles sur iPhone. */
+.statistics-page .statistics-header {
+  padding: 21px 22px; border-radius: 20px;
+}
+.statistics-page .statistics-header h2 { font-size: clamp(26px,5vw,34px); margin: 6px 0; }
+.statistics-page .statistics-header p { line-height: 1.4; margin: 0; font-size: 13px; }
+.statistics-page .statistics-view-switch { margin: 10px 0; }
+.statistics-page .statistics-view-switch button { min-height: 43px; }
+.statistics-page .statistics-period-card {
+  display: grid; gap: 9px; min-width: 0;
+  margin: 6px 0 9px; padding: 13px;
+  border: 1px solid #cddfe1; border-radius: 16px; background: #fff;
+}
+.statistics-page .statistics-period-heading {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  justify-content: space-between; gap: 3px 9px;
+}
+.statistics-page .statistics-period-heading strong { color: #135f66; font-size: 14px; }
+.statistics-page .statistics-period-heading small {
+  font-size: 12px; font-weight: 650; color: #667a7e; overflow-wrap: anywhere;
+}
+.statistics-page .statistics-period-row {
+  display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px;
+  align-items: center;
+}
+.statistics-page .statistics-sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  padding: 0; overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+.statistics-page .statistics-period-select { display: block; min-width: 0; }
+.statistics-page .statistics-period-select select {
+  display: block; box-sizing: border-box; width: 100%; min-width: 0;
+  min-height: 44px; padding: 8px 12px;
+  color: #135f66; border: 1px solid #b8d0d2; border-radius: 12px;
+  background: #f8fbfb; font-size: 16px; font-weight: 800;
+}
+.statistics-page .statistics-calendar-button {
+  display: flex; gap: 6px; align-items: center; justify-content: center;
+  min-height: 44px; padding: 8px 12px; border-radius: 12px;
+  border: 1px solid #a7ccce; background: #e9f7f6; color: #096a71;
+  font: inherit; font-size: 13px; font-weight: 800;
+}
+.statistics-page .statistics-calendar-button span { font-size: 20px; }
+.statistics-page .statistics-simple-filters {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 9px; margin: 0 0 8px; padding: 11px; background: #fff;
+  border: 1px solid #d0e0e2; border-radius: 14px;
+}
+.statistics-page .statistics-simple-filters label {
+  display: grid; gap: 5px; min-width: 0;
+  font-size: 12px; font-weight: 800; color: #415d62;
+}
+.statistics-page .statistics-simple-filters select {
+  display: block; box-sizing: border-box; width: 100%; min-width: 0;
+  min-height: 42px; padding: 7px;
+  background: #fff; border: 1px solid #c1d3d6; border-radius: 10px;
+  font-size: 16px; font-weight: 650; color: #17383f;
+}
+.statistics-page .statistics-elapsed {
+  display: flex; align-items: center; gap: 10px;
+  margin: 4px 0 12px; font-size: 12px; color: #4d656c; font-weight: 650;
+}
+.statistics-page .statistics-elapsed input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: #00797e; }
+.statistics-page .statistics-overview {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 9px; margin: 12px 0 17px;
+}
+.statistics-page .statistics-overview article {
+  display: grid; align-content: start; gap: 6px; min-width: 0;
+  padding: 15px; background: #fff; border: 1px solid #d6e5e7;
+  border-radius: 15px;
+}
+.statistics-page .statistics-overview article:first-child { border-color: #9bd5c9; background: #eaf8f2; }
+.statistics-page .statistics-overview article:nth-child(2) { border-color: #b9d3ee; background: #f1f7ff; }
+.statistics-page .statistics-overview article:nth-child(3) { border-color: #e9d3b5; background: #fff8ef; }
+.statistics-page .statistics-overview article > span { font-size: 12px; font-weight: 800; color: #52696f; }
+.statistics-page .statistics-overview strong {
+  color: #00656b; font-size: clamp(19px,4vw,27px);
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  overflow-wrap: anywhere;
+}
+.statistics-page .statistics-overview small { font-size: 11px; color: #6b7d82; line-height: 1.35; }
+.statistics-page .statistics-comparison-head,
+.statistics-page .statistics-graph-head {
+  display: flex; gap: 6px 12px; flex-wrap: wrap;
+  align-items: baseline; justify-content: space-between;
+}
+.statistics-page .statistics-comparison-head { margin: 12px 0 8px; }
+.statistics-page .statistics-comparison-head h3,
+.statistics-page .statistics-graph-head h3 { margin: 0; font-size: 17px; color: #17292f; }
+.statistics-page .statistics-comparison-head small,
+.statistics-page .statistics-graph-head small { font-size: 12px; color: #72858a; }
+.statistics-page .comparison-summary { margin: 8px 0; gap: 8px; }
+.statistics-page .comparison-summary article { padding: 12px; }
+.statistics-page .comparison-summary.only-current { grid-template-columns: 1fr; }
+.statistics-page .comparison-summary article strong { font-size: clamp(20px,4.5vw,29px); }
+.statistics-page .comparison-gap { margin-top: 8px; gap: 4px 12px; }
+.statistics-page .comparison-gap b { font-size: 20px; }
+.statistics-page .statistics-graph-card { margin-top: 15px; }
+.statistics-page .statistics-graph-head { margin-bottom: 9px; }
+.statistics-page .statistics-graph-head h3 { font-size: 16px; }
+.statistics-page .comparison-pair { padding: 8px 0; }
+.statistics-page .comparison-pair > b { margin-bottom: 5px; font-size: 12px; }
+.statistics-page .comparison-bar { margin: 5px 0 8px; }
+.statistics-page .comparison-track { height: 10px; margin-top: 5px; }
+.statistics-page .comparison-legend { margin: 5px 0 12px; font-size: 12px; }
+.statistics-page .statistics-empty-chart,
+.statistics-page .statistics-validation {
+  padding: 12px; border-radius: 10px; background: #f6f8f8;
+  font-size: 13px; color: #52666b;
+}
+.statistics-page .statistics-period-row button:focus-visible,
+.statistics-page .statistics-period-row select:focus-visible,
+.statistics-page .statistics-simple-filters select:focus-visible { outline: 3px solid #007a8d; outline-offset: 2px; }
+@media (max-width: 390px) {
+  .statistics-page .statistics-overview article { padding: 11px; }
+  .statistics-page .statistics-period-card { padding: 10px; }
+  .statistics-page .statistics-calendar-button { padding: 8px 9px; font-size: 12px; }
+  .statistics-page .statistics-simple-filters { padding: 8px; gap: 7px; }
+  .statistics-page .comparison-summary article { padding: 10px; }
+}
