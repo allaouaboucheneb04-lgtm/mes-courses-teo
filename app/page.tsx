@@ -752,6 +752,13 @@ export default function Home() {
   }, [historyPeriod, week.start, week.end, customStart, customEnd]);
   const historyExpenseTotal = expenseTotal(expenses, historyBounds);
   const historyHasCourseFilter = historyType !== "all" || historyPayment !== "all" || !!historySearch.trim();
+  const historyHasActiveFilters = historyPeriod !== "week" || historyHasCourseFilter;
+  const historyPeriodLabel = historyBounds
+    ? `${new Date(historyBounds[0] + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "short" })} – ${new Date(historyBounds[1] + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "short", year: "numeric" })}`
+    : "Toutes les dates";
+  const resetHistoryFilters = () => {
+    setHistoryType("all"); setHistoryPayment("all"); setHistorySearch(""); setHistoryPeriod("week");
+  };
   const filteredHistory = useMemo(() => {
     const bounds = historyBounds;
     return courses
@@ -844,6 +851,10 @@ export default function Home() {
           .size * settings.companyFee,
       ),
     [filteredHistory, settings.companyFee],
+  );
+  const historyDisplayNet = round2(
+    historyTotals.gross - historyTotals.fees - historyAirportFeeTotal -
+    historyCompanyFeeTotal - (historyHasCourseFilter ? 0 : historyExpenseTotal),
   );
   const unverifiedHistoryTotals = useMemo(
     () =>
