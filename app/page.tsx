@@ -3812,7 +3812,31 @@ export default function Home() {
               <div className="history-selection-count" role="status">
                 {filteredHistory.length} course{filteredHistory.length !== 1 ? "s" : ""} correspondent aux filtres
               </div>
-              <section className="history-overview">
+              <section className="history-highlights" aria-label="Résumé de l’historique">
+                <article>
+                  <span>Courses</span><b>{filteredHistory.length.toLocaleString("fr-CA")}</b>
+                  <small>Dans la sélection</small>
+                </article>
+                <article>
+                  <span>Brut</span><b>{money(historyTotals.gross)}</b>
+                  <small>Pourboires inclus</small>
+                </article>
+                <article>
+                  <span>{historyHasCourseFilter ? "Net des courses" : "Net après dépenses"}</span>
+                  <b>{money(historyDisplayNet)}</b>
+                  <small>{historyHasCourseFilter ? "Hors dépenses communes" : "Frais et dépenses déduits"}</small>
+                </article>
+                <article>
+                  <span>Paie non vérifiée</span><b>{unverifiedHistoryTotals.count}</b>
+                  <small>{money(unverifiedHistoryTotals.gross)} brut</small>
+                </article>
+              </section>
+              <details className="history-overview history-breakdown">
+                <summary className="history-breakdown-toggle">
+                  <strong>Voir les détails des revenus et frais</strong>
+                  <span aria-hidden="true">⌄</span>
+                </summary>
+                <div className="history-breakdown-body">
                 <header className="history-block-heading">
                   <div>
                     <b>Résumé de la période</b>
@@ -3851,13 +3875,7 @@ export default function Home() {
                   <div>
                     <span>{historyHasCourseFilter ? "Net des courses filtrées, hors dépenses" : "Net après dépenses"}</span>
                     <b>
-                      {money(
-                        historyTotals.gross -
-                          historyTotals.fees -
-                          historyAirportFeeTotal -
-                          historyCompanyFeeTotal -
-                          (historyHasCourseFilter ? 0 : historyExpenseTotal),
-                      )}
+                      {money(historyDisplayNet)}
                     </b>
                   </div>
                 </div>
@@ -3889,7 +3907,8 @@ export default function Home() {
                     </small>
                   </div>
                 </div>
-              </section>
+                </div>
+              </details>
             </>
           )}
           {courses.length === 0 ? (
