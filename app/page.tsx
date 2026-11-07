@@ -3735,85 +3735,83 @@ export default function Home() {
               </p>
             </div>
             {courses.length > 0 && (
-              <button
-                className="text-button"
-                onClick={() => {
-                  if (confirm("Effacer tout l’historique ?")) setCourses([]);
-                }}
-              >
-                Tout effacer
-              </button>
+              <details className="history-management">
+                <summary>Gestion</summary>
+                <button type="button" onClick={() => {
+                  if (confirm("Supprimer définitivement toutes les courses de l’historique ?")) setCourses([]);
+                }}>Supprimer toutes les courses</button>
+              </details>
             )}
           </div>
           {courses.length > 0 && (
             <>
-              <div className="history-controls">
-                <label className="history-search">
-                  <span>Rechercher</span>
-                  <input
-                    placeholder="Montant, HOB, ID, coupon ou compte…"
-                    value={historySearch}
-                    onChange={(e) => setHistorySearch(e.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Type de course</span>
-                  <select
-                    value={historyType}
-                    onChange={(e) =>
-                      setHistoryType(e.target.value as typeof historyType)
-                    }
-                  >
-                    <option value="all">Toutes</option>
-                    <option value="taxi">Taxi (les deux)</option>
-                    <option value="aeroport">Aéroport</option>
-                    <option value="centre-ville">Centre-ville</option>
-                    <option value="adapte">Adapté</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Mode de paiement</span>
-                  <select
-                    value={historyPayment}
-                    onChange={(e) =>
-                      setHistoryPayment(
-                        e.target.value as HistoryPaymentFilter,
-                      )
-                    }
-                  >
-                    <option value="all">Tous</option>
-                    <option value="teo-card">Téo / carte</option>
-                    <option value="cash">Espèces</option>
-                    <option value="coupon">Coupon</option>
-                    <option value="machine">Machine crédit</option>
-                    <option value="adapted">Transport adapté</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Période</span>
-                  <select
-                    value={historyPeriod}
-                    onChange={(e) => {
-                      const next = e.target.value as typeof historyPeriod;
-                      setHistoryPeriod(next);
-                      if (next === "custom") setDateRangeTarget("history");
-                    }}
-                  >
-                    <option value="week">Cette semaine</option>
-                    <option value="last-week">Semaine passée</option>
-                    <option value="month">Ce mois-ci</option>
-                    <option value="last-month">Mois passé</option>
-                    <option value="custom">Période personnalisée</option>
-                    <option value="all">Tout l’historique</option>
-                  </select>
-                </label>
-              </div>
-              {historyPeriod === "custom" && (
-                <div className="custom-period">
-                  <DateRangeField start={customStart} end={customEnd}
-                    onClick={() => setDateRangeTarget("history")} />
+              <section className="history-filter-panel" aria-label="Filtrer les courses de l’historique">
+                <div className="history-date-filter">
+                  <div className="history-date-heading">
+                    <strong>Période</strong>
+                    <small>{historyPeriodLabel}</small>
+                  </div>
+                  <div className="history-date-controls">
+                    <label>
+                      <span className="history-sr-only">Choisir une période</span>
+                      <select aria-label="Choisir une période" value={historyPeriod}
+                        onChange={(event) => {
+                          const next = event.target.value as typeof historyPeriod;
+                          if (next === "custom") setDateRangeTarget("history");
+                          else setHistoryPeriod(next);
+                        }}>
+                        <option value="week">Cette semaine</option>
+                        <option value="last-week">Semaine passée</option>
+                        <option value="month">Ce mois</option>
+                        <option value="last-month">Mois passé</option>
+                        <option value="all">Toutes les dates</option>
+                        <option value="custom">Dates personnalisées</option>
+                      </select>
+                    </label>
+                    <button type="button" className="history-calendar-button"
+                      aria-label="Choisir les dates dans le calendrier"
+                      onClick={() => setDateRangeTarget("history")}>
+                      <span aria-hidden="true">▦</span> Calendrier
+                    </button>
+                  </div>
                 </div>
-              )}
+                <div className="history-search-row">
+                  <label className="history-search">
+                    <span className="history-sr-only">Rechercher une course</span>
+                    <input type="search" value={historySearch}
+                      onChange={(event) => setHistorySearch(event.target.value)}
+                      placeholder="Montant, HOB, Téo, BILL, date…" />
+                  </label>
+                  {historyHasActiveFilters && <button type="button" className="history-clear-filters"
+                    onClick={resetHistoryFilters}>Effacer</button>}
+                </div>
+                <div className="history-filter-selects">
+                  <label>Catégorie
+                    <select aria-label="Catégorie de course" value={historyType}
+                      onChange={(event) => setHistoryType(event.target.value as HistoryTypeFilter)}>
+                      <option value="all">Toutes</option>
+                      <option value="taxi">Taxi</option>
+                      <option value="aeroport">Aéroport</option>
+                      <option value="centre-ville">Centre-ville</option>
+                      <option value="adapte">Adapté</option>
+                    </select>
+                  </label>
+                  <label>Paiement
+                    <select aria-label="Mode de paiement" value={historyPayment}
+                      onChange={(event) => setHistoryPayment(event.target.value as HistoryPaymentFilter)}>
+                      <option value="all">Tous</option>
+                      <option value="teo-card">Téo / carte</option>
+                      <option value="cash">Espèces</option>
+                      <option value="coupon">Coupon</option>
+                      <option value="machine">Machine crédit</option>
+                      <option value="adapted">Transport adapté</option>
+                    </select>
+                  </label>
+                </div>
+              </section>
+              <div className="history-selection-count" role="status">
+                {filteredHistory.length} course{filteredHistory.length !== 1 ? "s" : ""} correspondent aux filtres
+              </div>
               <section className="history-overview">
                 <header className="history-block-heading">
                   <div>
