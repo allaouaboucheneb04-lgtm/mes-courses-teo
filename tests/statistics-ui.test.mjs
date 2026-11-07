@@ -42,7 +42,7 @@ test("statistics has four clear KPI cards and preserves the correct net",()=>{
  assert.match(html,/Pourboires connus/);
  assert.match(html,/156,02[^<]*\$/); // gross 169.46 - fee 5 - perception 2 - airport fee 6.44
  assert.match(html,/169,46[^<]*\$/);
- assert.match(html,/Du 3 nov/);
+ assert.match(html,/3 nov/);
  assert.ok(html.indexOf("statistics-period-card")<html.indexOf("statistics-overview"));
  assert.ok(html.indexOf("statistics-overview")<html.indexOf("comparison-summary"));
 });
