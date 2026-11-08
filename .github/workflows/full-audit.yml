@@ -35,6 +35,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Vérifier toutes les erreurs TypeScript
         run: npx tsc --noEmit --pretty false
+      - name: Rendre exécutable l'outil de construction du dépôt
+        run: chmod +x scripts/sites-env.sh scripts/build-verified.sh
       - name: Construire l'application et générer les ressources de prévisualisation
         run: npm run build
       - name: Exécuter TOUS les tests sans connexion à des données réelles
