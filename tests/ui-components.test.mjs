@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import test, { after } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -21,31 +20,15 @@ after(async () => {
   await vite.close();
 });
 
-async function readCssTree(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const contents = await Promise.all(
-    entries.map(async (entry) => {
-      const entryPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        return readCssTree(entryPath);
-      }
-      return entry.name.endsWith(".css") ? readFile(entryPath, "utf8") : "";
-    }),
-  );
-  return contents.join("\n");
-}
-
-test("emits the catalog's animation and scrolling utilities", async () => {
-  const css = await readCssTree(path.join(root, "dist"));
-
-  assert.match(css, /--tw-enter-opacity/);
-  assert.match(css, /scrollbar-width:\s*thin/);
-  assert.match(css, /scrollbar-width:\s*none/);
-  assert.match(css, /scrollbar-gutter:\s*stable/);
-  assert.match(css, /scroll-fade-reveal-b/);
-  assert.match(css, /mask-image:/);
-  assert.match(css, /tw-shimmer/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
+test("actual Mes Courses Téo mobile filters and cards have responsive and focus styles", async () => {
+  const css = await readFile(new URL("../app/globals.css",import.meta.url),"utf8");
+  assert.match(css,/\.sev-page\s+\.sev-date-filter-top/);
+  assert.match(css,/\.sev-page\s+\.sev-payroll-card/);
+  assert.match(css,/\.history\s+\.history-date-filter/);
+  assert.match(css,/\.history\s+\.history-highlights/);
+  assert.match(css,/\.statistics-page\s+\.statistics-period-card/);
+  assert.match(css,/:focus-visible/);
+  assert.match(css,/@media\s*\(max-width:/);
 });
 
 test("forwards progress semantics to the primitive", async () => {

@@ -1,33 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {readFile} from "node:fs/promises";
 
-const developmentPreviewMeta =
-  /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
+// The legacy starter checked a Cloudflare development-only preview worker.
+// Mes Courses Téo is published as a Next/Vercel PWA; verify its actual metadata.
+test("PWA metadata and manifest declare the Mes Courses Téo app", async()=>{
+  const layout=await readFile(new URL("../app/layout.tsx",import.meta.url),"utf8");
+  const manifest=JSON.parse(await readFile(new URL("../public/manifest.webmanifest",import.meta.url),"utf8"));
+  assert.match(layout,/title:\s*"Mes courses Téo"/);
+  assert.match(layout,/manifest\.webmanifest/);
+  assert.match(layout,/appleWebApp:\s*\{\s*capable:\s*true/);
+  assert.match(layout,/viewportFit:\s*"cover"/);
+  assert.equal(manifest.name,"Mes courses Téo");
+  assert.equal(manifest.lang,"fr-CA");
+  assert.equal(manifest.display,"standalone");
+  assert.ok(manifest.icons.some(icon=>icon.sizes==="192x192"));
+  assert.ok(manifest.icons.some(icon=>icon.sizes==="512x512"));
+});
 
-test("renders development preview metadata", async () => {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  const response = await worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
-
-  assert.equal(response.status, 200);
-  assert.match(
-    response.headers.get("content-type") ?? "",
-    /^text\/html\b/i,
-  );
-  assert.match(await response.text(), developmentPreviewMeta);
+test("service worker uses network-first navigation before cached fallback",async()=>{
+  const worker=await readFile(new URL("../public/sw.js",import.meta.url),"utf8");
+  assert.match(worker,/request\.mode === "navigate"/);
+  assert.match(worker,/fetch\(request\)/);
+  assert.match(worker,/caches\.match\(HOME\)/);
+  assert.match(worker,/request\.method !== "GET"/);
 });

@@ -708,8 +708,12 @@ export default function Home() {
       ),
     [courses, airportWeek.start, airportWeek.end],
   );
+  // Weekly income runs Tuesday–Monday. Deduct only airport rides belonging
+  // to this income week; the airport invoice remains Monday–Sunday below.
   const airportFeeTotal = round2(
-    weeklyAirportCourses.length * settings.airportFee,
+    weeklyCourses.filter(
+      (course) => course.type === "taxi" && course.taxiCategory === "aeroport",
+    ).length * settings.airportFee,
   );
   const weeklyCompanyFee = round2(settings.companyFee);
   const weeklyExpenseTotal = expenseTotal(expenses, [week.start, week.end]);
@@ -912,8 +916,10 @@ export default function Home() {
   );
   const selectedDayExpenseTotal = expenseTotal(expenses, [selectedDate, selectedDate]);
   const dailyNet = round2(dailyGoalNet - selectedDayCompanyFee - selectedDayExpenseTotal);
+  // A net-income goal must use the same net already shown after company
+  // fees and recorded expenses, not a more optimistic pre-expense subtotal.
   const dailyGoalProgress = dailyGoal
-    ? Math.min(100, Math.max(0, (dailyGoalNet / dailyGoal) * 100))
+    ? Math.min(100, Math.max(0, (dailyNet / dailyGoal) * 100))
     : 0;
   const filteredExpenses = useMemo(() => {
     return expenses
@@ -1627,11 +1633,13 @@ export default function Home() {
     const start = new Date(`${adapted.date}T${adapted.start}`);
     let end = new Date(`${adapted.date}T${adapted.end}`);
     if (end <= start) end = new Date(end.getTime() + 86400000);
-    const duration =
-      Math.round((end.getTime() - start.getTime()) / 36000) / 100;
-    if (!duration || duration > 24)
+    // Calculate the fare from exact elapsed time (minutes), not from the
+    // rounded two-decimal display duration: 2 h 01 min ≠ 2.02 h.
+    const exactHours = (end.getTime() - start.getTime()) / 3600000;
+    if (!Number.isFinite(exactHours) || exactHours <= 0 || exactHours > 24)
       return flash("Vérifiez les heures saisies.");
-    const billedDuration = Math.max(duration, settings.adaptedMinimum);
+    const duration = Math.round(exactHours * 100) / 100;
+    const billedDuration = Math.max(exactHours, settings.adaptedMinimum);
     const updated: Course = {
       id: editingId || crypto.randomUUID(),
       type: "adapte",
@@ -1963,7 +1971,7 @@ export default function Home() {
                     Objectif du {GOAL_DAYS[selectedGoalDay].toLowerCase()}
                   </span>
                   <b>
-                    {money(dailyGoalNet)} / {money(dailyGoal)}
+                    {money(dailyNet)} / {money(dailyGoal)}
                   </b>
                 </div>
                 <div
@@ -1977,9 +1985,9 @@ export default function Home() {
                   <i style={{ width: `${dailyGoalProgress}%` }} />
                 </div>
                 <small>
-                  {dailyGoal > 0 && dailyGoalNet >= dailyGoal
+                  {dailyGoal > 0 && dailyNet >= dailyGoal
                     ? "Objectif atteint ✓"
-                    : `${money(Math.max(0, dailyGoal - dailyGoalNet))} restant`}
+                    : `${money(Math.max(0, dailyGoal - dailyNet))} restant`}
                 </small>
               </div>
             )}

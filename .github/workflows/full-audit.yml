@@ -1,0 +1,43 @@
+name: Audit complet des calculs et fonctions
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "app/page.tsx"
+      - "lib/**"
+      - "components/**"
+      - "tests/**"
+      - ".github/workflows/full-audit.yml"
+  push:
+    branches: [audit/fixes-financial-20261108]
+    paths:
+      - "app/page.tsx"
+      - "lib/**"
+      - "components/**"
+      - "tests/**"
+      - ".github/workflows/full-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Installer les versions de dépendances verrouillées
+        run: npm ci --ignore-scripts
+      - name: Vérifier toutes les erreurs TypeScript
+        run: npx tsc --noEmit --pretty false
+      - name: Rendre exécutable l'outil de construction du dépôt
+        run: chmod +x scripts/sites-env.sh scripts/build-verified.sh
+      - name: Construire l'application et générer les ressources de prévisualisation
+        run: npm run build
+      - name: Exécuter TOUS les tests sans connexion à des données réelles
+        run: node --test --test-concurrency=1 tests/*.test.mjs

@@ -77,7 +77,7 @@ const round2=x=>Math.round((x+Number.EPSILON)*100)/100;
 const savePhotoCode=compile(page.slice(page.indexOf('  const savePhotoCourses ='),page.indexOf('  function addAdapted'))+'\nreturn savePhotoCourses;');
 function runPhotoSave(photoCourses,courses=[]) {
  let saved=courses,message='',preview=photoCourses;
- const run=new Function('photoCourses','courses','photoCandidateError','photoDuplicateStatus','parseMoneyInput','round2','settings','setCourses','setPhotoCourses','setPhotoMessage',savePhotoCode)(photoCourses,courses,photoCandidateError,photoDuplicateStatus,parseMoneyInput,round2,{airportEnabled:true},v=>saved=v,v=>preview=v,v=>message=v);
+ const run=new Function('photoCourses','courses','photoCandidateError','photoDuplicateStatus','parseMoneyInput','round2','settings','setCourses','setPhotoCourses','setPhotoMessage','flash',savePhotoCode)(photoCourses,courses,photoCandidateError,photoDuplicateStatus,parseMoneyInput,round2,{airportEnabled:true},v=>saved=v,v=>preview=v,v=>message=v,v=>message=v);
  run();return {saved,message,preview};
 }
 test('actual save handler saves three same-price rides and skips only repeated fingerprints',()=>{
