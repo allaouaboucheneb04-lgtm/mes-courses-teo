@@ -35,5 +35,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Vérifier toutes les erreurs TypeScript
         run: npx tsc --noEmit --pretty false
+      - name: Construire l'application et générer les ressources de prévisualisation
+        run: npm run build
       - name: Exécuter TOUS les tests sans connexion à des données réelles
         run: node --test --test-concurrency=1 tests/*.test.mjs
