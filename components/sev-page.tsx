@@ -4,7 +4,7 @@ import DateRangePicker, { DateRangeField } from "@/components/date-range-picker"
 import { isCardPayment } from "@/lib/teo-payment";
 import { feePeriods, sevBreakdown, sevTotals } from "@/lib/sev";
 import { summarizePayroll } from "@/lib/payroll-summary";
-import { filterSevRides, filterSevStatuses, matchesSevCategory, summarizeSevCategories, type SevCategory, type SevPeriod, type SevDeclarationStatus, type SevPayrollStatus } from "@/lib/sev-filtering";
+import { filterSevRides, filterSevStatuses, matchesSevCategory, summarizeSevSelection, type SevCategory, type SevPeriod, type SevDeclarationStatus, type SevPayrollStatus } from "@/lib/sev-filtering";
 
 type Ride = {
   id: string; type: string; date: string; amount: number; tip: number;
@@ -41,7 +41,6 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
   const categoryBaseRows = filterSevRides(courses.filter(sevEligible), {
     category: "all", period, week, today, start, end, search,
   });
-  const categoryTotals = summarizeSevCategories(categoryBaseRows);
   const rows = type === "all"
     ? categoryBaseRows
     : categoryBaseRows.filter(ride => matchesSevCategory(ride, type));
@@ -69,16 +68,13 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
     period === "previous" ? `Du ${formatDate(previousDate(week.start))} au ${formatDate(previousDate(week.end))}` :
     period === "month" ? new Date(today.slice(0, 7) + "-15T12:00:00").toLocaleDateString("fr-CA", { month: "long", year: "numeric" }) :
     period === "custom" ? `Du ${formatDate(start)} au ${formatDate(end)}` : "Toutes les dates";
-  const added = rows.filter((ride) => ride.sevAdded).length;
-  const pending = rows.length - added;
-  const grossTotal = rows.reduce((sum, ride) => sum + ride.amount + ride.tip, 0);
-  const pendingGross = rows.filter((ride) => !ride.sevAdded).reduce((sum, ride) => sum + ride.amount + ride.tip, 0);
-  const addedGross = grossTotal - pendingGross;
-  // Paie Téo et déclaration SEV sont deux statuts indépendants.
-  // Le résumé porte sur toutes les courses éligibles de la période, avant
-  // l'application des filtres de statut SEV et de vérification de paie.
-  const payroll = summarizePayroll(rows);
   const visible = filterSevStatuses(rows, status, payStatus);
+  // The course dashboard follows every active filter. Keep the independent
+  // tax/redevance subpage tied to its existing period/category/search scope.
+  const summaryRows = page === "courses" ? visible : rows;
+  const { pending, added, grossTotal, pendingGross, addedGross, categoryTotals } =
+    summarizeSevSelection(summaryRows);
+  const payroll = summarizePayroll(summaryRows);
   const money = (amount: number) => new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(amount);
   const feeRows = feePeriods(courses, expenses, feePeriod === "year", companyFee).filter(row => feeYear === "all" || row.period.startsWith(feeYear));
   const years = [...new Set([today.slice(0,4), ...courses.map(r=>r.date.slice(0,4)), ...expenses.map(e=>e.date.slice(0,4)), ...feePeriods(courses, expenses, true, companyFee).map(r=>r.period)])].sort().reverse();
@@ -158,7 +154,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
     {page === "courses" && <p className="sev-filter-count" role="status">
       {visible.length} course{visible.length === 1 ? "" : "s"} correspond{visible.length === 1 ? "" : "ent"} aux filtres
     </p>}
-    <div className="sev-stats sev-status-cards" aria-label="État des courses de la période">
+    <div className="sev-stats sev-status-cards" aria-label="État des courses selon les filtres actifs">
       <button type="button" className={`sev-stat sev-stat-pending ${status === "pending" && page === "courses" ? "is-active" : ""}`}
         aria-pressed={status === "pending" && page === "courses"}
         onClick={() => { setPage("courses"); setStatus("pending"); }}>
@@ -172,14 +168,14 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
       <button type="button" className={`sev-stat sev-stat-all ${status === "all" && page === "courses" ? "is-active" : ""}`}
         aria-pressed={status === "all" && page === "courses"}
         onClick={() => { setPage("courses"); setStatus("all"); }}>
-        <span>Toutes</span><b>{rows.length}</b><small>{money(grossTotal)}</small>
+        <span>Toutes</span><b>{summaryRows.length}</b><small>{money(grossTotal)}</small>
       </button>
     </div>
     {page === "courses" && (
       <section className="sev-payroll-section" aria-label="Vérification avec les fiches Téo">
         <div className="sev-payroll-heading">
           <h3>Vérification paie Téo</h3>
-          <small>Selon les dates, le type et la recherche sélectionnés · indépendant du SEV</small>
+          <small>Montants selon tous les filtres actifs · vérification de paie distincte du statut SEV</small>
         </div>
         <div className="sev-payroll-status-cards">
           <button type="button" className={`sev-payroll-card is-verified ${payStatus === "verified" ? "is-active" : ""}`}
@@ -200,7 +196,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
       <section className="sev-category-summary" aria-label="Montants des courses par catégorie">
         <div className="sev-payroll-heading">
           <h3>Montants par catégorie</h3>
-          <small>Brut avec pourboire · selon la période et la recherche</small>
+          <small>Brut avec pourboire · selon tous les filtres actifs</small>
         </div>
         <div className="sev-category-cards">
           {categoryTotals.map(category => (
