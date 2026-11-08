@@ -5,7 +5,7 @@ import { createServer } from "vite";
 const vite = await createServer({configFile:false,server:{middlewareMode:true,hmr:false}});
 after(() => vite.close());
 const {
-  filterSevRides, filterSevStatuses, matchesSevSearch, matchesSevCategory, summarizeSevCategories,
+  filterSevRides, filterSevStatuses, matchesSevSearch, matchesSevCategory, summarizeSevCategories, summarizeSevSelection,
 } = await vite.ssrLoadModule("/lib/sev-filtering.ts");
 
 const rides = [
@@ -92,4 +92,56 @@ test("category summary stays stable even after a category is selected", () => {
   assert.equal(airportOnly.length,1);
   assert.equal(summarizeSevCategories(baseRows).find(c => c.id === "adapte").count,1);
   assert.equal(summarizeSevCategories(airportOnly).find(c => c.id === "adapte").count,0);
+});
+
+test("every SEV summary amount reflects BOTH selected SEV and payroll statuses",()=>{
+  const dated=filterSevRides(rides,opts);
+  const matching=filterSevStatuses(dated,"pending","verified");
+  assert.deepEqual(ids(matching),["airport"]);
+  const summary=summarizeSevSelection(matching);
+  assert.equal(summary.count,1);
+  assert.equal(summary.pending,1);
+  assert.equal(summary.added,0);
+  assert.equal(summary.grossTotal,45.7);
+  assert.equal(summary.pendingGross,45.7);
+  assert.equal(summary.addedGross,0);
+  assert.deepEqual(summary.categoryTotals.map(c=>[c.id,c.count,c.amount]),[
+    ["aeroport",1,45.7],
+    ["centre-ville",0,0],
+    ["adapte",0,0],
+  ]);
+});
+
+test("all cards, payroll split and category totals reconcile to the same visible rides",async()=>{
+  const {summarizePayroll}=await vite.ssrLoadModule("/lib/payroll-summary.ts");
+  const dated=filterSevRides(rides,opts);
+  const chosen=filterSevStatuses(dated,"added","unverified");
+  assert.deepEqual(ids(chosen),["adapted","downtown"]);
+  const summary=summarizeSevSelection(chosen);
+  const payroll=summarizePayroll(chosen);
+  assert.deepEqual([summary.pending,summary.added,summary.count],[0,2,2]);
+  assert.equal(summary.grossTotal,1258.38);
+  assert.equal(summary.pendingGross,0);
+  assert.equal(summary.addedGross,1258.38);
+  assert.equal(payroll.verified.length,0);
+  assert.equal(payroll.verifiedTotal,0);
+  assert.equal(payroll.unverified.length,2);
+  assert.equal(payroll.unverifiedTotal,1258.38);
+  assert.deepEqual(summary.categoryTotals.map(c=>[c.id,c.count,c.amount]),[
+    ["aeroport",0,0],["centre-ville",1,23.82],["adapte",1,1234.56],
+  ]);
+  assert.equal(summary.categoryTotals.reduce((sum,c)=>sum+c.count,0),summary.count);
+  assert.equal(Math.round(summary.categoryTotals.reduce((sum,c)=>sum+c.amount,0)*100),Math.round(summary.grossTotal*100));
+  assert.equal(Math.round((summary.pendingGross+summary.addedGross)*100),Math.round(summary.grossTotal*100));
+  assert.equal(Math.round((payroll.verifiedTotal+payroll.unverifiedTotal)*100),Math.round(summary.grossTotal*100));
+});
+
+test("category, date and amount search must also change all visible totals",()=>{
+  const chosen=filterSevStatuses(filterSevRides(rides,{...opts,category:"aeroport",search:"45,70"}),"all","all");
+  const summary=summarizeSevSelection(chosen);
+  assert.deepEqual(ids(chosen),["airport"]);
+  assert.equal(summary.grossTotal,45.7);
+  assert.equal(summary.categoryTotals[1].amount,0);
+  assert.equal(summarizeSevSelection([]).grossTotal,0);
+  assert.equal(summarizeSevSelection([]).count,0);
 });

@@ -112,3 +112,32 @@ export function summarizeSevCategories<T extends SevFilterRide>(rides: T[]) {
     return { ...category, count: selected.length, amount: amountCents / 100 };
   });
 }
+
+
+/** Summary of exactly the displayed SEV selection, after date, type,
+ * search, declaration status AND payroll status filters are applied. */
+export function summarizeSevSelection<T extends SevFilterRide>(rides: T[]) {
+  let pending = 0;
+  let added = 0;
+  let pendingCents = 0;
+  let addedCents = 0;
+  for (const ride of rides) {
+    const grossCents = Math.round(ride.amount * 100) + Math.round(ride.tip * 100);
+    if (ride.sevAdded) {
+      added += 1;
+      addedCents += grossCents;
+    } else {
+      pending += 1;
+      pendingCents += grossCents;
+    }
+  }
+  return {
+    count: rides.length,
+    pending,
+    added,
+    grossTotal: (pendingCents + addedCents) / 100,
+    pendingGross: pendingCents / 100,
+    addedGross: addedCents / 100,
+    categoryTotals: summarizeSevCategories(rides),
+  };
+}
