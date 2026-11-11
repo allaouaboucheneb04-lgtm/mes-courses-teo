@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { homePeriodBounds, summarizeHomePeriod, type HomePeriod, type HomePeriodRide, type HomePeriodExpense } from "@/lib/home-period";
 import { ArrowRight, CarFront, ChartNoAxesCombined, ClipboardList, Plus, ReceiptText, Target, Wallet } from "lucide-react";
 
 const money = (value: number) => new Intl.NumberFormat("fr-CA", {
@@ -31,6 +32,9 @@ type Props = {
   days: HomeDay[];
   previousDays: HomeDay[];
   dayRides: HomeRide[];
+  periodRides: HomePeriodRide[];
+  periodExpenses: HomePeriodExpense[];
+  periodSettings: { airportFee:number; companyFee:number; dailyGoals:ReadonlyArray<number>; dailyGoalEnabled:boolean };
   todayGoal: number;
   goalsEnabled: boolean;
   weekGross: number;
@@ -65,7 +69,7 @@ const niceTickStep = (interval: number) => {
 };
 
 export default function HomeDashboard({
-  currentDate, days, previousDays, dayRides, todayGoal, goalsEnabled, weekGross, weekFees,
+  currentDate, days, previousDays, dayRides, periodRides, periodExpenses, periodSettings, todayGoal, goalsEnabled, weekGross, weekFees,
   weekNet, onAdd, onExpenses, onHistory, onStatistics, onSettings
 }: Props) {
   const today = days.find(day => day.date === currentDate) ?? {
@@ -73,8 +77,23 @@ export default function HomeDashboard({
   };
   const [inspectedDate, setInspectedDate] = useState<string | null>(null);
   const selected = days.find(day => day.date === inspectedDate) ?? today;
-  const percentage = goalsEnabled && todayGoal > 0
-    ? Math.min(100, Math.max(0, Math.round((today.net / todayGoal) * 100))) : 0;
+  const [period, setPeriod] = useState<HomePeriod>("day");
+  const [customStart, setCustomStart] = useState(days[0]?.date ?? currentDate);
+  const [customEnd, setCustomEnd] = useState(currentDate);
+  const bounds = homePeriodBounds(period, currentDate, customStart, customEnd);
+  const periodSummary = useMemo(() => summarizeHomePeriod(
+    periodRides, periodExpenses, bounds, currentDate, periodSettings
+  ), [periodRides, periodExpenses, bounds?.start, bounds?.end, currentDate, periodSettings]);
+  const percentage = periodSummary.valid && periodSummary.goal > 0
+    ? Math.min(100, Math.max(0, Math.round((periodSummary.net / periodSummary.goal) * 100))) : 0;
+  const periodLabel = ({
+    day: "Aujourd’hui", week: "Cette semaine", month: "Ce mois",
+    year: "Cette année", custom: "Personnalisé",
+  } as const)[period];
+  const periodSubtitle = bounds
+    ? bounds.start === bounds.end ? longDate(bounds.start)
+      : `${new Date(bounds.start + "T12:00:00Z").toLocaleDateString("fr-CA", {timeZone:"UTC",day:"numeric",month:"short",year:"numeric"})} – ${new Date(bounds.end + "T12:00:00Z").toLocaleDateString("fr-CA", {timeZone:"UTC",day:"numeric",month:"short",year:"numeric"})}`
+    : "Choisissez des dates valides";
 
   // Every point is one day's real accounting net, never a cumulative balance.
   // Only completed/current days appear on this week's line.
@@ -117,23 +136,44 @@ export default function HomeDashboard({
       <header className="home-intro">
         <div>
           <span className="home-kicker">TABLEAU DE BORD</span>
-          <h2>Aujourd’hui</h2>
-          <p>{longDate(currentDate)}</p>
+          <h2>{periodLabel}</h2>
+          <p>{periodSubtitle}</p>
         </div>
-        <span className="home-live-indicator">Mes courses Téo</span>
+        <label className="home-period-control">
+          <span>Période</span>
+          <select aria-label="Filtrer le bilan par période" value={period}
+            onChange={event => setPeriod(event.target.value as HomePeriod)}>
+            <option value="day">Aujourd’hui</option>
+            <option value="week">Cette semaine</option>
+            <option value="month">Ce mois</option>
+            <option value="year">Cette année</option>
+            <option value="custom">Personnalisé</option>
+          </select>
+        </label>
       </header>
+      {period === "custom" && (
+        <div className="home-custom-dates" aria-label="Dates de la période personnalisée">
+          <label>Du <input type="date" value={customStart} max={currentDate}
+            onChange={event => setCustomStart(event.target.value)}/></label>
+          <label>Au <input type="date" value={customEnd} max={currentDate}
+            onChange={event => setCustomEnd(event.target.value)}/></label>
+          {!bounds && <p role="alert">La date de début doit précéder la date de fin.</p>}
+        </div>
+      )}
 
       <article className="home-today-card">
         <div className="home-today-main">
           <div className="home-today-income">
-            <span className="home-overline">NET AUJOURD’HUI</span>
-            <strong className="home-big-number">{money(today.net)}</strong>
-            {goalsEnabled && todayGoal > 0 ? (
-              <p>Objectif {money(todayGoal)} <span className="home-target-percent">· {percentage} %</span></p>
-            ) : (
+            <span className="home-overline">NET · {periodLabel.toLocaleUpperCase("fr-CA")}</span>
+            <strong className="home-big-number">{periodSummary.valid ? money(periodSummary.net) : "—"}</strong>
+            {goalsEnabled && periodSummary.valid && periodSummary.goal > 0 ? (
+              <p>Objectif {money(periodSummary.goal)} <span className="home-target-percent">· {percentage} %</span></p>
+            ) : !goalsEnabled ? (
               <button className="home-goal-link" type="button" onClick={onSettings}>
                 <Target size={15} /> Définir un objectif
               </button>
+            ) : (
+              <p className="home-goal-empty">Aucun objectif défini pour cette période.</p>
             )}
           </div>
           <div className="home-progress-ring" role="progressbar"
@@ -145,13 +185,13 @@ export default function HomeDashboard({
                 strokeLinecap="round" transform="rotate(-90 50 50)"
                 strokeDasharray={`${percentage * 2.5133} 251.33`} />
             </svg>
-            <b>{goalsEnabled && todayGoal > 0 ? `${percentage}%` : "—"}</b>
+            <b>{goalsEnabled && periodSummary.valid && periodSummary.goal > 0 ? `${percentage}%` : "—"}</b>
           </div>
         </div>
         <div className="home-today-stats">
-          <div><span>BRUT</span><strong>{money(today.gross)}</strong></div>
-          <div><span>POURBOIRES</span><strong>{money(today.tips)}</strong></div>
-          <div><span>FRAIS</span><strong>{money(today.fees)}</strong></div>
+          <div><span>BRUT</span><strong>{periodSummary.valid ? money(periodSummary.gross) : "—"}</strong></div>
+          <div><span>POURBOIRES</span><strong>{periodSummary.valid ? money(periodSummary.tips) : "—"}</strong></div>
+          <div><span>FRAIS ET DÉP.</span><strong>{periodSummary.valid ? money(periodSummary.fees) : "—"}</strong></div>
         </div>
       </article>
 
