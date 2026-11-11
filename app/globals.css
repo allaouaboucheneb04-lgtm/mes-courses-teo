@@ -4699,6 +4699,7 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
 }
 .airport-invoice-summary > summary {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-height: 62px;
@@ -4734,6 +4735,25 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   line-height: 1.15;
 }
 .airport-invoice-chevron { font-size: 23px; line-height: 1; transition: transform .15s ease; }
+.airport-invoice-daily {
+  display: flex;
+  flex: 1 0 100%;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #d3e3e3;
+  color: #58777a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.airport-invoice-daily b {
+  color: #08666a;
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .airport-invoice-summary[open] .airport-invoice-chevron { transform: rotate(180deg); }
 .airport-invoice-detail {
   padding: 11px 15px 14px;
@@ -4763,6 +4783,8 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .airport-invoice-total strong { font-size: 16px; }
   .airport-invoice-label b { font-size: 13px; }
   .airport-invoice-chevron { font-size: 20px; }
+  .airport-invoice-daily { font-size: 11px; }
+  .airport-invoice-daily b { font-size: 12px; }
 }
 @media (max-width: 360px) {
   .airport-invoice-summary > summary { gap: 6px; padding: 9px; }
