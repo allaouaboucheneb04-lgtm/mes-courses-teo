@@ -970,6 +970,26 @@ export default function Home() {
       return { date: key, gross, tips, fees, net: round2(gross - fees), count: rides.length };
     });
   }, [courses, expenses, settings, week.start]);
+  // Compare weekdays with the previous Tuesday–Monday week. Every financial
+  // rule (fees, Monday airport carry, and expenses) is identical to this week.
+  const previousHomeWeekDays = useMemo(() => {
+    const first = new Date(week.start + "T12:00:00Z");
+    first.setUTCDate(first.getUTCDate() - 7);
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(first);
+      date.setUTCDate(first.getUTCDate() + index);
+      const key = date.toISOString().slice(0, 10);
+      const rides = courses.filter(course => course.date === key);
+      const gross = round2(rides.reduce((sum, course) => sum + course.amount + course.tip, 0));
+      const tips = round2(rides.reduce((sum, course) => sum + course.tip, 0));
+      const service = round2(rides.reduce((sum, course) => sum + serviceFee(course, settings) + (course.perception || 0), 0));
+      const airport = airportLevyTotal(courses, accountingDate => accountingDate === key, settings.airportFee);
+      const company = index === 0 ? settings.companyFee : 0;
+      const expense = expenseTotal(expenses, [key, key]);
+      const fees = round2(service + airport + company + expense);
+      return { date: key, gross, tips, fees, net: round2(gross - fees), count: rides.length };
+    });
+  }, [courses, expenses, settings, week.start]);
   const homeWeekFees = round2(totals.deductions + airportFeeTotal + weeklyCompanyFee + weeklyExpenseTotal);
   const homeWeekNet = round2(totals.gross - homeWeekFees);
   const filteredExpenses = useMemo(() => {
@@ -1994,6 +2014,7 @@ export default function Home() {
           <HomeDashboard
             currentDate={today()}
             days={homeWeekDays}
+            previousDays={previousHomeWeekDays}
             dayRides={selectedDayCourses}
             todayGoal={dailyGoal}
             goalsEnabled={settings.dailyGoalEnabled}
