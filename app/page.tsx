@@ -2028,6 +2028,26 @@ export default function Home() {
             )}
           </div>
         </section>
+        {mobilePage === "add" && settings.airportEnabled && (
+          <details className="airport-invoice-summary">
+            <summary>
+              <span className="airport-invoice-label">
+                <b>Facture aéroport</b>
+                <small>Lundi–dimanche · {airportWeek.start} au {airportWeek.end}</small>
+              </span>
+              <span className="airport-invoice-total">
+                <b>{weeklyAirportCourses.length} course{weeklyAirportCourses.length !== 1 ? "s" : ""}</b>
+                <strong>{money(weeklyAirportCourses.length * settings.airportFee)}</strong>
+              </span>
+              <span className="airport-invoice-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div className="airport-invoice-detail">
+              <p>Facture prévue le lundi <b>{airportWeek.invoice}</b>, pour les courses aéroport du lundi au dimanche.</p>
+              <p>Redevances déduites du bilan de revenus du mardi au lundi : <b>{money(airportFeeTotal)}</b>.</p>
+              <p>Les redevances des courses effectuées le lundi sont déduites de la semaine de revenus commençant le mardi suivant.</p>
+            </div>
+          </details>
+        )}
         <section className="workspace" id="workspace">
           <div
             className={`tabs ${!settings.adaptedEnabled ? "no-adapted" : ""}`}
@@ -2328,30 +2348,12 @@ export default function Home() {
                 </section>
               )}
               {taxi.category === "aeroport" && (
-                <div className="airport-fee-note">
-                  Redevance de <b>{money(settings.airportFee)}</b> comptabilisée
-                  dans le bilan, sans déduction directe sur cette course.
-                  {airportLevyAccountingDate(taxi.date) !== taxi.date
-                    ? " Course du lundi : redevance reportée à la semaine de revenus commençant le mardi suivant."
-                    : " Redevance incluse dans la semaine de revenus du mardi au lundi."}
-                </div>
-              )}
-              {settings.airportEnabled && (
-                <div className="airport-week-card">
-                  <div>
-                    <span>Facture aéroport (lundi–dimanche)</span>
-                    <b>
-                      {weeklyAirportCourses.length} course
-                      {weeklyAirportCourses.length !== 1 ? "s" : ""} ·{" "}
-                      {money(weeklyAirportCourses.length * settings.airportFee)}
-                    </b>
-                  </div>
-                  <small>
-                    Du {airportWeek.start} au {airportWeek.end} · Facture le
-                    lundi {airportWeek.invoice}. Les redevances des courses du lundi
-                    sont déduites de la semaine de revenus commençant le mardi suivant.
-                  </small>
-                </div>
+                <p className="airport-fee-note">
+                  Redevance aéroport : <b>{money(settings.airportFee)}</b>,
+                  comptabilisée dans le bilan hebdomadaire.
+                  {airportLevyAccountingDate(taxi.date) !== taxi.date &&
+                    " Le lundi, elle est reportée au mardi suivant."}
+                </p>
               )}
               <button className="primary">
                 {editingId

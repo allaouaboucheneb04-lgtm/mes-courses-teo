@@ -4685,3 +4685,87 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .history .history-calendar-button { padding: 8px; font-size: 12px; }
   .history .history-course { padding: 10px; }
 }
+
+
+/* Airport invoicing belongs beside the WEEKLY income summary, not in Add. */
+.airport-invoice-summary {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin-top: -12px;
+  border: 1px solid #bcd7d8;
+  border-radius: 16px;
+  background: #f4faf9;
+  overflow: hidden;
+}
+.airport-invoice-summary > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 11px 15px;
+  list-style: none;
+  cursor: pointer;
+  color: #145b62;
+}
+.airport-invoice-summary > summary::-webkit-details-marker { display: none; }
+.airport-invoice-summary .airport-invoice-label {
+  flex: 1 1 auto;
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.airport-invoice-label b { font-size: 14px; }
+.airport-invoice-label small {
+  color: #698084;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.airport-invoice-summary .airport-invoice-total {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.airport-invoice-total b { color: #477277; font-size: 12px; }
+.airport-invoice-total strong {
+  color: #08666a;
+  font-size: 18px;
+  line-height: 1.15;
+}
+.airport-invoice-chevron { font-size: 23px; line-height: 1; transition: transform .15s ease; }
+.airport-invoice-summary[open] .airport-invoice-chevron { transform: rotate(180deg); }
+.airport-invoice-detail {
+  padding: 11px 15px 14px;
+  border-top: 1px solid #d3e3e3;
+}
+.airport-invoice-detail p {
+  margin: 4px 0 8px;
+  color: #536d72;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.airport-invoice-detail p:last-child { margin-bottom: 0; }
+.airport-invoice-detail b { color: #115b61; }
+.airport-invoice-summary > summary:focus-visible {
+  outline: 3px solid #007d85;
+  outline-offset: -3px;
+}
+.airport-fee-note {
+  margin: 10px 0 3px;
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+@media (max-width: 760px) {
+  .airport-invoice-summary { margin: -8px 0 16px; }
+  .airport-invoice-summary > summary { gap: 9px; padding: 11px 12px; }
+  .airport-invoice-total strong { font-size: 16px; }
+  .airport-invoice-label b { font-size: 13px; }
+  .airport-invoice-chevron { font-size: 20px; }
+}
+@media (max-width: 360px) {
+  .airport-invoice-summary > summary { gap: 6px; padding: 9px; }
+  .airport-invoice-total strong { font-size: 15px; }
+  .airport-invoice-label small { font-size: 10px; }
+}
