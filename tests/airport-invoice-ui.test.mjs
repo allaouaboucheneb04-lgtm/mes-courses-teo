@@ -55,8 +55,8 @@ test("the taxi form keeps a short contextual note, immediately followed by the s
   assert.match(taxiForm,/money\(settings\.airportFee\)/);
   assert.match(taxiForm,/airportLevyAccountingDate\(taxi\.date\) !== taxi\.date/);
   assert.match(taxiForm,/reportée au mardi suivant/);
-  assert.match(taxiForm,/<\/p>[\s\S]*?<button className="primary">/);
-  assert.match(taxiForm,/Ajouter la course/);
+  assert.match(taxiForm,/<\/p>[\s\S]*?<button className="primary taxi-submit">/);
+  assert.match(taxiForm,/Enregistrer la course/);
 });
 
 test("expanded invoice distinguishes Monday–Sunday billing from Tuesday–Monday accounting",()=>{
