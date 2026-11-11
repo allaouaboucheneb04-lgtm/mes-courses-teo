@@ -20,6 +20,7 @@ import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
 import { expenseTotal } from "@/lib/expenses";
+import { airportLevyTotal, airportLevyAccountingDate } from "@/lib/airport-levy";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
@@ -708,12 +709,13 @@ export default function Home() {
       ),
     [courses, airportWeek.start, airportWeek.end],
   );
-  // Weekly income runs Tuesday–Monday. Deduct only airport rides belonging
-  // to this income week; the airport invoice remains Monday–Sunday below.
-  const airportFeeTotal = round2(
-    weeklyCourses.filter(
-      (course) => course.type === "taxi" && course.taxiCategory === "aeroport",
-    ).length * settings.airportFee,
+  // Revenue uses Tuesday–Monday. Fees from airport rides on Monday
+  // are charged against the NEXT income week (starting Tuesday).
+  // The Monday–Sunday airport invoice shown below remains unchanged.
+  const airportFeeTotal = airportLevyTotal(
+    courses,
+    (date) => date >= week.start && date <= week.end,
+    settings.airportFee,
   );
   const weeklyCompanyFee = round2(settings.companyFee);
   const weeklyExpenseTotal = expenseTotal(expenses, [week.start, week.end]);
@@ -840,13 +842,19 @@ export default function Home() {
     historyCouponSummary.fuel.amount;
   const historyAirportFeeTotal = useMemo(
     () =>
-      round2(
-        filteredHistory.filter(
+      airportLevyTotal(
+        // Keep the non-date filters, but include the previous Monday's
+        // fees when their accounting date is inside the chosen period.
+        courses.filter(
           (course) =>
-            course.type === "taxi" && course.taxiCategory === "aeroport",
-        ).length * settings.airportFee,
+            matchesHistoryType(course, historyType) &&
+            matchesHistoryPayment(course, historyPayment) &&
+            matchesHistorySearch(course, historySearch),
+        ),
+        (date) => !historyBounds || (date >= historyBounds[0] && date <= historyBounds[1]),
+        settings.airportFee,
       ),
-    [filteredHistory, settings.airportFee],
+    [courses, historyBounds, historyType, historyPayment, historySearch, settings.airportFee],
   );
   const historyCompanyFeeTotal = useMemo(
     () =>
@@ -898,10 +906,10 @@ export default function Home() {
       ),
     [selectedDayCourses, settings],
   );
-  const selectedDayAirportFeeTotal = round2(
-    selectedDayCourses.filter(
-      (course) => course.type === "taxi" && course.taxiCategory === "aeroport",
-    ).length * settings.airportFee,
+  const selectedDayAirportFeeTotal = airportLevyTotal(
+    courses,
+    (date) => date === selectedDate,
+    settings.airportFee,
   );
   const selectedDayCompanyFee =
     new Date(selectedDate + "T12:00").getDay() === 2
