@@ -2323,13 +2323,16 @@ export default function Home() {
               {taxi.category === "aeroport" && (
                 <div className="airport-fee-note">
                   Redevance de <b>{money(settings.airportFee)}</b> comptabilisée
-                  à la fin de la semaine, sans déduction sur cette course.
+                  dans le bilan, sans déduction directe sur cette course.
+                  {airportLevyAccountingDate(taxi.date) !== taxi.date
+                    ? " Course du lundi : redevance reportée à la semaine de revenus commençant le mardi suivant."
+                    : " Redevance incluse dans la semaine de revenus du mardi au lundi."}
                 </div>
               )}
               {settings.airportEnabled && (
                 <div className="airport-week-card">
                   <div>
-                    <span>Total à déduire</span>
+                    <span>Facture aéroport (lundi–dimanche)</span>
                     <b>
                       {weeklyAirportCourses.length} course
                       {weeklyAirportCourses.length !== 1 ? "s" : ""} ·{" "}
@@ -2338,7 +2341,8 @@ export default function Home() {
                   </div>
                   <small>
                     Du {airportWeek.start} au {airportWeek.end} · Facture le
-                    lundi {airportWeek.invoice}
+                    lundi {airportWeek.invoice}. Les redevances des courses du lundi
+                    sont déduites de la semaine de revenus commençant le mardi suivant.
                   </small>
                 </div>
               )}
