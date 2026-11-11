@@ -77,17 +77,21 @@ test("saved transport adapté fare uses exact minutes before rounding and respec
   assert.equal(overnight.item.billedDuration,2+10/60);
 });
 
-test("daily goal progress and remaining amount use the net after company fee and taxi expenses", () => {
-  const expression = extract("  const dailyGoalProgress = dailyGoal", "  const filteredExpenses");
-  const progress = new Function("dailyGoal","dailyNet",compile(expression + "\nreturn dailyGoalProgress;"));
-  assert.equal(progress(100,70),70);
-  assert.equal(progress(100,120),100);
-  assert.equal(progress(100,-20),0);
-  assert.equal(progress(0,70),0);
+test("daily objective starts at zero while the accounting net still includes fees", () => {
+  const expression = extract("  const dailyGoalEarned = Math.max(0, dailyNet);", "  // The homepage is driven by");
+  const progress = new Function("dailyGoal","dailyNet",compile(expression + "\nreturn {dailyGoalEarned,dailyGoalProgress};"));
+  assert.deepEqual(progress(415,-226.18),{dailyGoalEarned:0,dailyGoalProgress:0});
+  assert.deepEqual(progress(415,0),{dailyGoalEarned:0,dailyGoalProgress:0});
+  assert.deepEqual(progress(100,70),{dailyGoalEarned:70,dailyGoalProgress:70});
+  assert.deepEqual(progress(100,120),{dailyGoalEarned:120,dailyGoalProgress:100});
+  assert.deepEqual(progress(0,70),{dailyGoalEarned:70,dailyGoalProgress:0});
   const goal = extract('<div className="daily-goal">','<div className="mini">');
-  assert.match(goal,/money\(dailyNet\)/);
-  assert.match(goal,/dailyNet >= dailyGoal/);
-  assert.match(goal,/dailyGoal - dailyNet/);
+  assert.match(goal,/money\(dailyGoalEarned\)/);
+  assert.match(goal,/dailyGoalEarned >= dailyGoal/);
+  assert.match(goal,/dailyGoal - dailyGoalEarned/);
+  const accounting = extract("  const dailyNet = round2", "  // An objective is a progress counter");
+  assert.match(accounting,/selectedDayCompanyFee - selectedDayExpenseTotal/);
+  assert.match(code,/Net après dépenses[\s\S]*?money\(dailyNet\)/);
 });
 
 test("expense totals, airport levies and service deductions reconcile at cent precision", async () => {
