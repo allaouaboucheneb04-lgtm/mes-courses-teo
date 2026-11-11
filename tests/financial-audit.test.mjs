@@ -38,7 +38,7 @@ test("Monday airport fee is deducted in next Tuesday's income week, not on Monda
     assert.equal(weeklyFee(rides,{start:"2026-11-10",end:"2026-11-16"},settings,airportLevyTotal),6.44);
     assert.equal(dailyFee(rides,"2026-11-09",settings,airportLevyTotal),0);
     assert.equal(dailyFee(rides,"2026-11-10",settings,airportLevyTotal),6.44);
-    assert.match(code,/const airportWeek = mondayWeekForDate\(selectedDate\)/);
+    assert.match(code,/const airportWeek = mondayWeekForDate\(week\.start\)/);
     assert.match(code,/const weeklyAirportCourses = useMemo/);
     assert.match(code,/airport-invoice-summary/);
   } finally {await vite.close();}
