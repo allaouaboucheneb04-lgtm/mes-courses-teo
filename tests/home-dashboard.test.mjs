@@ -29,9 +29,21 @@ test("new home screen is the default and preserves the other five destinations",
 });
 
 test("dashboard is rendered using live course totals and not screenshot demo values",()=>{
-  assert.match(dashboard,/NET AUJOURD’HUI/);
+  assert.match(dashboard,/NET · \{periodLabel\.toLocaleUpperCase/);
   assert.match(dashboard,/home-progress-ring/);
-  assert.match(dashboard,/Objectif \{money\(todayGoal\)\}/);
+  assert.match(dashboard,/money\(periodSummary\.goal\)/);
+  assert.match(dashboard,/periodSummary\.net/);
+  assert.match(dashboard,/homePeriodBounds\(period, currentDate, customStart, customEnd\)/);
+  assert.match(dashboard,/value="day">Aujourd’hui/);
+  assert.match(dashboard,/value="week">Cette semaine/);
+  assert.match(dashboard,/value="month">Ce mois/);
+  assert.match(dashboard,/value="year">Cette année/);
+  assert.match(dashboard,/value="custom">Personnalisé/);
+  assert.match(dashboard,/period === "custom"/);
+  assert.match(dashboard,/type="date"/);
+  assert.match(page,/periodRides=\{homePeriodRides\}/);
+  assert.match(page,/periodExpenses=\{expenses\}/);
+  assert.match(page,/periodSettings=\{settings\}/);
   assert.match(dashboard,/onClick=\{onAdd\}/);
   assert.match(dashboard,/onClick=\{onExpenses\}/);
   assert.match(dashboard,/onClick=\{onHistory\}/);
