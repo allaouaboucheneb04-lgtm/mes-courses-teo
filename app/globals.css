@@ -5099,3 +5099,50 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
 @media (prefers-reduced-motion: reduce) {
   .home-dashboard *, .mobile-nav * { scroll-behavior: auto; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+
+/* Shared visual treatment across Courses, Ajouter, Paie, SEV and Statistics. */
+.page-history .history .section-head h2,
+.page-add .form-card .form-title h2,
+.page-pay .form-card .form-title h2,
+.page-settings .form-card .form-title h2,
+.expenses-page .expenses-heading h2 {
+  letter-spacing: -.032em;
+  font-weight: 850;
+}
+.page-history .history-filter-panel,
+.page-history .history-highlights article,
+.page-history .history-overview,
+.page-add .taxi-photo-pane,
+.page-add .taxi-entry-modes,
+.page-pay .payroll-overview,
+.expenses-page .expense-history {
+  border-radius: 17px;
+}
+.page-history .history-highlights article,
+.page-history .history-date-filter,
+.page-history .history-filter-selects,
+.page-history .history-overview,
+.page-pay .payroll-overview {
+  box-shadow: 0 2px 10px #164e5208;
+}
+.page-add .taxi-entry-form .taxi-manual-entry,
+.page-add .taxi-photo-pane { min-width: 0; }
+.page-add .taxi-entry-form .taxi-submit,
+.page-pay .primary,
+.page-settings .primary { border-radius: 13px; }
+.statistics-page button:focus-visible,
+.sev-page button:focus-visible,
+.history button:focus-visible,
+.expenses-page button:focus-visible,
+.workspace button:focus-visible { outline: 3px solid #007d85; outline-offset: 2px; }
+@media (max-width:760px) {
+  .topbar .more-navigation { display: none; } /* All five tools are in the bottom Plus tab. */
+  .topbar .account-pill { margin-left: auto; }
+  .page-history .history,
+  .page-pay .workspace .form-card,
+  .page-settings .workspace .form-card,
+  .page-add .taxi-entry-form { box-shadow: 0 3px 14px #1236380b; }
+  .page-history .history .section-head { margin-bottom: 17px; }
+  .page-history .history-highlights { gap: 10px; }
+}
