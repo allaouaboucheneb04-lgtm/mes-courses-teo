@@ -3,6 +3,7 @@ import {useState} from "react";
 import DateRangePicker from "@/components/date-range-picker";
 import {comparisonTotals,periodDates,previousAnchor,periodGoal,percentageChange,type ComparisonRide} from "@/lib/comparison";
 import {statisticsPeriodDates,statisticsGraphGroups,type StatisticsPeriod} from "@/lib/statistics-period";
+import {airportLevyAccountingDate,isAirportLevyRide} from "@/lib/airport-levy";
 
 const money = (n:number) => n.toLocaleString("fr-CA",{style:"currency",currency:"CAD"});
 const formatDate = (d:string) => new Date(d+"T12:00:00").toLocaleDateString("fr-CA",{day:"numeric",month:"short",year:"numeric"});
@@ -32,7 +33,11 @@ export default function StatisticsPage({courses,today,dailyGoals,goalsEnabled,on
   (type==="aeroport" && ride.type==="taxi" && ride.taxiCategory==="aeroport") ||
   (type==="centre-ville" && ride.type==="taxi" && ride.taxiCategory!=="aeroport")
  );
- const selection = statisticsPeriodDates(period,today,start,end,filtered.map(ride=>ride.date));
+ // Include fee-only Tuesdays in the all-time calendar, even if no ride
+ // was made that Tuesday. Monday airport fees post on the next Tuesday.
+ const activityDates = filtered.flatMap(ride => isAirportLevyRide(ride)
+   ? [ride.date,airportLevyAccountingDate(ride.date)] : [ride.date]);
+ const selection = statisticsPeriodDates(period,today,start,end,activityDates);
  const currentDates=selection.current,previousDates=selection.previous;
  const running=period!=="all"&&currentDates.includes(today);
  const limit=elapsed&&running?currentDates.indexOf(today)+1:currentDates.length;
