@@ -35,7 +35,6 @@ type Props = {
   periodRides: HomePeriodRide[];
   periodExpenses: HomePeriodExpense[];
   periodSettings: { airportFee:number; companyFee:number; dailyGoals:ReadonlyArray<number>; dailyGoalEnabled:boolean };
-  todayGoal: number;
   goalsEnabled: boolean;
   weekGross: number;
   weekFees: number;
@@ -69,7 +68,7 @@ const niceTickStep = (interval: number) => {
 };
 
 export default function HomeDashboard({
-  currentDate, days, previousDays, dayRides, periodRides, periodExpenses, periodSettings, todayGoal, goalsEnabled, weekGross, weekFees,
+  currentDate, days, previousDays, dayRides, periodRides, periodExpenses, periodSettings, goalsEnabled, weekGross, weekFees,
   weekNet, onAdd, onExpenses, onHistory, onStatistics, onSettings
 }: Props) {
   const today = days.find(day => day.date === currentDate) ?? {
@@ -80,10 +79,11 @@ export default function HomeDashboard({
   const [period, setPeriod] = useState<HomePeriod>("day");
   const [customStart, setCustomStart] = useState(days[0]?.date ?? currentDate);
   const [customEnd, setCustomEnd] = useState(currentDate);
-  const bounds = homePeriodBounds(period, currentDate, customStart, customEnd);
+  const bounds = useMemo(() => homePeriodBounds(period, currentDate, customStart, customEnd),
+    [period, currentDate, customStart, customEnd]);
   const periodSummary = useMemo(() => summarizeHomePeriod(
     periodRides, periodExpenses, bounds, currentDate, periodSettings
-  ), [periodRides, periodExpenses, bounds?.start, bounds?.end, currentDate, periodSettings]);
+  ), [periodRides, periodExpenses, bounds, currentDate, periodSettings]);
   const percentage = periodSummary.valid && periodSummary.goal > 0
     ? Math.min(100, Math.max(0, Math.round((periodSummary.net / periodSummary.goal) * 100))) : 0;
   const periodLabel = ({
@@ -167,7 +167,7 @@ export default function HomeDashboard({
             <span className="home-overline">NET · {periodLabel.toLocaleUpperCase("fr-CA")}</span>
             <strong className="home-big-number">{periodSummary.valid ? money(periodSummary.net) : "—"}</strong>
             {goalsEnabled && periodSummary.valid && periodSummary.goal > 0 ? (
-              <p>Objectif {money(periodSummary.goal)} <span className="home-target-percent">· {percentage} %</span></p>
+              <p>{period === "day" ? "Objectif" : "Objectif à date"} {money(periodSummary.goal)} <span className="home-target-percent">· {percentage} %</span></p>
             ) : !goalsEnabled ? (
               <button className="home-goal-link" type="button" onClick={onSettings}>
                 <Target size={15} /> Définir un objectif
@@ -177,7 +177,7 @@ export default function HomeDashboard({
             )}
           </div>
           <div className="home-progress-ring" role="progressbar"
-            aria-label="Progression de l’objectif quotidien"
+            aria-label="Progression de l’objectif sur la période choisie"
             aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
             <svg viewBox="0 0 100 100" aria-hidden="true">
               <circle cx="50" cy="50" r="40" stroke="#e0ecec" strokeWidth="9" fill="none" />
