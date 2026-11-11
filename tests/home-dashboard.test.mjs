@@ -12,31 +12,31 @@ const compile = text => ts.transpileModule(text,{
 
 test("new home screen is the default and preserves the other five destinations",()=>{
   assert.match(page,/\"home\" \| \"more\" \| \"add\" \| \"history\"/);
-  assert.match(page,/>\\(\"home\"\\)/);
-  assert.match(page,/mobilePage === "home" && \\(/);
+  assert.match(page,/>\(\"home\"\)/);
+  assert.match(page,/mobilePage === "home" && \(/);
   assert.match(page,/<HomeDashboard/);
   assert.match(page,/aria-label="Navigation principale"/);
-  assert.match(page,/<House size=\\{23\\}/);
-  assert.match(page,/<ListOrdered size=\\{23\\}/);
-  assert.match(page,/<BadgeCheck size=\\{23\\}/);
-  assert.match(page,/<LayoutGrid size=\\{23\\}/);
-  assert.match(page,/setMobilePage\\("more"\\)/);
-  assert.match(page,/setMobilePage\\("statistics"\\)/);
-  assert.match(page,/setMobilePage\\("sev"\\)/);
-  assert.match(page,/setMobilePage\\("expenses"\\)/);
-  assert.match(css,/\\.page-home > \\.summary/);
-  assert.match(css,/\\.home-dashboard/);
+  assert.match(page,/<House size=\{23\}/);
+  assert.match(page,/<ListOrdered size=\{23\}/);
+  assert.match(page,/<BadgeCheck size=\{23\}/);
+  assert.match(page,/<LayoutGrid size=\{23\}/);
+  assert.match(page,/setMobilePage\("more"\)/);
+  assert.match(page,/setMobilePage\("statistics"\)/);
+  assert.match(page,/setMobilePage\("sev"\)/);
+  assert.match(page,/setMobilePage\("expenses"\)/);
+  assert.match(css,/\.page-home > \.summary/);
+  assert.match(css,/\.home-dashboard/);
 });
 
 test("dashboard is rendered using live course totals and not screenshot demo values",()=>{
   assert.match(dashboard,/NET AUJOURD’HUI/);
   assert.match(dashboard,/home-progress-ring/);
-  assert.match(dashboard,/Objectif \\{money\\(todayGoal\\)\\}/);
-  assert.match(dashboard,/onClick=\\{onAdd\\}/);
-  assert.match(dashboard,/onClick=\\{onExpenses\\}/);
-  assert.match(dashboard,/onClick=\\{onHistory\\}/);
-  assert.match(dashboard,/onClick=\\{onStatistics\\}/);
-  assert.match(dashboard,/aria-pressed=\\{day\\.date === selected\\.date\\}/);
+  assert.match(dashboard,/Objectif \{money\(todayGoal\)\}/);
+  assert.match(dashboard,/onClick=\{onAdd\}/);
+  assert.match(dashboard,/onClick=\{onExpenses\}/);
+  assert.match(dashboard,/onClick=\{onHistory\}/);
+  assert.match(dashboard,/onClick=\{onStatistics\}/);
+  assert.match(dashboard,/aria-pressed=\{day\.date === selected\.date\}/);
   assert.doesNotMatch(dashboard,/1 184,35|220,60|251,20/);
   for(const [file,source] of [["page.tsx",page],["home-dashboard.tsx",dashboard]]){
     const parsed=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
