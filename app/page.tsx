@@ -1339,6 +1339,18 @@ export default function Home() {
     setCourses([course, ...courses]);
     flash(`${payRowTitle(row)} enregistré${row.type === "adapte" ? "e" : ""}.`);
   }
+  function scrollToAddSection() {
+    // Wait for React to reveal the Ajouter page before scrolling to its form.
+    // A second frame also works when the user taps Ajouter while already there.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById("workspace")?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    });
+  }
   function editCourse(course: Course) {
     setEditingId(course.id);
     if (course.type === "taxi") setTaxiEntryMode("manual");
@@ -1376,7 +1388,7 @@ export default function Home() {
       });
       setTab("adapte");
     }
-    window.scrollTo({ top: 190, behavior: "smooth" });
+    scrollToAddSection();
   }
   function setSevStatus(id: string, added: boolean) {
     setCourses((current) => current.map((course) => course.id === id ? { ...course, sevAdded: added } : course));
@@ -2021,7 +2033,7 @@ export default function Home() {
             weekGross={round2(totals.gross)}
             weekFees={homeWeekFees}
             weekNet={homeWeekNet}
-            onAdd={() => {setMobilePage("add");setTab("taxi");setEditingId(null);window.scrollTo({top:0,behavior:"smooth"});}}
+            onAdd={() => {setMobilePage("add");setTab("taxi");setEditingId(null);scrollToAddSection();}}
             onExpenses={() => {setMobilePage("expenses");window.scrollTo({top:0,behavior:"smooth"});}}
             onHistory={() => {setMobilePage("history");setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}
             onStatistics={() => {setMobilePage("statistics");window.scrollTo({top:0,behavior:"smooth"});}}
@@ -4334,7 +4346,7 @@ export default function Home() {
         <button type="button" className={mobilePage === "history" ? "selected" : ""} aria-current={mobilePage === "history" ? "page" : undefined} onClick={() => {setMobilePage("history");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>
           <ListOrdered size={23}/><span>Courses</span>
         </button>
-        <button type="button" className={`nav-add ${mobilePage === "add" ? "selected" : ""}`} aria-current={mobilePage === "add" ? "page" : undefined} onClick={() => {setMobilePage("add");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>
+        <button type="button" className={`nav-add ${mobilePage === "add" ? "selected" : ""}`} aria-current={mobilePage === "add" ? "page" : undefined} onClick={() => {setMobilePage("add");if(tab === "settings" || tab === "paie")setTab("taxi");scrollToAddSection();}}>
           <b><Plus size={29} strokeWidth={2.5}/></b><span>Ajouter</span>
         </button>
         <button type="button" className={mobilePage === "pay" ? "selected" : ""} aria-current={mobilePage === "pay" ? "page" : undefined} onClick={() => {setMobilePage("pay");setEditingId(null);setTab("paie");setPayView("statements");window.scrollTo({top:0,behavior:"smooth"});}}>
