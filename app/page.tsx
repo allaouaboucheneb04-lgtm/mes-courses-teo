@@ -20,6 +20,7 @@ import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
 import { expenseTotal } from "@/lib/expenses";
+import { airportLevyTotal, airportLevyAccountingDate } from "@/lib/airport-levy";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
@@ -708,12 +709,13 @@ export default function Home() {
       ),
     [courses, airportWeek.start, airportWeek.end],
   );
-  // Weekly income runs Tuesday–Monday. Deduct only airport rides belonging
-  // to this income week; the airport invoice remains Monday–Sunday below.
-  const airportFeeTotal = round2(
-    weeklyCourses.filter(
-      (course) => course.type === "taxi" && course.taxiCategory === "aeroport",
-    ).length * settings.airportFee,
+  // Revenue uses Tuesday–Monday. Fees from airport rides on Monday
+  // are charged against the NEXT income week (starting Tuesday).
+  // The Monday–Sunday airport invoice shown below remains unchanged.
+  const airportFeeTotal = airportLevyTotal(
+    courses,
+    (date) => date >= week.start && date <= week.end,
+    settings.airportFee,
   );
   const weeklyCompanyFee = round2(settings.companyFee);
   const weeklyExpenseTotal = expenseTotal(expenses, [week.start, week.end]);
@@ -840,13 +842,19 @@ export default function Home() {
     historyCouponSummary.fuel.amount;
   const historyAirportFeeTotal = useMemo(
     () =>
-      round2(
-        filteredHistory.filter(
+      airportLevyTotal(
+        // Keep the non-date filters, but include the previous Monday's
+        // fees when their accounting date is inside the chosen period.
+        courses.filter(
           (course) =>
-            course.type === "taxi" && course.taxiCategory === "aeroport",
-        ).length * settings.airportFee,
+            matchesHistoryType(course, historyType) &&
+            matchesHistoryPayment(course, historyPayment) &&
+            matchesHistorySearch(course, historySearch),
+        ),
+        (date) => !historyBounds || (date >= historyBounds[0] && date <= historyBounds[1]),
+        settings.airportFee,
       ),
-    [filteredHistory, settings.airportFee],
+    [courses, historyBounds, historyType, historyPayment, historySearch, settings.airportFee],
   );
   const historyCompanyFeeTotal = useMemo(
     () =>
@@ -860,28 +868,35 @@ export default function Home() {
     historyTotals.gross - historyTotals.fees - historyAirportFeeTotal -
     historyCompanyFeeTotal - (historyHasCourseFilter ? 0 : historyExpenseTotal),
   );
-  const unverifiedHistoryTotals = useMemo(
-    () =>
-      filteredHistory
-        .filter((course) => !course.verified && isPayrollCourse(course))
-        .reduce(
-          (totals, course) => {
-            const gross = round2(course.amount + course.tip);
-            const fees = serviceFee(course, settings) + (course.perception || 0);
-            const airportFee =
-              course.type === "taxi" && course.taxiCategory === "aeroport"
-                ? settings.airportFee
-                : 0;
-            return {
-              count: totals.count + 1,
-              gross: round2(totals.gross + gross),
-              net: round2(totals.net + gross - fees - airportFee),
-            };
-          },
-          { count: 0, gross: 0, net: 0 },
-        ),
-    [filteredHistory, settings],
-  );
+  const unverifiedHistoryTotals = useMemo(() => {
+    const unverifiedRows = filteredHistory.filter(
+      (course) => !course.verified && isPayrollCourse(course),
+    );
+    const subtotal = unverifiedRows.reduce(
+      (totals, course) => {
+        const gross = round2(course.amount + course.tip);
+        const fees = serviceFee(course, settings) + (course.perception || 0);
+        return {
+          count: totals.count + 1,
+          gross: round2(totals.gross + gross),
+          net: round2(totals.net + gross - fees),
+        };
+      },
+      { count: 0, gross: 0, net: 0 },
+    );
+    const pendingLevy = airportLevyTotal(
+      courses.filter(
+        (course) =>
+          !course.verified && isPayrollCourse(course) &&
+          matchesHistoryType(course, historyType) &&
+          matchesHistoryPayment(course, historyPayment) &&
+          matchesHistorySearch(course, historySearch),
+      ),
+      (date) => !historyBounds || (date >= historyBounds[0] && date <= historyBounds[1]),
+      settings.airportFee,
+    );
+    return { ...subtotal, net: round2(subtotal.net - pendingLevy) };
+  }, [filteredHistory, courses, settings, historyBounds, historyType, historyPayment, historySearch]);
   const selectedDayCourses = useMemo(
     () => courses.filter((c) => c.date === selectedDate),
     [courses, selectedDate],
@@ -898,10 +913,10 @@ export default function Home() {
       ),
     [selectedDayCourses, settings],
   );
-  const selectedDayAirportFeeTotal = round2(
-    selectedDayCourses.filter(
-      (course) => course.type === "taxi" && course.taxiCategory === "aeroport",
-    ).length * settings.airportFee,
+  const selectedDayAirportFeeTotal = airportLevyTotal(
+    courses,
+    (date) => date === selectedDate,
+    settings.airportFee,
   );
   const selectedDayCompanyFee =
     new Date(selectedDate + "T12:00").getDay() === 2
@@ -2315,13 +2330,16 @@ export default function Home() {
               {taxi.category === "aeroport" && (
                 <div className="airport-fee-note">
                   Redevance de <b>{money(settings.airportFee)}</b> comptabilisée
-                  à la fin de la semaine, sans déduction sur cette course.
+                  dans le bilan, sans déduction directe sur cette course.
+                  {airportLevyAccountingDate(taxi.date) !== taxi.date
+                    ? " Course du lundi : redevance reportée à la semaine de revenus commençant le mardi suivant."
+                    : " Redevance incluse dans la semaine de revenus du mardi au lundi."}
                 </div>
               )}
               {settings.airportEnabled && (
                 <div className="airport-week-card">
                   <div>
-                    <span>Total à déduire</span>
+                    <span>Facture aéroport (lundi–dimanche)</span>
                     <b>
                       {weeklyAirportCourses.length} course
                       {weeklyAirportCourses.length !== 1 ? "s" : ""} ·{" "}
@@ -2330,7 +2348,8 @@ export default function Home() {
                   </div>
                   <small>
                     Du {airportWeek.start} au {airportWeek.end} · Facture le
-                    lundi {airportWeek.invoice}
+                    lundi {airportWeek.invoice}. Les redevances des courses du lundi
+                    sont déduites de la semaine de revenus commençant le mardi suivant.
                   </small>
                 </div>
               )}
@@ -3911,7 +3930,7 @@ export default function Home() {
                       </div>
                     </div>
                     <small className="verification-net-note">
-                      Net après frais par course et redevance aéroport, hors frais fixes et dépenses communes.
+                      Net après frais des courses et redevances comptabilisées sur la période, hors frais fixes et dépenses communes.
                     </small>
                   </div>
                 </div>

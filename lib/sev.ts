@@ -1,3 +1,5 @@
+import { airportLevyAccountingDate } from "./airport-levy";
+
 export const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 export type SevFinancialRide = {
   type: string; date: string; amount: number; tip: number; tipPending?: boolean;
@@ -48,7 +50,12 @@ export function feePeriods(rides: SevFinancialRide[], expenses: {date: string; a
   for (const ride of rides) {
     const entry = group(ride.date);
     entry.service = roundMoney(entry.service + (ride.serviceFee || 0));
-    entry.airport = roundMoney(entry.airport + (ride.airportFee || 0));
+    // A Monday airport fee belongs to the next income week, starting Tuesday.
+    // At a month/year boundary, the fee can belong to the next period as well.
+    if (ride.airportFee) {
+      const account = group(airportLevyAccountingDate(ride.date));
+      account.airport = roundMoney(account.airport + ride.airportFee);
+    }
     const date = new Date(`${ride.date}T12:00:00Z`);
     date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 5) % 7));
     weeks.add(date.toISOString().slice(0,10));

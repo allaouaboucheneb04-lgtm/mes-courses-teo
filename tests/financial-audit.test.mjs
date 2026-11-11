@@ -16,20 +16,32 @@ const extract = (start, end) => {
 };
 const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
 
-test("weekly airport levies use exactly Tuesday–Monday income rides, never the Monday–Sunday invoice list", () => {
-  const expression = extract("  const airportFeeTotal = round2(", "  const weeklyCompanyFee");
-  const fee = new Function("weeklyCourses", "settings", "round2", compile(expression + "\nreturn airportFeeTotal;"));
-  const currentWeek = [
-    {date:"2026-11-03", type:"taxi", taxiCategory:"aeroport"},
-    {date:"2026-11-09", type:"taxi", taxiCategory:"aeroport"},
-    {date:"2026-11-05", type:"taxi", taxiCategory:"centre-ville"},
-    {date:"2026-11-04", type:"adapte"},
-  ];
-  assert.equal(fee(currentWeek,{airportFee:6.44},round2),12.88);
-  assert.equal(fee(currentWeek.slice(2),{airportFee:6.44},round2),0);
-  assert.match(code,/const airportWeek = mondayWeekForDate\(selectedDate\)/);
-  assert.match(code,/const weeklyAirportCourses = useMemo/);
-  assert.match(code,/airport-week-card/);
+test("Monday airport fee is deducted in next Tuesday's income week, not on Monday", async () => {
+  const expression = extract("  const airportFeeTotal = airportLevyTotal(", "  const weeklyCompanyFee");
+  const daily = extract("  const selectedDayAirportFeeTotal = airportLevyTotal(", "  const selectedDayCompanyFee");
+  const vite = await createServer({configFile:false,server:{middlewareMode:true,hmr:false}});
+  try {
+    const {airportLevyTotal} = await vite.ssrLoadModule("/lib/airport-levy.ts");
+    const weeklyFee = new Function("courses","week","settings","airportLevyTotal",
+      compile(expression + "\nreturn airportFeeTotal;"));
+    const dailyFee = new Function("courses","selectedDate","settings","airportLevyTotal",
+      compile(daily + "\nreturn selectedDayAirportFeeTotal;"));
+    const rides = [
+      {date:"2026-11-02",type:"taxi",taxiCategory:"aeroport"}, // preceding Monday
+      {date:"2026-11-03",type:"taxi",taxiCategory:"aeroport"},
+      {date:"2026-11-09",type:"taxi",taxiCategory:"aeroport"}, // next week
+      {date:"2026-11-05",type:"taxi",taxiCategory:"centre-ville"},
+      {date:"2026-11-04",type:"adapte"},
+    ];
+    const settings = {airportFee:6.44};
+    assert.equal(weeklyFee(rides,{start:"2026-11-03",end:"2026-11-09"},settings,airportLevyTotal),12.88);
+    assert.equal(weeklyFee(rides,{start:"2026-11-10",end:"2026-11-16"},settings,airportLevyTotal),6.44);
+    assert.equal(dailyFee(rides,"2026-11-09",settings,airportLevyTotal),0);
+    assert.equal(dailyFee(rides,"2026-11-10",settings,airportLevyTotal),6.44);
+    assert.match(code,/const airportWeek = mondayWeekForDate\(selectedDate\)/);
+    assert.match(code,/const weeklyAirportCourses = useMemo/);
+    assert.match(code,/airport-week-card/);
+  } finally {await vite.close();}
 });
 
 test("saved transport adapté fare uses exact minutes before rounding and respects two-hour minimum", () => {
