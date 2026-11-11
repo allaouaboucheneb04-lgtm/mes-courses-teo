@@ -1,0 +1,89 @@
+name: iPhone — application d'essai IPA non signée
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "ios/MesCoursesTeo/**"
+      - ".github/workflows/ios-iphone-trial.yml"
+  push:
+    branches:
+      - "production/3000-chauffeurs"
+    paths:
+      - "ios/MesCoursesTeo/**"
+      - ".github/workflows/ios-iphone-trial.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  iphone-trial:
+    name: Construire une IPA pour test sur iPhone
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer XcodeGen
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+
+      - name: Générer le projet Xcode
+        working-directory: ios/MesCoursesTeo
+        run: |
+          xcodegen generate
+          xcodebuild -list -project MesCoursesTeo.xcodeproj
+
+      - name: Compiler pour iPhone physique (sans signature)
+        working-directory: ios/MesCoursesTeo
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project MesCoursesTeo.xcodeproj \
+            -scheme MesCoursesTeo \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/TeoDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/iphone-build.log"
+
+      - name: Créer le fichier IPA non signé
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/TeoDerivedData/Build/Products/Release-iphoneos/MesCoursesTeo.app"
+          test -d "$app"
+          test -f "$app/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print NSBluetoothAlwaysUsageDescription' "$app/Info.plist"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload" "$GITHUB_WORKSPACE/ios-output"
+          cp -R "$app" "$RUNNER_TEMP/ipa/Payload/"
+          (
+            cd "$RUNNER_TEMP/ipa"
+            /usr/bin/zip -qr "$GITHUB_WORKSPACE/ios-output/MesCoursesTeo-iPhone-unsigned.ipa" Payload
+          )
+          unzip -l "$GITHUB_WORKSPACE/ios-output/MesCoursesTeo-iPhone-unsigned.ipa" | grep 'Payload/MesCoursesTeo.app/Info.plist'
+
+      - name: Récupérer le fichier pour signer et installer depuis un PC Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: MesCoursesTeo-iPhone-unsigned-IPA
+          path: ios-output/MesCoursesTeo-iPhone-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Journal de compilation si besoin
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MesCoursesTeo-iPhone-build-log
+          path: ${{ runner.temp }}/iphone-build.log
+          if-no-files-found: ignore
+          retention-days: 14
