@@ -29,6 +29,12 @@ test("airport invoice panel belongs with the weekly income summary, not the taxi
   assert.equal(page.split('className="airport-invoice-summary"').length - 1,1);
 });
 
+test("the invoice stays on the same period when the course date changes from Sunday to Monday",()=>{
+  assert.match(page,/const week = tuesdayWeekForDate\(selectedDate\)/);
+  assert.match(page,/const airportWeek = mondayWeekForDate\(week\.start\)/);
+  assert.doesNotMatch(page,/const airportWeek = mondayWeekForDate\(selectedDate\)/);
+});
+
 test("the taxi form keeps a short contextual note, immediately followed by the save action",()=>{
   assert.match(taxiForm,/taxi\.category === "aeroport" && \(/);
   assert.match(taxiForm,/Redevance aéroport/);
