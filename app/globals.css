@@ -5208,3 +5208,14 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
 
 /* Keep the Ajouter tabs and form comfortably below the viewport top when linked from Accueil. */
 #workspace { scroll-margin-top: 16px; }
+
+
+/* Clarify that the weekly chart is cumulative progress with a zero baseline. */
+.home-chart-note {
+  margin: 2px 0 8px;
+  color: #6e8187;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.home-week-card .home-chart-selection-line > span { color: #4f7178; }
+.home-week-card .home-chart-selection-line.previous > span { color: #7d8e95; }
