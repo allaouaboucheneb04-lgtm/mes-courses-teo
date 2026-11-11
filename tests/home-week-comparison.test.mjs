@@ -91,7 +91,7 @@ test("dashboard renders two differentiated lines and never plots future days as 
   assert.match(dashboard,/home-chart-result-grid/);
   assert.match(dashboard,/money\(selected\.net\)/);
   assert.match(dashboard,/money\(previousSelected\.net\)/);
-  assert.match(dashboard,/stroke="#a2b8bb"/);
+  assert.match(dashboard,/tick === 0 \? "#a2b8bb"/);
   assert.doesNotMatch(dashboard,/cumulativeNetProgress/);
 
   assert.match(dashboard,/strokeDasharray="7 5"/);
