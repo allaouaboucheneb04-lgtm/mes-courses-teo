@@ -392,11 +392,6 @@ const mondayWeekForDate = (value: string) => {
     invoice: dateKey(invoice),
   };
 };
-const tuesdayWeekKey = (date: string) => {
-  const day = new Date(date + "T12:00");
-  day.setDate(day.getDate() - ((day.getDay() - 2 + 7) % 7));
-  return dateKey(day);
-};
 const formatSettingNumber = (value: number, decimals = 2) =>
   Number(value || 0).toLocaleString("fr-CA", {
     minimumFractionDigits: decimals,
