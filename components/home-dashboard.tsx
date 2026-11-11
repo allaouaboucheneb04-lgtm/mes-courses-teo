@@ -29,6 +29,7 @@ export type HomeRide = {
 type Props = {
   currentDate: string;
   days: HomeDay[];
+  previousDays: HomeDay[];
   dayRides: HomeRide[];
   todayGoal: number;
   goalsEnabled: boolean;
@@ -51,7 +52,7 @@ const longDate = (date: string) =>
   });
 
 export default function HomeDashboard({
-  currentDate, days, dayRides, todayGoal, goalsEnabled, weekGross, weekFees,
+  currentDate, days, previousDays, dayRides, todayGoal, goalsEnabled, weekGross, weekFees,
   weekNet, onAdd, onExpenses, onHistory, onStatistics, onSettings
 }: Props) {
   const today = days.find(day => day.date === currentDate) ?? {
@@ -62,20 +63,33 @@ export default function HomeDashboard({
   const percentage = goalsEnabled && todayGoal > 0
     ? Math.min(100, Math.max(0, Math.round((today.net / todayGoal) * 100))) : 0;
 
-  const values = days.map(day => day.net);
+  // Future weekdays are not yet earned income: don't draw them as zero.
+  // Both series share a scale and the same Tuesday-to-Monday x positions.
+  const elapsedDays = days.filter(day => day.date <= currentDate);
+  const values = [...elapsedDays, ...previousDays].map(day => day.net);
   const min = Math.min(0, ...values);
   const max = Math.max(0, ...values);
   const width = max - min;
   const yFor = (value: number) => width === 0 ? 74 : 116 - ((value - min) / width) * 88;
-  const points = days.map((day, index) => ({
-    x: 18 + index * 51,
-    y: yFor(day.net),
-    date: day.date,
-  }));
-  const path = points.map((point, index) =>
+  const chartPoint = (day: HomeDay, index: number) => ({
+    x: 18 + index * 51, y: yFor(day.net), date: day.date
+  });
+  const currentPoints = days.flatMap((day, index) =>
+    day.date <= currentDate ? [chartPoint(day, index)] : []
+  );
+  const previousPoints = previousDays.map(chartPoint);
+  const linePath = (points: ReturnType<typeof chartPoint>[]) => points.map((point, index) =>
     (index === 0 ? "M" : "L") + point.x + " " + point.y.toFixed(2)
   ).join(" ");
-  const area = points.length ? path + " L324 125 L18 125 Z" : "";
+  const currentPath = linePath(currentPoints);
+  const previousPath = linePath(previousPoints);
+  const lastPoint = currentPoints[currentPoints.length - 1];
+  const firstPoint = currentPoints[0];
+  const area = currentPoints.length
+    ? currentPath + " L" + lastPoint.x + " 125 L" + firstPoint.x + " 125 Z" : "";
+  const selectedIndex = days.findIndex(day => day.date === selected.date);
+  const previousSelected = previousDays[selectedIndex];
+  const previousWeekNet = Math.round(previousDays.reduce((sum, day) => sum + day.net, 0) * 100) / 100;
 
   return (
     <section className="home-dashboard" aria-label="Tableau de bord">
@@ -134,17 +148,31 @@ export default function HomeDashboard({
           <div><h3>Cette semaine</h3><small>Mardi au lundi</small></div>
           <strong>{money(weekNet)}</strong>
         </header>
+        <div className="home-compare-legend" aria-label="Légende du graphique">
+          <span><i className="home-line-current" aria-hidden="true" /> Cette semaine</span>
+          <span><i className="home-line-previous" aria-hidden="true" /> Semaine passée</span>
+        </div>
         <div className="home-chart" role="img"
-          aria-label="Évolution du revenu net pour les sept jours, du mardi au lundi">
+          aria-label="Comparaison du revenu net entre cette semaine et la semaine passée, du mardi au lundi">
           <svg viewBox="0 0 342 146" preserveAspectRatio="none" aria-hidden="true">
             <path d="M18 36 H324 M18 74 H324 M18 112 H324"
               fill="none" stroke="#e5eeee" strokeWidth="1.2" />
-            {points.length > 0 && (
+            {previousPoints.length > 0 && (
+              <>
+                <path d={previousPath} fill="none" stroke="#9caab1" strokeDasharray="6 5"
+                  strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                {previousPoints.map((point, index) => (
+                  <circle key={point.date} cx={point.x} cy={point.y} r={index === selectedIndex ? 4.7 : 3.1}
+                    fill="#fff" stroke="#9caab1" strokeWidth="2.3" />
+                ))}
+              </>
+            )}
+            {currentPoints.length > 0 && (
               <>
                 <path d={area} fill="#00777d" fillOpacity=".10" />
-                <path d={path} fill="none" stroke="#00777d" strokeWidth="3.2"
+                <path d={currentPath} fill="none" stroke="#00777d" strokeWidth="3.2"
                   strokeLinecap="round" strokeLinejoin="round" />
-                {points.map(point => (
+                {currentPoints.map(point => (
                   <circle key={point.date} cx={point.x} cy={point.y} r={point.date === selected.date ? 5.3 : 3.8}
                     fill={point.date === selected.date ? "#00777d" : "#fff"}
                     stroke="#00777d" strokeWidth="2.5" />
@@ -162,7 +190,19 @@ export default function HomeDashboard({
           ))}
         </div>
         <div className="home-chart-selection" aria-live="polite">
-          <span>{longDate(selected.date)}</span><b>{money(selected.net)}</b>
+          <div className="home-chart-selection-line">
+            <span>{longDate(selected.date)} · cette semaine</span>
+            <b>{selected.date <= currentDate ? money(selected.net) : "À venir"}</b>
+          </div>
+          {previousSelected && (
+            <div className="home-chart-selection-line previous">
+              <span>{longDate(previousSelected.date)} · semaine passée</span>
+              <b>{money(previousSelected.net)}</b>
+            </div>
+          )}
+        </div>
+        <div className="home-previous-week-total">
+          <span>Total semaine passée</span><strong>{money(previousWeekNet)}</strong>
         </div>
         <div className="home-week-stats">
           <div><span>BRUT</span><strong>{money(weekGross)}</strong></div>
