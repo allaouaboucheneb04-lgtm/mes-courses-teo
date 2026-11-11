@@ -63,7 +63,7 @@ test("expanded invoice distinguishes Monday–Sunday billing from Tuesday–Mond
   assert.match(weeklySummary,/Facture prévue le lundi/);
   assert.match(weeklySummary,/Redevances déduites du bilan de revenus du mardi au lundi/);
   assert.match(weeklySummary,/money\(airportFeeTotal\)/);
-  assert.match(weeklySummary,/redevances des courses effectuées le lundi sont déduites/);
+  assert.match(weeklySummary,/Pour les courses du lundi, elle figure sur la facture aéroport suivante/);
   assert.match(weeklySummary,/le mardi suivant/);
   assert.match(css,/\.airport-invoice-summary/);
   assert.match(css,/\.airport-invoice-summary > summary:focus-visible/);
