@@ -5146,3 +5146,62 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .page-history .history .section-head { margin-bottom: 17px; }
   .page-history .history-highlights { gap: 10px; }
 }
+
+
+/* Accueil : comparer deux semaines sur le même axe mardi–lundi. */
+.home-compare-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  margin: 16px 0 1px;
+  color: #58737a;
+  font-size: 12px;
+  font-weight: 750;
+}
+.home-compare-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.home-compare-legend i { display: inline-block; width: 25px; height: 0; border-top: 3px solid #00777d; border-radius: 4px; }
+.home-compare-legend .home-line-previous { border-top: 3px dashed #9caab1; }
+.home-week-card .home-chart { margin-top: 7px; }
+.home-week-card .home-chart-selection {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 10px 0;
+  min-height: auto;
+}
+.home-chart-selection-line {
+  display: flex;
+  min-width: 0;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.home-chart-selection-line > span { min-width: 0; font-size: 11px; }
+.home-chart-selection-line b { flex: 0 0 auto; color: #00777d; white-space: nowrap; }
+.home-chart-selection-line.previous > span,
+.home-chart-selection-line.previous > b { color: #7d8e95; }
+.home-previous-week-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 0 13px;
+  border-top: 1px solid #e9efef;
+  color: #6a7d83;
+  font-size: 12px;
+}
+.home-previous-week-total strong { color: #536c73; font-size: 16px; font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 760px) {
+  .home-compare-legend { margin-top: 13px; gap: 7px 15px; font-size: 11px; }
+  .home-week-card .home-chart { height: 152px; }
+}
+@media (max-width: 360px) {
+  .home-compare-legend { gap: 6px 9px; font-size: 10px; }
+  .home-compare-legend i { width: 19px; }
+}
