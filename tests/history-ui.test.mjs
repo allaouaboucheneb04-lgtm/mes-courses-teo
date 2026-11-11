@@ -47,3 +47,12 @@ test("History filters are resettable without modifying stored rides",()=>{
  assert.match(history,/matchesHistoryType|Catégorie de course/);
  assert.match(history,/Mode de paiement/);
 });
+
+
+test("History company fee uses accounting period rather than weeks with visible rides", () => {
+  assert.match(code, /weeklyCompanyFeeTotal\(\s*settings\.companyFee,\s*historyBounds,/);
+  assert.doesNotMatch(code, /new Set\(filteredHistory\.map\(\(course\) => tuesdayWeekKey/);
+  assert.match(code, /\(historyHasCourseFilter \? 0 : historyCompanyFeeTotal \+ historyExpenseTotal\)/);
+  assert.match(history, /Frais de compagnie\{historyHasCourseFilter \? " \(information\)" : ""\}/);
+  assert.match(history, /money\(historyCompanyFeeTotal\)/);
+});
