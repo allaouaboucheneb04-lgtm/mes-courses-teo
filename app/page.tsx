@@ -904,6 +904,13 @@ export default function Home() {
     () => courses.filter((c) => c.date === selectedDate),
     [courses, selectedDate],
   );
+  // Airport rides made on the selected day, separate from the day on which
+  // their levy is deducted from income (Monday rides are deducted Tuesday).
+  const selectedDayAirportCourses = useMemo(
+    () => selectedDayCourses.filter((course) => course.type === "taxi" && course.taxiCategory === "aeroport"),
+    [selectedDayCourses],
+  );
+  const selectedDayAirportRideTotal = round2(selectedDayAirportCourses.length * settings.airportFee);
   const selectedDayTotals = useMemo(
     () =>
       selectedDayCourses.reduce(
@@ -2043,11 +2050,16 @@ export default function Home() {
                 <strong>{money(weeklyAirportCourses.length * settings.airportFee)}</strong>
               </span>
               <span className="airport-invoice-chevron" aria-hidden="true">⌄</span>
+              <span className="airport-invoice-daily">
+                <span>Redevance du jour · {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("fr-CA", { day: "numeric", month: "short" })}</span>
+                <b>{selectedDayAirportCourses.length} course{selectedDayAirportCourses.length !== 1 ? "s" : ""} · {money(selectedDayAirportRideTotal)}</b>
+              </span>
             </summary>
             <div className="airport-invoice-detail">
               <p>Facture prévue le lundi <b>{airportWeek.invoice}</b>, pour les courses aéroport du lundi au dimanche.</p>
               <p>Redevances déduites du bilan de revenus du mardi au lundi : <b>{money(airportFeeTotal)}</b>.</p>
-              <p>Les redevances des courses effectuées le lundi sont déduites de la semaine de revenus commençant le mardi suivant.</p>
+              <p>La redevance du jour correspond aux courses effectuées à la date sélectionnée. Pour les courses du lundi, elle figure sur la facture aéroport suivante et est déduite de la semaine de revenus commençant le mardi suivant.</p>
+              <p>Redevances déduites du revenu le {formatCourseDate(selectedDate)} : <b>{money(selectedDayAirportFeeTotal)}</b>.</p>
             </div>
           </details>
         )}
