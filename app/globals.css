@@ -4791,3 +4791,119 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .airport-invoice-total strong { font-size: 15px; }
   .airport-invoice-label small { font-size: 10px; }
 }
+
+
+/* Ajouter : deux parcours distincts (saisie rapide et import de captures). */
+.workspace .taxi-entry-form { min-width: 0; }
+.taxi-entry-form .form-title { align-items: center; gap: 10px; margin-bottom: 14px; }
+.taxi-entry-form .form-title h2 { font-size: clamp(19px, 4.8vw, 25px); }
+.taxi-entry-form .form-title p { max-width: 36ch; font-size: 13px; line-height: 1.4; }
+.taxi-entry-modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 16px;
+  padding: 5px;
+  background: #dfe9eb;
+  border-radius: 14px;
+}
+.taxi-entry-modes button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 0;
+  min-height: 48px;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #506b71;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.taxi-entry-modes button > span:first-child { font-size: 18px; line-height: 1; }
+.taxi-entry-modes button.active {
+  background: #fff;
+  color: #086e72;
+  border-color: #bddad8;
+  box-shadow: 0 2px 9px #18383b12;
+}
+.taxi-entry-modes button:focus-visible,
+.taxi-photo-pane .photo-import-help > summary:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+.taxi-mode-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 50px;
+  background: #c9e8e4;
+  color: #07555a;
+  font-size: 11px;
+}
+.taxi-manual-entry { min-width: 0; }
+.taxi-manual-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 3px 10px; margin: 2px 0 12px; }
+.taxi-manual-head b { color: var(--ink); font-size: 15px; }
+.taxi-manual-head small { color: #60787c; font-size: 11px; }
+.taxi-basics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.taxi-basics > label { min-width: 0; margin-top: 0; font-size: 13px; }
+.taxi-basics .course-date-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; }
+.taxi-basics .course-date-icon { font-size: 18px; }
+.taxi-entry-form .taxi-amounts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 2px; }
+.taxi-amounts label { min-width: 0; margin-top: 12px; font-size: 13px; }
+.taxi-amounts .money-input { min-width: 0; }
+.taxi-amounts .money-input input { min-width: 0; box-sizing: border-box; padding-left: 29px; padding-right: 8px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.taxi-amounts .money-input > span { left: 11px; }
+.taxi-manual-entry .taxi-breakdown { gap: 6px; margin-top: 11px; padding: 10px 11px; }
+.taxi-manual-entry .taxi-breakdown span { font-size: 11px; }
+.taxi-manual-entry .taxi-breakdown b { font-size: 15px; }
+.taxi-manual-entry > label { margin-top: 12px; font-size: 13px; }
+.taxi-manual-entry > label select { margin-top: 7px; }
+.taxi-manual-entry .sev-check { margin-top: 12px; }
+.taxi-entry-form .taxi-submit { margin-top: 14px; min-height: 50px; }
+.taxi-photo-pane { margin: 0; padding: 15px; border: 1px solid #bedbd9; background: #fff; }
+.taxi-photo-pane .photo-import-head { align-items: center; }
+.taxi-photo-pane .photo-import-head b { color: #164e55; font-size: 16px; }
+.taxi-photo-pane .photo-import-head small { display: block; font-size: 12px; }
+.taxi-photo-pane .photo-import-head > span { font-size: 24px; }
+.taxi-photo-pane .photo-upload { align-items: center; min-height: 51px; margin-top: 13px; padding: 10px 12px; font-size: 14px; box-sizing: border-box; text-align: center; }
+.taxi-photo-pane .photo-import-help { margin-top: 9px; color: #55757a; font-size: 12px; }
+.taxi-photo-pane .photo-import-help > summary { display: inline-block; min-height: 33px; padding: 7px 0; color: #0b666b; cursor: pointer; font-weight: 700; }
+.taxi-photo-pane .photo-import-help p { margin: 1px 0 6px; line-height: 1.5; }
+.taxi-photo-pane .photo-results { margin-top: 12px; gap: 8px; }
+.taxi-photo-pane .photo-results-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; padding: 1px 2px; }
+.taxi-photo-pane .photo-results-heading b { color: #125f62; font-size: 14px; }
+.taxi-photo-pane .photo-results-heading span { color: #688185; font-size: 11px; }
+.taxi-photo-pane .photo-results article { border-color: #d7e4e3; box-shadow: 0 2px 7px #12363808; }
+.taxi-photo-pane .photo-results .photo-row-title label { margin-top: 0; font-size: 12px; }
+.taxi-photo-pane .photo-details summary { min-width: 0; }
+.taxi-photo-pane .photo-details summary > span:first-child { min-width: 0; }
+.taxi-photo-pane .photo-edit-label { white-space: nowrap; }
+@media (max-width: 760px) {
+  .workspace .taxi-entry-form { padding: 17px 14px 20px; border-left-width: 6px; }
+  .taxi-entry-form .form-title { margin-bottom: 12px; }
+  .taxi-entry-form .form-title .type-icon { width: 37px; height: 37px; flex: 0 0 auto; }
+  .taxi-entry-modes { margin-bottom: 13px; }
+  .taxi-entry-modes button { min-height: 47px; font-size: 12px; gap: 5px; }
+  .taxi-entry-form .taxi-basics .course-date-control { padding: 0 8px; }
+  .taxi-entry-form .taxi-basics .ride-type-field select { padding: 0 8px; min-width: 0; font-size: 14px; }
+  .taxi-entry-form .taxi-submit {
+    position: sticky;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    box-shadow: 0 5px 22px #07676d3b;
+  }
+  .taxi-photo-pane { padding: 12px; }
+}
+@media (max-width: 350px) {
+  .taxi-basics { grid-template-columns: minmax(0, 1fr); }
+  .taxi-entry-modes button { font-size: 11px; padding: 8px 5px; }
+  .taxi-amounts .money-input input { font-size: 15px; }
+}
