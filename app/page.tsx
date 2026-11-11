@@ -953,6 +953,19 @@ export default function Home() {
   const dailyGoalProgress = dailyGoal
     ? Math.min(100, (dailyGoalEarned / dailyGoal) * 100)
     : 0;
+  // Prepared once for all home filters: keep service fees and perceptions
+  // identical to the original daily and weekly accounting.
+  const homePeriodRides = useMemo(
+    () => courses.map(course => ({
+      type: course.type,
+      date: course.date,
+      taxiCategory: course.taxiCategory,
+      amount: course.amount,
+      tip: course.tip,
+      serviceDeductions: serviceFee(course, settings) + (course.perception || 0),
+    })),
+    [courses, settings],
+  );
   // The homepage is driven by the same Tuesday–Monday accounting rules as
   // Ajouter and Historique: Monday airport fees are charged on Tuesday,
   // and the company fee applies to Tuesday even without recorded rides.
@@ -2031,7 +2044,9 @@ export default function Home() {
             days={homeWeekDays}
             previousDays={previousHomeWeekDays}
             dayRides={selectedDayCourses}
-            todayGoal={dailyGoal}
+            periodRides={homePeriodRides}
+            periodExpenses={expenses}
+            periodSettings={settings}
             goalsEnabled={settings.dailyGoalEnabled}
             weekGross={round2(totals.gross)}
             weekFees={homeWeekFees}
