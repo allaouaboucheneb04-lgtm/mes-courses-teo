@@ -5205,3 +5205,6 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .home-compare-legend { gap: 6px 9px; font-size: 10px; }
   .home-compare-legend i { width: 19px; }
 }
+
+/* Keep the Ajouter tabs and form comfortably below the viewport top when linked from Accueil. */
+#workspace { scroll-margin-top: 16px; }
