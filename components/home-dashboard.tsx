@@ -83,7 +83,7 @@ export default function HomeDashboard({
   const actualMin = Math.min(...values);
   const actualMax = Math.max(...values);
   const spread = Math.max(1, actualMax - actualMin);
-  const tickStep = niceTickStep(spread / 4);
+  const tickStep = Math.max(1, niceTickStep(spread / 4));
   const axisMin = Math.floor((actualMin - spread * 0.07) / tickStep) * tickStep;
   const axisMax = Math.ceil((actualMax + spread * 0.07) / tickStep) * tickStep;
   const bottom = 180;
