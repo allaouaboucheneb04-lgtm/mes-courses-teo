@@ -947,8 +947,11 @@ export default function Home() {
   const dailyNet = round2(dailyGoalNet - selectedDayCompanyFee - selectedDayExpenseTotal);
   // A net-income goal must use the same net already shown after company
   // fees and recorded expenses, not a more optimistic pre-expense subtotal.
+  // An objective is a progress counter, not an accounting balance:
+  // fees may make dailyNet negative, but progress always begins at $0.
+  const dailyGoalEarned = Math.max(0, dailyNet);
   const dailyGoalProgress = dailyGoal
-    ? Math.min(100, Math.max(0, (dailyNet / dailyGoal) * 100))
+    ? Math.min(100, (dailyGoalEarned / dailyGoal) * 100)
     : 0;
   // The homepage is driven by the same Tuesday–Monday accounting rules as
   // Ajouter and Historique: Monday airport fees are charged on Tuesday,
@@ -2098,7 +2101,7 @@ export default function Home() {
                     Objectif du {GOAL_DAYS[selectedGoalDay].toLowerCase()}
                   </span>
                   <b>
-                    {money(dailyNet)} / {money(dailyGoal)}
+                    {money(dailyGoalEarned)} / {money(dailyGoal)}
                   </b>
                 </div>
                 <div
@@ -2112,9 +2115,9 @@ export default function Home() {
                   <i style={{ width: `${dailyGoalProgress}%` }} />
                 </div>
                 <small>
-                  {dailyGoal > 0 && dailyNet >= dailyGoal
+                  {dailyGoal > 0 && dailyGoalEarned >= dailyGoal
                     ? "Objectif atteint ✓"
-                    : `${money(Math.max(0, dailyGoal - dailyNet))} restant`}
+                    : `${money(Math.max(0, dailyGoal - dailyGoalEarned))} restant`}
                 </small>
               </div>
             )}
