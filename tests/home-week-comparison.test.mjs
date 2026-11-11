@@ -82,14 +82,17 @@ test("dashboard renders two differentiated lines and never plots future days as 
   assert.match(dashboard,/previousDays: HomeDay\[\]/);
   assert.match(dashboard,/home-line-current/);
   assert.match(dashboard,/home-line-previous/);
-  assert.match(dashboard,/cumulativeNetProgress\(days\)/);
-  assert.match(dashboard,/cumulativeNetProgress\(previousDays\)/);
-  assert.match(dashboard,/money\(currentSelectedProgress\)/);
+  assert.match(dashboard,/Revenu net par jour/);
+  assert.match(dashboard,/money\(selected\.net\)/);
+  assert.match(dashboard,/money\(previousSelected\.net\)/);
+  assert.match(dashboard,/stroke="#a4babc"/);
+  assert.doesNotMatch(dashboard,/cumulativeNetProgress/);
+
   assert.match(dashboard,/strokeDasharray="6 5"/);
   assert.match(dashboard,/const elapsedDays = days\.filter\(day => day\.date <= currentDate\)/);
-  assert.match(dashboard,/day\.date <= currentDate \? \[chartPoint\(day, index, currentProgress\[index\]\)\] : \[\]/);
-  assert.match(dashboard,/const previousPoints = previousDays\.map\(\(day, index\) =>/);
-  assert.match(dashboard,/money\(previousSelectedProgress\)/);
+  assert.match(dashboard,/day\.date <= currentDate \? \[chartPoint\(day, index\)\] : \[\]/);
+  assert.match(dashboard,/const previousPoints = previousDays\.map\(chartPoint\)/);
+  assert.match(dashboard,/money\(previousSelected\.net\)/);
   assert.match(dashboard,/money\(previousWeekNet\)/);
   assert.match(css,/\.home-compare-legend \{/);
   for(const [name,code] of [["page.tsx",page],["home-dashboard.tsx",dashboard]]){
