@@ -19,7 +19,7 @@ import { auth, db } from "./firebase";
 import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
-import { expenseTotal } from "@/lib/expenses";
+import { expenseTotal, weeklyCompanyFeeTotal } from "@/lib/expenses";
 import { airportLevyTotal, airportLevyAccountingDate } from "@/lib/airport-levy";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
@@ -860,17 +860,21 @@ export default function Home() {
       ),
     [courses, historyBounds, historyType, historyPayment, historySearch, settings.airportFee],
   );
+  // Company fees are charged on Tuesday, even when there are no courses.
+  // Ride-category/payment/search filters exclude shared overhead from the
+  // course-only net; they do not change the period's actual company fees.
   const historyCompanyFeeTotal = useMemo(
-    () =>
-      round2(
-        new Set(filteredHistory.map((course) => tuesdayWeekKey(course.date)))
-          .size * settings.companyFee,
-      ),
-    [filteredHistory, settings.companyFee],
+    () => weeklyCompanyFeeTotal(
+      settings.companyFee,
+      historyBounds,
+      [...courses.map((course) => course.date), ...expenses.map((expense) => expense.date)],
+      today(),
+    ),
+    [settings.companyFee, historyBounds, courses, expenses],
   );
   const historyDisplayNet = round2(
     historyTotals.gross - historyTotals.fees - historyAirportFeeTotal -
-    historyCompanyFeeTotal - (historyHasCourseFilter ? 0 : historyExpenseTotal),
+    (historyHasCourseFilter ? 0 : historyCompanyFeeTotal + historyExpenseTotal),
   );
   const unverifiedHistoryTotals = useMemo(() => {
     const unverifiedRows = filteredHistory.filter(
@@ -3915,7 +3919,7 @@ export default function Home() {
                 <header className="history-block-heading">
                   <div>
                     <b>Résumé de la période</b>
-                    <small>{historyHasCourseFilter ? "Courses filtrées : les dépenses communes ne sont pas réparties entre les courses." : "Courses affichées et toutes les dépenses de la période, même les jours sans course."}</small>
+                    <small>{historyHasCourseFilter ? "Courses filtrées : les dépenses communes ne sont pas réparties entre les courses." : "Courses affichées, frais de compagnie et dépenses de la période, même les jours sans course."}</small>
                   </div>
                 </header>
                 <div className="history-summary">
@@ -3939,7 +3943,7 @@ export default function Home() {
                   )}
                   {historyCompanyFeeTotal > 0 && (
                     <div>
-                      <span>Frais de compagnie</span>
+                      <span>Frais de compagnie{historyHasCourseFilter ? " (information)" : ""}</span>
                       <b>− {money(historyCompanyFeeTotal)}</b>
                     </div>
                   )}
