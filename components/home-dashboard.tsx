@@ -51,6 +51,19 @@ const longDate = (date: string) =>
     timeZone: "UTC", weekday: "long", day: "numeric", month: "long"
   });
 
+const shortPeriod = (days: HomeDay[]) => days.length
+  ? `${new Date(days[0].date + "T12:00:00Z").toLocaleDateString("fr-CA", { timeZone: "UTC", day: "numeric", month: "short" })} – ${new Date(days[days.length - 1].date + "T12:00:00Z").toLocaleDateString("fr-CA", { timeZone: "UTC", day: "numeric", month: "short" })}`
+  : "—";
+
+const axisMoney = (value: number) =>
+  new Intl.NumberFormat("fr-CA", { maximumFractionDigits: 0 }).format(value) + " $";
+
+const niceTickStep = (interval: number) => {
+  const base = 10 ** Math.floor(Math.log10(Math.max(0.01, interval)));
+  const scaled = interval / base;
+  return (scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10) * base;
+};
+
 export default function HomeDashboard({
   currentDate, days, previousDays, dayRides, todayGoal, goalsEnabled, weekGross, weekFees,
   weekNet, onAdd, onExpenses, onHistory, onStatistics, onSettings
@@ -63,16 +76,25 @@ export default function HomeDashboard({
   const percentage = goalsEnabled && todayGoal > 0
     ? Math.min(100, Math.max(0, Math.round((today.net / todayGoal) * 100))) : 0;
 
-  // Future weekdays are not yet earned income: don't draw them as zero.
-  // Both series share a scale and the same Tuesday-to-Monday x positions.
+  // Every point is one day's real accounting net, never a cumulative balance.
+  // Only completed/current days appear on this week's line.
   const elapsedDays = days.filter(day => day.date <= currentDate);
-  const values = [...elapsedDays, ...previousDays].map(day => day.net);
-  const min = Math.min(0, ...values);
-  const max = Math.max(0, ...values);
-  const width = max - min;
-  const yFor = (value: number) => width === 0 ? 74 : 116 - ((value - min) / width) * 88;
+  const values = [0, ...elapsedDays.map(day => day.net), ...previousDays.map(day => day.net)];
+  const actualMin = Math.min(...values);
+  const actualMax = Math.max(...values);
+  const spread = Math.max(1, actualMax - actualMin);
+  const tickStep = niceTickStep(spread / 4);
+  const axisMin = Math.floor((actualMin - spread * 0.07) / tickStep) * tickStep;
+  const axisMax = Math.ceil((actualMax + spread * 0.07) / tickStep) * tickStep;
+  const bottom = 180;
+  const top = 17;
+  const chartX = (index: number) => 52 + index * 50.5;
+  const yFor = (value: number) =>
+    bottom - ((value - axisMin) / Math.max(tickStep, axisMax - axisMin)) * (bottom - top);
+  const ticks = Array.from({ length: Math.round((axisMax - axisMin) / tickStep) + 1 },
+    (_, index) => Math.round((axisMin + index * tickStep) * 100) / 100);
   const chartPoint = (day: HomeDay, index: number) => ({
-    x: 18 + index * 51, y: yFor(day.net), date: day.date
+    x: chartX(index), y: yFor(day.net), date: day.date
   });
   const currentPoints = days.flatMap((day, index) =>
     day.date <= currentDate ? [chartPoint(day, index)] : []
@@ -83,12 +105,11 @@ export default function HomeDashboard({
   ).join(" ");
   const currentPath = linePath(currentPoints);
   const previousPath = linePath(previousPoints);
-  const lastPoint = currentPoints[currentPoints.length - 1];
-  const firstPoint = currentPoints[0];
-  const area = currentPoints.length
-    ? currentPath + " L" + lastPoint.x + " 125 L" + firstPoint.x + " 125 Z" : "";
   const selectedIndex = days.findIndex(day => day.date === selected.date);
   const previousSelected = previousDays[selectedIndex];
+  const hasCurrentSelected = selected.date <= currentDate;
+  const selectedDelta = previousSelected && hasCurrentSelected
+    ? Math.round((selected.net - previousSelected.net) * 100) / 100 : null;
   const previousWeekNet = Math.round(previousDays.reduce((sum, day) => sum + day.net, 0) * 100) / 100;
 
   return (
@@ -145,65 +166,93 @@ export default function HomeDashboard({
 
       <article className="home-week-card">
         <header className="home-card-top">
-          <div><h3>Cette semaine</h3><small>Revenu net par jour · Mardi au lundi</small></div>
-          <strong>{money(weekNet)}</strong>
+          <div><h3>Évolution quotidienne</h3><small>Revenu net par jour · Mardi au lundi</small></div>
+          <div className="home-week-header-total">
+            <small>Net de la semaine</small>
+            <strong>{money(weekNet)}</strong>
+          </div>
         </header>
+
         <div className="home-compare-legend" aria-label="Légende du graphique">
-          <span><i className="home-line-current" aria-hidden="true" /> Cette semaine</span>
-          <span><i className="home-line-previous" aria-hidden="true" /> Semaine passée</span>
+          <span><i className="home-line-current" aria-hidden="true" /> Cette semaine <small>{shortPeriod(days)}</small></span>
+          <span><i className="home-line-previous" aria-hidden="true" /> Semaine passée <small>{shortPeriod(previousDays)}</small></span>
         </div>
+
         <div className="home-chart" role="img"
-          aria-label="Comparaison du revenu net de chaque journée du mardi au lundi, cette semaine et la semaine passée, montants pouvant augmenter ou diminuer">
-          <svg viewBox="0 0 342 146" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M18 36 H324 M18 74 H324 M18 112 H324"
-              fill="none" stroke="#e5eeee" strokeWidth="1.2" />
-            <line x1="18" y1={yFor(0)} x2="324" y2={yFor(0)}
-              stroke="#a4babc" strokeWidth="1.25" strokeDasharray="3 4" />
-            <text x="1" y={yFor(0) - 5} fill="#60757b" fontSize="10">0</text>
+          aria-label="Deux courbes de revenus nets journaliers : turquoise cette semaine, gris pointillé semaine passée. Chaque journée peut monter ou descendre. La ligne horizontale zéro sépare les gains et pertes.">
+          <svg viewBox="0 0 380 202" preserveAspectRatio="none" aria-hidden="true">
+            {ticks.map(tick => (
+              <g key={tick}>
+                <line x1="52" x2="356" y1={yFor(tick)} y2={yFor(tick)}
+                  stroke={tick === 0 ? "#a2b8bb" : "#e6eeef"}
+                  strokeDasharray={tick === 0 ? "4 4" : undefined}
+                  strokeWidth={tick === 0 ? 1.6 : 1}/>
+                <text x="45" y={yFor(tick) + 3.5} fill={tick === 0 ? "#365f64" : "#86999f"}
+                  fontSize="10" fontWeight={tick === 0 ? 800 : 500} textAnchor="end">
+                  {axisMoney(tick)}
+                </text>
+              </g>
+            ))}
+            {selectedIndex >= 0 && (
+              <line x1={chartX(selectedIndex)} x2={chartX(selectedIndex)} y1={top}
+                y2={bottom} stroke="#ccdadc" strokeWidth="1.5" strokeDasharray="3 5"/>
+            )}
             {previousPoints.length > 0 && (
               <>
-                <path d={previousPath} fill="none" stroke="#9caab1" strokeDasharray="6 5"
-                  strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d={previousPath} fill="none" stroke="#8e9ea8" strokeWidth="3.2"
+                  strokeDasharray="7 5" strokeLinecap="round" strokeLinejoin="round" />
                 {previousPoints.map((point, index) => (
-                  <circle key={point.date} cx={point.x} cy={point.y} r={index === selectedIndex ? 4.7 : 3.1}
-                    fill="#fff" stroke="#9caab1" strokeWidth="2.3" />
+                  <circle key={point.date} cx={point.x} cy={point.y}
+                    r={index === selectedIndex ? 5.1 : 3.3}
+                    fill="#fff" stroke="#8e9ea8" strokeWidth="2.5"/>
                 ))}
               </>
             )}
             {currentPoints.length > 0 && (
               <>
-                <path d={area} fill="#00777d" fillOpacity=".10" />
-                <path d={currentPath} fill="none" stroke="#00777d" strokeWidth="3.2"
-                  strokeLinecap="round" strokeLinejoin="round" />
+                <path d={currentPath} fill="none" stroke="#00777d" strokeWidth="4"
+                  strokeLinecap="round" strokeLinejoin="round"/>
                 {currentPoints.map(point => (
-                  <circle key={point.date} cx={point.x} cy={point.y} r={point.date === selected.date ? 5.3 : 3.8}
+                  <circle key={point.date} cx={point.x} cy={point.y}
+                    r={point.date === selected.date ? 6.1 : 4}
                     fill={point.date === selected.date ? "#00777d" : "#fff"}
-                    stroke="#00777d" strokeWidth="2.5" />
+                    stroke="#00777d" strokeWidth="2.9"/>
                 ))}
               </>
             )}
           </svg>
         </div>
-        <div className="home-chart-days" aria-label="Consulter un jour du graphique">
+
+        <div className="home-chart-days" aria-label="Choisir une journée à comparer">
           {days.map(day => (
-            <button key={day.date} type="button" aria-pressed={day.date === selected.date}
+            <button key={day.date} type="button"
+              aria-pressed={day.date === selected.date}
               onClick={() => setInspectedDate(day.date)}>
               {shortDay(day.date)}
             </button>
           ))}
         </div>
-        <div className="home-chart-selection" aria-live="polite">
-          <div className="home-chart-selection-line">
-            <span>{longDate(selected.date)} · net du jour</span>
-            <b>{selected.date <= currentDate ? money(selected.net) : "À venir"}</b>
+        <div className="home-selected-day-label">{longDate(selected.date)}</div>
+        <div className="home-chart-result-grid" aria-live="polite">
+          <div className="home-chart-result current">
+            <span><i aria-hidden="true" /> Cette semaine</span>
+            <b>{hasCurrentSelected ? money(selected.net) : "À venir"}</b>
+            <small>{selected.count} course{selected.count !== 1 ? "s" : ""}</small>
           </div>
-          {previousSelected && (
-            <div className="home-chart-selection-line previous">
-              <span>{longDate(previousSelected.date)} · net du jour précédent</span>
-              <b>{money(previousSelected.net)}</b>
-            </div>
-          )}
+          <div className="home-chart-result previous">
+            <span><i aria-hidden="true" /> Semaine passée</span>
+            <b>{previousSelected ? money(previousSelected.net) : "—"}</b>
+            <small>{previousSelected ? longDate(previousSelected.date) : "—"}</small>
+          </div>
         </div>
+        {selectedDelta !== null && (
+          <div className="home-chart-difference">
+            <span>Écart par rapport au même jour</span>
+            <strong className={selectedDelta >= 0 ? "positive" : "negative"}>
+              {selectedDelta > 0 ? "+" : ""}{money(selectedDelta)}
+            </strong>
+          </div>
+        )}
         <div className="home-previous-week-total">
           <span>Total semaine passée</span><strong>{money(previousWeekNet)}</strong>
         </div>
