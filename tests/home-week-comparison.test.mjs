@@ -83,12 +83,18 @@ test("dashboard renders two differentiated lines and never plots future days as 
   assert.match(dashboard,/home-line-current/);
   assert.match(dashboard,/home-line-previous/);
   assert.match(dashboard,/Revenu net par jour/);
+  assert.match(dashboard,/Évolution quotidienne/);
+  assert.match(dashboard,/Choisir une journée à comparer/);
+  assert.match(dashboard,/const ticks = Array.from/);
+  assert.match(dashboard,/const selectedDelta = previousSelected && hasCurrentSelected/);
+  assert.match(dashboard,/selectedDelta > 0 \? "\+" : ""/);
+  assert.match(dashboard,/home-chart-result-grid/);
   assert.match(dashboard,/money\(selected\.net\)/);
   assert.match(dashboard,/money\(previousSelected\.net\)/);
-  assert.match(dashboard,/stroke="#a4babc"/);
+  assert.match(dashboard,/stroke="#a2b8bb"/);
   assert.doesNotMatch(dashboard,/cumulativeNetProgress/);
 
-  assert.match(dashboard,/strokeDasharray="6 5"/);
+  assert.match(dashboard,/strokeDasharray="7 5"/);
   assert.match(dashboard,/const elapsedDays = days\.filter\(day => day\.date <= currentDate\)/);
   assert.match(dashboard,/day\.date <= currentDate \? \[chartPoint\(day, index\)\] : \[\]/);
   assert.match(dashboard,/const previousPoints = previousDays\.map\(chartPoint\)/);
