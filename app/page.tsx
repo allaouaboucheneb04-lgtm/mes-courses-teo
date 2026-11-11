@@ -28,6 +28,8 @@ import SevPage, { SevCheckbox } from "@/components/sev-page";
 import VehicleInspectionPage from "@/components/vehicle-inspection-page";
 import type { VehicleInspection } from "@/lib/vehicle-inspection";
 import StatisticsPage from "@/components/statistics-page";
+import HomeDashboard from "@/components/home-dashboard";
+import { House, ListOrdered, BadgeCheck, LayoutGrid, Plus, BarChart3, ShieldCheck, ReceiptText, Settings2, ClipboardCheck, ChevronRight } from "lucide-react";
 import DateRangePicker, { DateRangeField } from "@/components/date-range-picker";
 import SharedPayroll from "@/components/shared-payroll";
 import PayrollOverview from "@/components/payroll-overview";
@@ -468,8 +470,8 @@ export default function Home() {
   const [adaptedSev, setAdaptedSev] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [mobilePage, setMobilePage] = useState<
-    "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics" | "inspection"
-  >("add");
+    "home" | "more" | "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics" | "inspection"
+  >("home");
   const [expenseEditingId, setExpenseEditingId] = useState<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -683,7 +685,9 @@ export default function Home() {
     })));
   }, [loaded, payStatements, courses]);
   const selectedDate =
-    (mobilePage === "expenses"
+    (mobilePage === "home"
+      ? today()
+      : mobilePage === "expenses"
       ? expenseAnchor
       : tab === "adapte"
         ? adapted.date
@@ -946,6 +950,28 @@ export default function Home() {
   const dailyGoalProgress = dailyGoal
     ? Math.min(100, Math.max(0, (dailyNet / dailyGoal) * 100))
     : 0;
+  // The homepage is driven by the same Tuesday–Monday accounting rules as
+  // Ajouter and Historique: Monday airport fees are charged on Tuesday,
+  // and the company fee applies to Tuesday even without recorded rides.
+  const homeWeekDays = useMemo(() => {
+    const first = new Date(week.start + "T12:00:00Z");
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(first);
+      date.setUTCDate(first.getUTCDate() + index);
+      const key = date.toISOString().slice(0, 10);
+      const rides = courses.filter(course => course.date === key);
+      const gross = round2(rides.reduce((sum, course) => sum + course.amount + course.tip, 0));
+      const tips = round2(rides.reduce((sum, course) => sum + course.tip, 0));
+      const service = round2(rides.reduce((sum, course) => sum + serviceFee(course, settings) + (course.perception || 0), 0));
+      const airport = airportLevyTotal(courses, accountingDate => accountingDate === key, settings.airportFee);
+      const company = index === 0 ? settings.companyFee : 0;
+      const expense = expenseTotal(expenses, [key, key]);
+      const fees = round2(service + airport + company + expense);
+      return { date: key, gross, tips, fees, net: round2(gross - fees), count: rides.length };
+    });
+  }, [courses, expenses, settings, week.start]);
+  const homeWeekFees = round2(totals.deductions + airportFeeTotal + weeklyCompanyFee + weeklyExpenseTotal);
+  const homeWeekNet = round2(totals.gross - homeWeekFees);
   const filteredExpenses = useMemo(() => {
     return expenses
       .filter((expense) =>
@@ -1964,6 +1990,48 @@ export default function Home() {
           />
         )}
         {mobilePage === "sev" && <SevPage expenses={expenses} companyFee={settings.companyFee} onFiscalChange={(id, patch) => setCourses(current => current.map(course => course.id === id ? {...course, ...patch} : course))} courses={courses.map((course) => ({ ...course, serviceFee: serviceFee(course, settings), airportFee: course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0, billedDuration: course.type === "adapte" ? course.billedDuration ?? Math.max(course.duration || 0, settings.adaptedMinimum) : course.billedDuration }))} onChange={setSevStatus} onEdit={(id) => { const course = courses.find((item) => item.id === id); if (course) editCourse(course); }} today={today()} week={currentTuesdayWeek()} />}
+        {mobilePage === "home" && (
+          <HomeDashboard
+            currentDate={today()}
+            days={homeWeekDays}
+            dayRides={selectedDayCourses}
+            todayGoal={dailyGoal}
+            goalsEnabled={settings.dailyGoalEnabled}
+            weekGross={round2(totals.gross)}
+            weekFees={homeWeekFees}
+            weekNet={homeWeekNet}
+            onAdd={() => {setMobilePage("add");setTab("taxi");setEditingId(null);window.scrollTo({top:0,behavior:"smooth"});}}
+            onExpenses={() => {setMobilePage("expenses");window.scrollTo({top:0,behavior:"smooth"});}}
+            onHistory={() => {setMobilePage("history");setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}
+            onStatistics={() => {setMobilePage("statistics");window.scrollTo({top:0,behavior:"smooth"});}}
+            onSettings={() => {setMobilePage("settings");setTab("settings");window.scrollTo({top:0,behavior:"smooth"});}}
+          />
+        )}
+        {mobilePage === "more" && (
+          <section className="home-more" aria-label="Autres fonctions">
+            <header><span>MES COURSES TÉO</span><h2>Tous les outils</h2><p>Retrouvez vos rapports et paramètres.</p></header>
+            <div className="home-more-grid">
+              {([
+                {id:"statistics",label:"Statistiques",hint:"Revenus et objectifs",Icon:BarChart3},
+                {id:"sev",label:"SEV",hint:"Courses et redevances",Icon:ShieldCheck},
+                {id:"expenses",label:"Dépenses",hint:"Suivi des coûts",Icon:ReceiptText},
+                {id:"inspection",label:"Vérification véhicule",hint:"Inspection sommaire",Icon:ClipboardCheck},
+                {id:"settings",label:"Réglages",hint:"Tarifs et compte",Icon:Settings2},
+              ] as const).map(item => (
+                <button key={item.id} type="button" onClick={() => {
+                  setMobilePage(item.id);
+                  setEditingId(null);
+                  if(item.id === "settings")setTab("settings");
+                  window.scrollTo({top:0,behavior:"smooth"});
+                }}>
+                  <span className="home-more-icon"><item.Icon size={21}/></span>
+                  <span><b>{item.label}</b><small>{item.hint}</small></span>
+                  <ChevronRight size={18}/>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         <section className="summary">
           <div>
             <span>Revenu net de la semaine</span>
@@ -4239,9 +4307,21 @@ export default function Home() {
       />
       {notice && <div className="toast">{notice}</div>}
       <nav className="mobile-nav" aria-label="Navigation principale">
-        <button type="button" className={mobilePage === "history" ? "selected" : ""} onClick={() => {setMobilePage("history");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>▤<span>Historique</span></button>
-        <button type="button" className={`nav-add ${mobilePage === "add" ? "selected" : ""}`} onClick={() => {setMobilePage("add");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}><b>＋</b><span>Ajouter</span></button>
-        <button type="button" className={mobilePage === "pay" ? "selected" : ""} onClick={() => {setMobilePage("pay");setEditingId(null);setTab("paie");setPayView("statements");window.scrollTo({top:0,behavior:"smooth"});}}>✓<span>Vérifier paie</span></button>
+        <button type="button" className={mobilePage === "home" ? "selected" : ""} aria-current={mobilePage === "home" ? "page" : undefined} onClick={() => {setMobilePage("home");window.scrollTo({top:0,behavior:"smooth"});}}>
+          <House size={23}/><span>Accueil</span>
+        </button>
+        <button type="button" className={mobilePage === "history" ? "selected" : ""} aria-current={mobilePage === "history" ? "page" : undefined} onClick={() => {setMobilePage("history");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>
+          <ListOrdered size={23}/><span>Courses</span>
+        </button>
+        <button type="button" className={`nav-add ${mobilePage === "add" ? "selected" : ""}`} aria-current={mobilePage === "add" ? "page" : undefined} onClick={() => {setMobilePage("add");if(tab === "settings" || tab === "paie")setTab("taxi");window.scrollTo({top:0,behavior:"smooth"});}}>
+          <b><Plus size={29} strokeWidth={2.5}/></b><span>Ajouter</span>
+        </button>
+        <button type="button" className={mobilePage === "pay" ? "selected" : ""} aria-current={mobilePage === "pay" ? "page" : undefined} onClick={() => {setMobilePage("pay");setEditingId(null);setTab("paie");setPayView("statements");window.scrollTo({top:0,behavior:"smooth"});}}>
+          <BadgeCheck size={23}/><span>Paie</span>
+        </button>
+        <button type="button" className={["more","statistics","sev","expenses","inspection","settings"].includes(mobilePage) ? "selected" : ""} aria-current={mobilePage === "more" ? "page" : undefined} onClick={() => {setMobilePage("more");window.scrollTo({top:0,behavior:"smooth"});}}>
+          <LayoutGrid size={23}/><span>Plus</span>
+        </button>
       </nav>
     </main>
   );
