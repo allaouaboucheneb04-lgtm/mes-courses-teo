@@ -35,6 +35,20 @@ test("the invoice stays on the same period when the course date changes from Sun
   assert.doesNotMatch(page,/const airportWeek = mondayWeekForDate\(selectedDate\)/);
 });
 
+test("daily airport levy stays visible in the collapsed invoice and reflects rides on the selected date",()=>{
+  assert.match(page,/const selectedDayCourses = useMemo/);
+  assert.match(page,/selectedDayCourses\.filter\(\(course\) => course\.type === "taxi" && course\.taxiCategory === "aeroport"\)/);
+  assert.match(page,/const selectedDayAirportRideTotal = round2\(selectedDayAirportCourses\.length \* settings\.airportFee\)/);
+  const summary = weeklySummary.slice(weeklySummary.indexOf('<details className="airport-invoice-summary">' ), weeklySummary.indexOf("</summary>"));
+  assert.match(summary,/className="airport-invoice-daily"/);
+  assert.match(summary,/Redevance du jour/);
+  assert.match(summary,/money\(selectedDayAirportRideTotal\)/);
+  assert.match(summary,/selectedDayAirportCourses\.length/);
+  assert.match(css,/\.airport-invoice-daily\s*\{/);
+  assert.match(weeklySummary,/money\(selectedDayAirportFeeTotal\)/);
+  assert.match(weeklySummary,/Pour les courses du lundi/);
+});
+
 test("the taxi form keeps a short contextual note, immediately followed by the save action",()=>{
   assert.match(taxiForm,/taxi\.category === "aeroport" && \(/);
   assert.match(taxiForm,/Redevance aéroport/);
