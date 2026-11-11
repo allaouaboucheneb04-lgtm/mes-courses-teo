@@ -697,7 +697,10 @@ export default function Home() {
     () => courses.filter((c) => c.date >= week.start && c.date <= week.end),
     [courses, week.start, week.end],
   );
-  const airportWeek = mondayWeekForDate(selectedDate);
+  // The airport invoice belongs to the same income week as the summary above.
+  // Sunday and Monday share a Tuesday–Monday income week, so they must show
+  // the same Monday–Sunday invoice (including Monday rides billed next Tuesday).
+  const airportWeek = mondayWeekForDate(week.start);
   const weeklyAirportCourses = useMemo(
     () =>
       courses.filter(
