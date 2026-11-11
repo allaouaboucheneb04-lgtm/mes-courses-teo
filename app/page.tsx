@@ -868,28 +868,35 @@ export default function Home() {
     historyTotals.gross - historyTotals.fees - historyAirportFeeTotal -
     historyCompanyFeeTotal - (historyHasCourseFilter ? 0 : historyExpenseTotal),
   );
-  const unverifiedHistoryTotals = useMemo(
-    () =>
-      filteredHistory
-        .filter((course) => !course.verified && isPayrollCourse(course))
-        .reduce(
-          (totals, course) => {
-            const gross = round2(course.amount + course.tip);
-            const fees = serviceFee(course, settings) + (course.perception || 0);
-            const airportFee =
-              course.type === "taxi" && course.taxiCategory === "aeroport"
-                ? settings.airportFee
-                : 0;
-            return {
-              count: totals.count + 1,
-              gross: round2(totals.gross + gross),
-              net: round2(totals.net + gross - fees - airportFee),
-            };
-          },
-          { count: 0, gross: 0, net: 0 },
-        ),
-    [filteredHistory, settings],
-  );
+  const unverifiedHistoryTotals = useMemo(() => {
+    const unverifiedRows = filteredHistory.filter(
+      (course) => !course.verified && isPayrollCourse(course),
+    );
+    const subtotal = unverifiedRows.reduce(
+      (totals, course) => {
+        const gross = round2(course.amount + course.tip);
+        const fees = serviceFee(course, settings) + (course.perception || 0);
+        return {
+          count: totals.count + 1,
+          gross: round2(totals.gross + gross),
+          net: round2(totals.net + gross - fees),
+        };
+      },
+      { count: 0, gross: 0, net: 0 },
+    );
+    const pendingLevy = airportLevyTotal(
+      courses.filter(
+        (course) =>
+          !course.verified && isPayrollCourse(course) &&
+          matchesHistoryType(course, historyType) &&
+          matchesHistoryPayment(course, historyPayment) &&
+          matchesHistorySearch(course, historySearch),
+      ),
+      (date) => !historyBounds || (date >= historyBounds[0] && date <= historyBounds[1]),
+      settings.airportFee,
+    );
+    return { ...subtotal, net: round2(subtotal.net - pendingLevy) };
+  }, [filteredHistory, courses, settings, historyBounds, historyType, historyPayment, historySearch]);
   const selectedDayCourses = useMemo(
     () => courses.filter((c) => c.date === selectedDate),
     [courses, selectedDate],
@@ -3923,7 +3930,7 @@ export default function Home() {
                       </div>
                     </div>
                     <small className="verification-net-note">
-                      Net après frais par course et redevance aéroport, hors frais fixes et dépenses communes.
+                      Net après frais des courses et redevances comptabilisées sur la période, hors frais fixes et dépenses communes.
                     </small>
                   </div>
                 </div>
