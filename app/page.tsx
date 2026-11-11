@@ -449,6 +449,7 @@ export default function Home() {
     [loaded, setLoaded] = useState(false),
     [notice, setNotice] = useState("");
   const [payView, setPayView] = useState<"statements" | "courses">("statements");
+  const [taxiEntryMode, setTaxiEntryMode] = useState<"manual" | "photos">("manual");
   const [payRows, setPayRows] = useState<PayRow[]>([]),
     [payFile, setPayFile] = useState(""),
     [payLoading, setPayLoading] = useState(false),
@@ -1295,6 +1296,7 @@ export default function Home() {
   }
   function editCourse(course: Course) {
     setEditingId(course.id);
+    if (course.type === "taxi") setTaxiEntryMode("manual");
     setTaxiSev(!!course.sevAdded);
     setAdaptedSev(!!course.sevAdded);
     setMobilePage("add");
@@ -2115,7 +2117,7 @@ export default function Home() {
           </div>
           {tab === "taxi" ? (
             <form onSubmit={addTaxi}
-              className={`form-card ride-highlight ${
+              className={`form-card taxi-entry-form ride-highlight ${
                 taxi.category === "aeroport"
                   ? "ride-highlight-airport"
                   : "ride-highlight-centre-ville"
@@ -2125,18 +2127,29 @@ export default function Home() {
                   <h2>
                     {editingId
                       ? "Modifier la course taxi"
-                      : "Nouvelle course taxi"}
+                      : "Ajouter une course"}
                   </h2>
-                  <p>Saisissez le total affiché dans Téo et le pourboire.</p>
+                  <p>{editingId ? "Modifiez les informations puis enregistrez." : "Choisissez comment enregistrer vos courses."}</p>
                 </div>
                 <span className="type-icon">$</span>
               </div>
               {!editingId && (
-                <section className="photo-import">
+                <div className="taxi-entry-modes" role="group" aria-label="Méthode d’ajout de course">
+                  <button type="button" className={taxiEntryMode === "manual" ? "active" : ""} aria-pressed={taxiEntryMode === "manual"} onClick={() => setTaxiEntryMode("manual")}>
+                    <span aria-hidden="true">✎</span> Saisie manuelle
+                  </button>
+                  <button type="button" className={taxiEntryMode === "photos" ? "active" : ""} aria-pressed={taxiEntryMode === "photos"} onClick={() => setTaxiEntryMode("photos")}>
+                    <span aria-hidden="true">▣</span> Captures Téo
+                    {photoCourses.length > 0 && <small className="taxi-mode-count">{photoCourses.length}</small>}
+                  </button>
+                </div>
+              )}
+              {!editingId && taxiEntryMode === "photos" && (
+                <section className="photo-import taxi-photo-pane" aria-label="Importation des captures Téo">
                   <div className="photo-import-head">
                     <div>
-                      <b>Importer des captures d’écran Téo</b>
-                      <small>Les courses « Carte », « Compte » et les « No show » supérieurs à 0 $ sont regroupés sous Téo / carte, avec les mêmes frais. Les « No show » à 0 $ sont ignorés.</small>
+                      <b>Importer des captures Téo</b>
+                      <small>Choisissez vos images, vérifiez les courses détectées et enregistrez.</small>
                     </div>
                     <span>▣</span>
                   </div>
@@ -2151,11 +2164,19 @@ export default function Home() {
                         event.target.value = "";
                       }}
                     />
-                    {photoReading ? `Analyse en cours${photoProgress ? ` · ${photoProgress} %` : ""}` : "Choisir des captures d’écran"}
+                    {photoReading ? `Analyse en cours${photoProgress ? ` · ${photoProgress} %` : ""}` : "▣  Sélectionner des captures"}
                   </label>
+                  <details className="photo-import-help">
+                    <summary>Types de courses reconnus</summary>
+                    <p>Les courses « Carte », « Compte » et les « No show » supérieurs à 0 $ sont regroupés sous Téo / carte, avec les mêmes frais. Les « No show » à 0 $ sont ignorés.</p>
+                  </details>
                   {photoMessage && <p className="photo-message" role="status">{photoMessage}</p>}
                   {photoCourses.length > 0 && (
                     <div className="photo-results">
+                      <div className="photo-results-heading">
+                        <b>{photoCourses.length} course{photoCourses.length !== 1 ? "s" : ""} détectée{photoCourses.length !== 1 ? "s" : ""}</b>
+                        <span>À vérifier avant l’enregistrement</span>
+                      </div>
                       {photoCourses.map((item) => {
                         const total = parseMoneyInput(item.total);
                         const tip = parseMoneyInput(item.tip);
@@ -2190,6 +2211,13 @@ export default function Home() {
                   )}
                 </section>
               )}
+              {(editingId || taxiEntryMode === "manual") && (
+                <div className="taxi-manual-entry">
+                  <div className="taxi-manual-head">
+                    <b>Informations de la course</b>
+                    <small>Le total inclut déjà le pourboire</small>
+                  </div>
+                  <div className="taxi-basics">
               <label className="course-date-field">
                 Date
                 <span className="course-date-control">
@@ -2206,7 +2234,7 @@ export default function Home() {
               </label>
               {settings.airportEnabled && (
                 <label className="ride-type-field">
-                  Type de course régulière
+                  Type de course
                   <select
                     value={taxi.category}
                     onChange={(e) =>
@@ -2221,9 +2249,10 @@ export default function Home() {
                   </select>
                 </label>
               )}
-              <div className="two">
+                  </div>
+              <div className="two taxi-amounts">
                 <label>
-                  Montant total, pourboire inclus
+                  Total avec pourboire
                   <div className="money-input">
                     <span>$</span>
                     <input
@@ -2241,7 +2270,7 @@ export default function Home() {
                   </div>
                 </label>
                 <label>
-                  Pourboire inclus dans le total
+                  Pourboire inclus
                   {courses.find(course => course.id === editingId)?.tipPending && <small>Inconnu : laissez vide pour le récupérer sur la fiche Téo.</small>}
                   <div className="money-input">
                     <span>$</span>
@@ -2370,12 +2399,12 @@ export default function Home() {
                     " Le lundi, elle est reportée au mardi suivant."}
                 </p>
               )}
-              <button className="primary">
+              {isCardPayment(taxi.payment) && <label className="sev-check"><input type="checkbox" checked={taxiSev} onChange={(event) => setTaxiSev(event.target.checked)} />Déjà ajouté au SEV</label>}
+              <button className="primary taxi-submit">
                 {editingId
                   ? "Enregistrer les modifications"
-                  : "Ajouter la course"}
+                  : "Enregistrer la course"}
               </button>
-              {isCardPayment(taxi.payment) && <label className="sev-check"><input type="checkbox" checked={taxiSev} onChange={(event) => setTaxiSev(event.target.checked)} />Déjà ajouté au SEV</label>}
               {editingId && (
                 <button
                   type="button"
@@ -2384,6 +2413,8 @@ export default function Home() {
                 >
                   Annuler
                 </button>
+              )}
+                </div>
               )}
             </form>
           ) : tab === "adapte" ? (
