@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ArrowRight, CarFront, ChartNoAxesCombined, ClipboardList, Plus, ReceiptText, Target, Wallet } from "lucide-react";
-import { cumulativeNetProgress } from "@/lib/home-chart";
 
 const money = (value: number) => new Intl.NumberFormat("fr-CA", {
   style: "currency", currency: "CAD"
@@ -67,22 +66,18 @@ export default function HomeDashboard({
   // Future weekdays are not yet earned income: don't draw them as zero.
   // Both series share a scale and the same Tuesday-to-Monday x positions.
   const elapsedDays = days.filter(day => day.date <= currentDate);
-  // The chart shows cumulative positive progress, not individual accounting
-  // days. With no rides, Tuesday's fixed fees cannot push the curve below $0.
-  const currentProgress = cumulativeNetProgress(days);
-  const previousProgress = cumulativeNetProgress(previousDays);
-  const values = [0, ...currentProgress.slice(0, elapsedDays.length), ...previousProgress];
-  const max = Math.max(...values);
-  const yFor = (value: number) => max === 0 ? 112 : 112 - (value / max) * 88;
-  const chartPoint = (day: HomeDay, index: number, value: number) => ({
-    x: 18 + index * 51, y: yFor(value), date: day.date
+  const values = [...elapsedDays, ...previousDays].map(day => day.net);
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  const width = max - min;
+  const yFor = (value: number) => width === 0 ? 74 : 116 - ((value - min) / width) * 88;
+  const chartPoint = (day: HomeDay, index: number) => ({
+    x: 18 + index * 51, y: yFor(day.net), date: day.date
   });
   const currentPoints = days.flatMap((day, index) =>
-    day.date <= currentDate ? [chartPoint(day, index, currentProgress[index])] : []
+    day.date <= currentDate ? [chartPoint(day, index)] : []
   );
-  const previousPoints = previousDays.map((day, index) =>
-    chartPoint(day, index, previousProgress[index])
-  );
+  const previousPoints = previousDays.map(chartPoint);
   const linePath = (points: ReturnType<typeof chartPoint>[]) => points.map((point, index) =>
     (index === 0 ? "M" : "L") + point.x + " " + point.y.toFixed(2)
   ).join(" ");
@@ -91,11 +86,9 @@ export default function HomeDashboard({
   const lastPoint = currentPoints[currentPoints.length - 1];
   const firstPoint = currentPoints[0];
   const area = currentPoints.length
-    ? currentPath + " L" + lastPoint.x + " " + yFor(0) + " L" + firstPoint.x + " " + yFor(0) + " Z" : "";
+    ? currentPath + " L" + lastPoint.x + " 125 L" + firstPoint.x + " 125 Z" : "";
   const selectedIndex = days.findIndex(day => day.date === selected.date);
   const previousSelected = previousDays[selectedIndex];
-  const currentSelectedProgress = currentProgress[selectedIndex] ?? 0;
-  const previousSelectedProgress = previousProgress[selectedIndex] ?? 0;
   const previousWeekNet = Math.round(previousDays.reduce((sum, day) => sum + day.net, 0) * 100) / 100;
 
   return (
@@ -152,7 +145,7 @@ export default function HomeDashboard({
 
       <article className="home-week-card">
         <header className="home-card-top">
-          <div><h3>Cette semaine</h3><small>Progression cumulée · Mardi au lundi</small></div>
+          <div><h3>Cette semaine</h3><small>Revenu net par jour · Mardi au lundi</small></div>
           <strong>{money(weekNet)}</strong>
         </header>
         <div className="home-compare-legend" aria-label="Légende du graphique">
@@ -160,11 +153,13 @@ export default function HomeDashboard({
           <span><i className="home-line-previous" aria-hidden="true" /> Semaine passée</span>
         </div>
         <div className="home-chart" role="img"
-          aria-label="Comparaison de la progression cumulée du revenu net, affichée à partir de zéro, cette semaine et la semaine passée du mardi au lundi">
+          aria-label="Comparaison du revenu net de chaque journée du mardi au lundi, cette semaine et la semaine passée, montants pouvant augmenter ou diminuer">
           <svg viewBox="0 0 342 146" preserveAspectRatio="none" aria-hidden="true">
             <path d="M18 36 H324 M18 74 H324 M18 112 H324"
               fill="none" stroke="#e5eeee" strokeWidth="1.2" />
-            <text x="1" y="115" fill="#637b80" fontSize="10">0</text>
+            <line x1="18" y1={yFor(0)} x2="324" y2={yFor(0)}
+              stroke="#a4babc" strokeWidth="1.25" strokeDasharray="3 4" />
+            <text x="1" y={yFor(0) - 5} fill="#60757b" fontSize="10">0</text>
             {previousPoints.length > 0 && (
               <>
                 <path d={previousPath} fill="none" stroke="#9caab1" strokeDasharray="6 5"
@@ -199,17 +194,16 @@ export default function HomeDashboard({
         </div>
         <div className="home-chart-selection" aria-live="polite">
           <div className="home-chart-selection-line">
-            <span>{longDate(selected.date)} · cumul cette semaine</span>
-            <b>{selected.date <= currentDate ? money(currentSelectedProgress) : "À venir"}</b>
+            <span>{longDate(selected.date)} · net du jour</span>
+            <b>{selected.date <= currentDate ? money(selected.net) : "À venir"}</b>
           </div>
           {previousSelected && (
             <div className="home-chart-selection-line previous">
-              <span>{longDate(previousSelected.date)} · cumul semaine passée</span>
-              <b>{money(previousSelectedProgress)}</b>
+              <span>{longDate(previousSelected.date)} · net du jour précédent</span>
+              <b>{money(previousSelected.net)}</b>
             </div>
           )}
         </div>
-        <p className="home-chart-note">Progression à partir de 0 $. Le net réel, y compris les frais fixes, reste affiché en haut.</p>
         <div className="home-previous-week-total">
           <span>Total semaine passée</span><strong>{money(previousWeekNet)}</strong>
         </div>
