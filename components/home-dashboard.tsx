@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import DateRangePicker from "@/components/date-range-picker";
 import { homePeriodBounds, summarizeHomePeriod, type HomePeriod, type HomePeriodRide, type HomePeriodExpense } from "@/lib/home-period";
-import { ArrowRight, CarFront, ChartNoAxesCombined, ClipboardList, Plus, ReceiptText, Target, Wallet } from "lucide-react";
+import { ArrowRight, CarFront, ChartNoAxesCombined, ChevronDown, ClipboardList, Plus, ReceiptText, Target, Wallet } from "lucide-react";
 
 const money = (value: number) => new Intl.NumberFormat("fr-CA", {
   style: "currency", currency: "CAD"
@@ -79,6 +80,34 @@ export default function HomeDashboard({
   const [period, setPeriod] = useState<HomePeriod>("day");
   const [customStart, setCustomStart] = useState(days[0]?.date ?? currentDate);
   const [customEnd, setCustomEnd] = useState(currentDate);
+  const [periodMenuOpen, setPeriodMenuOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!periodMenuOpen) return;
+    const onOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
+        setPeriodMenuOpen(false);
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPeriodMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onOutsideClick);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("pointerdown", onOutsideClick);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [periodMenuOpen]);
+  const choosePeriod = (next: HomePeriod) => {
+    setPeriodMenuOpen(false);
+    if (next === "custom") {
+      setCalendarOpen(true);
+    } else {
+      setPeriod(next);
+    }
+  };
   const bounds = useMemo(() => homePeriodBounds(period, currentDate, customStart, customEnd),
     [period, currentDate, customStart, customEnd]);
   const periodSummary = useMemo(() => summarizeHomePeriod(
@@ -136,30 +165,52 @@ export default function HomeDashboard({
       <header className="home-intro">
         <div>
           <span className="home-kicker">TABLEAU DE BORD</span>
-          <h2>{periodLabel}</h2>
+          <div className="home-period-dropdown" ref={menuRef}>
+            <h2>
+              <button type="button" className="home-period-title"
+                aria-label={`Choisir la période du bilan. Actuellement : ${periodLabel}`}
+                aria-expanded={periodMenuOpen} aria-controls="home-period-menu"
+                onClick={() => setPeriodMenuOpen(open => !open)}>
+                {periodLabel}<ChevronDown size={22} aria-hidden="true" />
+              </button>
+            </h2>
+            {periodMenuOpen && (
+              <div id="home-period-menu" className="home-period-menu"
+                role="group" aria-label="Choisir la période du bilan">
+                {([
+                  ["day", "Aujourd’hui"],
+                  ["week", "Cette semaine"],
+                  ["month", "Ce mois"],
+                  ["year", "Cette année"],
+                  ["custom", "Personnalisé"],
+                ] as const).map(([value, label]) => (
+                  <button key={value} type="button"
+                    className={period === value ? "active" : ""}
+                    aria-current={period === value ? "true" : undefined}
+                    onClick={() => choosePeriod(value)}>
+                    <span>{label}</span>
+                    {period === value && <span aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <p>{periodSubtitle}</p>
         </div>
-        <label className="home-period-control">
-          <span>Période</span>
-          <select aria-label="Filtrer le bilan par période" value={period}
-            onChange={event => setPeriod(event.target.value as HomePeriod)}>
-            <option value="day">Aujourd’hui</option>
-            <option value="week">Cette semaine</option>
-            <option value="month">Ce mois</option>
-            <option value="year">Cette année</option>
-            <option value="custom">Personnalisé</option>
-          </select>
-        </label>
+        <span className="home-live-indicator">Mes courses Téo</span>
       </header>
-      {period === "custom" && (
-        <div className="home-custom-dates" aria-label="Dates de la période personnalisée">
-          <label>Du <input type="date" value={customStart} max={currentDate}
-            onChange={event => setCustomStart(event.target.value)}/></label>
-          <label>Au <input type="date" value={customEnd} max={currentDate}
-            onChange={event => setCustomEnd(event.target.value)}/></label>
-          {!bounds && <p role="alert">La date de début doit précéder la date de fin.</p>}
-        </div>
-      )}
+      <DateRangePicker
+        open={calendarOpen}
+        start={customStart}
+        end={customEnd}
+        onClose={() => setCalendarOpen(false)}
+        onApply={(start, end) => {
+          setCustomStart(start);
+          setCustomEnd(end);
+          setPeriod("custom");
+          setCalendarOpen(false);
+        }}
+      />
 
       <article className="home-today-card">
         <div className="home-today-main">
