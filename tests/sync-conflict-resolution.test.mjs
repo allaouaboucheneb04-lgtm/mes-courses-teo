@@ -58,7 +58,9 @@ try {
 
   await test("the UI stops repeating unresolved conflicts, keeps its recovery draft, and backs up before overwriting",()=>{
     const code=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
-    const guarded=code.slice(code.indexOf("  useEffect(() => {\\n    if (!loaded || !user"),code.indexOf("  useEffect(() => {\\n    const retry ="));
+    const start=code.indexOf("    if (!loaded || !user || !baseline.current");
+    assert.ok(start>=0,"autosave effect found");
+    const guarded=code.slice(start,code.indexOf("  }, [courses, expenses",start));
     assert.match(code,/const \[syncConflict, setSyncConflict\] = useState\(false\)/);
     assert.match(code,/if \(syncConflict\) return;/);
     assert.ok(guarded.indexOf("localStorage.setItem(draftKey")<guarded.indexOf("if (syncConflict) return"));
