@@ -595,6 +595,15 @@ export default function Home() {
         return result;
       });
       if (syncOwner.current !== owner.uid) return;
+      // Never discard changes made while a cloud restore was in flight.
+      // The backup was created for the earlier snapshot; keep newer edits
+      // visible and ask for another explicit confirmation.
+      if (preference === "cloud" && !sameData(liveData.current, local)) {
+        setSyncConflict(true);
+        setSyncState("error");
+        setSyncError("De nouveaux changements ont été faits pendant le chargement. Ils sont conservés. Choisissez à nouveau une option.");
+        return;
+      }
       const latest = preference === "local"
         ? mergeDriverDataPreferLocal(local, liveData.current, resolved)
         : resolved;
