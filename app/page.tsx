@@ -33,7 +33,7 @@ import { House, ListOrdered, BadgeCheck, LayoutGrid, Plus, BarChart3, ShieldChec
 import DateRangePicker, { DateRangeField } from "@/components/date-range-picker";
 import SharedPayroll from "@/components/shared-payroll";
 import PayrollOverview from "@/components/payroll-overview";
-import { mergeDriverData, sameData, SyncConflict } from "@/lib/sync-merge";
+import { mergeDriverData, mergeDriverDataPreferLocal, sameData, SyncConflict } from "@/lib/sync-merge";
 import { reconcileVerification } from "@/lib/verification";
 import { photoCandidateError, photoDuplicateStatus, photoCategory, photoScreenContent, uniquePhotoCandidates, photoPreviewDuplicateStatus } from "@/lib/photo-import";
 import { defaultTaxiCategory, retainBankReceipt, validBankReceipt, type BankReceipt } from "@/lib/payroll-summary";
@@ -533,6 +533,8 @@ export default function Home() {
   const [authMessage, setAuthMessage] = useState("");
   const [syncState, setSyncState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [syncError, setSyncError] = useState("");
+  const [syncConflict, setSyncConflict] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
   const [syncRetry, setSyncRetry] = useState(0);
   type DriverData = { courses: Course[]; expenses: TaxiExpense[]; settings: AppSettings; payStatements: PayStatement[]; inspections: VehicleInspection[] };
   const baseline = useRef<DriverData | null>(null);
@@ -570,7 +572,7 @@ export default function Home() {
     const owner = user;
     const stateRef = doc(db, "drivers", owner.uid, "data", "app");
     const loadDriverData = async () => {
-      setLoaded(false); setSyncError("");
+      setLoaded(false); setSyncError(""); setSyncConflict(false);
       try {
         let migratedLegacy = false;
         const initial = await runTransaction(db, async transaction => {
@@ -601,19 +603,19 @@ export default function Home() {
             if (error instanceof SyncConflict) {
               const pending = JSON.parse(draft);
               baseline.current = normalizeData(pending.base); restored = normalizeData(pending.local);
-              setSyncError(error.message); setSyncState("error");
+              setSyncError(error.message); setSyncConflict(true); setSyncState("error");
             }
           }
         }
         applyData(restored);
         setTaxi(current => ({ ...current, category: defaultTaxiCategory(restored.settings) }));
         setLoaded(true);
-        if (sameData(restored, initial)) setSyncState("saved");
+        if (sameData(restored, initial)) { setSyncState("saved"); setSyncConflict(false); }
         unsubscribe = onSnapshot(stateRef, snapshot => {
           if (cancelled || !snapshot.exists() || snapshot.metadata.hasPendingWrites || saving.current || !baseline.current) return;
           if (!sameData(liveData.current, baseline.current)) return;
           const remote = normalizeData(snapshot.data());
-          baseline.current = remote; applyData(remote); setSyncState("saved"); setSyncError("");
+          baseline.current = remote; applyData(remote); setSyncState("saved"); setSyncError(""); setSyncConflict(false);
         }, () => { if (!cancelled) {setSyncState("error");setSyncError("Synchronisation interrompue. Vérifiez votre connexion.");} });
       } catch (error) {
         console.error(error);
@@ -627,7 +629,9 @@ export default function Home() {
     if (!loaded || !user || !baseline.current || sameData(liveData.current, baseline.current)) return;
     const owner = user;
     const draftKey = `teo-pending-${owner.uid}`;
-    try { localStorage.setItem(draftKey, JSON.stringify({ base: baseline.current, local: liveData.current })); } catch { /* The live changes remain visible if browser storage is full. */ }
+    // Keep a fresh recovery draft even while awaiting manual conflict resolution.
+    try { localStorage.setItem(draftKey, JSON.stringify({ base: baseline.current, local: liveData.current })); } catch { /* Local edits remain in memory. */ }
+    if (syncConflict) return; // The same unresolved conflict must not retry forever.
     setSyncState("saving");
     const timer = window.setTimeout(async () => {
       if (saving.current || !baseline.current || syncOwner.current !== owner.uid) return;
@@ -646,7 +650,7 @@ export default function Home() {
         if (syncOwner.current !== owner.uid) return;
         const withNewEdits = mergeDriverData(local, liveData.current, merged);
         baseline.current = merged; applyData(withNewEdits);
-        setSyncError("");
+        setSyncError(""); setSyncConflict(false);
         if (sameData(withNewEdits, merged)) {
           try { localStorage.removeItem(draftKey); } catch { /* Server save succeeded. */ }
           setSyncState("saved");
@@ -658,6 +662,7 @@ export default function Home() {
         console.error(error);
         if (syncOwner.current === owner.uid) {
           setSyncState("error");
+          setSyncConflict(error instanceof SyncConflict);
           setSyncError(error instanceof SyncConflict ? error.message : "Sauvegarde en attente. Vos changements restent sur cet appareil. Vérifiez la connexion puis réessayez.");
         }
       } finally {
@@ -666,7 +671,7 @@ export default function Home() {
       }
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [courses, expenses, settings, payStatements, inspections, loaded, user, syncRetry]);
+  }, [courses, expenses, settings, payStatements, inspections, loaded, user, syncRetry, syncConflict]);
   useEffect(() => {
     const retry = () => setSyncRetry(value => value + 1);
     window.addEventListener("online", retry);
