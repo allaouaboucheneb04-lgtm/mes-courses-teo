@@ -554,6 +554,77 @@ export default function Home() {
     liveData.current = data;
     setCourses(data.courses); setExpenses(data.expenses); setSettings(data.settings); setPayStatements(data.payStatements); setInspections(data.inspections);
   };
+
+  // A true same-field conflict cannot be fixed by retrying. The driver must
+  // choose how to resolve it; always create a private cloud backup first.
+  const resolveSyncConflict = async (preference: "local" | "cloud") => {
+    if (!user || !baseline.current || saving.current || syncBusy) return;
+    const message = preference === "local"
+      ? "Fusionner vos modifications avec les données du compte ? En cas de modification du même champ sur deux appareils, celle de cet iPhone sera retenue. Une sauvegarde de la version en ligne sera créée avant toute modification."
+      : "Charger les données du compte ? Les modifications non enregistrées de cet iPhone seront conservées dans une sauvegarde privée avant le chargement.";
+    if (!window.confirm(message)) return;
+    const owner = user;
+    const base = baseline.current;
+    const local = liveData.current;
+    const draftKey = `teo-pending-${owner.uid}`;
+    const backupRef = doc(db, "drivers", owner.uid, "syncBackups", `${preference}-${Date.now()}`);
+    const stateRef = doc(db, "drivers", owner.uid, "data", "app");
+    saving.current = true;
+    setSyncBusy(true);
+    try {
+      const resolved = await runTransaction(db, async transaction => {
+        const snapshot = await transaction.get(stateRef);
+        if (!snapshot.exists()) throw new Error("Compte introuvable.");
+        const remote = normalizeData(snapshot.data());
+        const result = preference === "local"
+          ? mergeDriverDataPreferLocal(base, local, remote)
+          : remote;
+        // Transactional backup: if the backup cannot be written, the cloud
+        // document is never replaced and unsaved device changes remain intact.
+        transaction.set(backupRef, {
+          source: preference === "local" ? "cloud-before-conflict" : "device-before-cloud",
+          savedAt: serverTimestamp(),
+          data: preference === "local" ? remote : local,
+          base: preference === "local" ? {} : base,
+        });
+        if (preference === "local") {
+          transaction.set(stateRef, {
+            ...result, ownerEmail: owner.email || "", updatedAt: serverTimestamp()
+          }, {merge: true});
+        }
+        return result;
+      });
+      if (syncOwner.current !== owner.uid) return;
+      const latest = preference === "local"
+        ? mergeDriverDataPreferLocal(local, liveData.current, resolved)
+        : resolved;
+      baseline.current = resolved;
+      applyData(latest);
+      setSyncConflict(false);
+      setSyncError("");
+      if (sameData(latest, resolved)) {
+        try { localStorage.removeItem(draftKey); } catch { /* Cloud save succeeded. */ }
+        setSyncState("saved");
+      } else {
+        try { localStorage.setItem(draftKey, JSON.stringify({base:resolved, local:latest})); } catch { /* Keep in memory. */ }
+        setSyncState("saving");
+      }
+      setNotice(preference === "local"
+        ? "Modifications fusionnées. Une copie de sécurité est conservée."
+        : "Version du compte chargée. Une copie locale est conservée en sauvegarde.");
+    } catch (error) {
+      console.error(error);
+      if (syncOwner.current === owner.uid) {
+        setSyncConflict(true);
+        setSyncState("error");
+        setSyncError("La résolution n’a pas abouti. Vos données sur cet appareil sont conservées. Vérifiez votre connexion et réessayez.");
+      }
+    } finally {
+      saving.current = false;
+      setSyncBusy(false);
+      setSyncRetry(value => value + 1);
+    }
+  };
   const [photoCourses, setPhotoCourses] = useState<PhotoCourse[]>([]);
   const [photoReading, setPhotoReading] = useState(false);
   const [photoProgress, setPhotoProgress] = useState(0);
