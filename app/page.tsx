@@ -14,7 +14,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { doc, getDoc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
@@ -2085,19 +2085,26 @@ export default function Home() {
           <nav aria-label="Autres pages">{([{id:"statistics",label:"📊 Statistiques"},{id:"sev",label:"☑ SEV"},{id:"inspection",label:"🚕 Vérification sommaire"},{id:"expenses",label:"🧾 Dépenses"},{id:"settings",label:"⚙ Réglages"}] as const).map(item=><button type="button" key={item.id} aria-current={mobilePage===item.id?"page":undefined} onClick={event=>{setMobilePage(item.id);setEditingId(null);if(item.id === "settings")setTab("settings");const menu=event.currentTarget.closest("details");if(menu)menu.open=false;window.scrollTo({top:0,behavior:"smooth"});}}>{item.label}</button>)}</nav>
         </details>
       </header>
-      {syncError && <section className="error-box" role="alert">
+      {syncError && <section className="error-box sync-alert" role="alert">
         <p>{syncError}</p>
-        <button type="button" onClick={() => setSyncRetry(value => value + 1)}>Réessayer</button>
-        <button type="button" onClick={async () => {
-          if (!window.confirm("Charger la version sauvegardée dans votre compte et abandonner les modifications non enregistrées de cet appareil ?")) return;
-          try {
-            const snapshot = await getDoc(doc(db, "drivers", user.uid, "data", "app"));
-            if (!snapshot.exists()) return;
-            const remote = normalizeData(snapshot.data());
-            baseline.current = remote; applyData(remote); localStorage.removeItem(`teo-pending-${user.uid}`);
-            setSyncError(""); setSyncState("saved");
-          } catch { setSyncError("Impossible de charger la version sauvegardée. Vos changements sont conservés."); }
-        }}>Charger la version sauvegardée</button>
+        {syncConflict ? (
+          <>
+            <p className="sync-alert-explanation">
+              Deux versions d’une même information sont différentes. Les courses de cet appareil restent conservées.
+              Choisissez comment les réunir : une sauvegarde privée sera créée avant tout remplacement.
+            </p>
+            <div className="sync-alert-actions">
+              <button type="button" disabled={syncBusy} onClick={() => void resolveSyncConflict("local")}>
+                {syncBusy ? "Synchronisation…" : "Fusionner et garder mes changements"}
+              </button>
+              <button type="button" disabled={syncBusy} onClick={() => void resolveSyncConflict("cloud")}>
+                Charger la version du compte (avec sauvegarde)
+              </button>
+            </div>
+          </>
+        ) : (
+          <button type="button" onClick={() => setSyncRetry(value => value + 1)}>Réessayer la sauvegarde</button>
+        )}
       </section>}
       <div className={`shell page-${mobilePage} tab-${tab}`}>
         {mobilePage === "statistics" && <StatisticsPage courses={courses.map(course=>({...course,serviceFee:serviceFee(course,settings),airportFee:course.type === "taxi" && course.taxiCategory === "aeroport" ? settings.airportFee : 0}))} today={today()} dailyGoals={settings.dailyGoals} goalsEnabled={settings.dailyGoalEnabled} onSettings={()=>{setMobilePage("settings");setTab("settings");window.scrollTo({top:0,behavior:"smooth"});}} />}
