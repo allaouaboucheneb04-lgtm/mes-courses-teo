@@ -29,6 +29,8 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Installer les dépendances
         run: npm ci
+      - name: Vérifier la résolution des conflits de synchronisation
+        run: node --test tests/sync-conflict-resolution.test.mjs
       - name: Construire le site
         run: npm run build:github
       - name: Vérifier les fichiers publiables
