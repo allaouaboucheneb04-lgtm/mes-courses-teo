@@ -77,19 +77,30 @@ test("saved transport adapté fare uses exact minutes before rounding and respec
   assert.equal(overnight.item.billedDuration,2+10/60);
 });
 
-test("daily objective starts at zero while the accounting net still includes fees", () => {
-  const expression = extract("  const dailyGoalEarned = Math.max(0, dailyNet);", "  // Prepared once for all home filters:");
-  const progress = new Function("dailyGoal","dailyNet",compile(expression + "\nreturn {dailyGoalEarned,dailyGoalProgress};"));
-  assert.deepEqual(progress(415,-226.18),{dailyGoalEarned:0,dailyGoalProgress:0});
-  assert.deepEqual(progress(415,0),{dailyGoalEarned:0,dailyGoalProgress:0});
-  assert.deepEqual(progress(100,70),{dailyGoalEarned:70,dailyGoalProgress:70});
-  assert.deepEqual(progress(100,120),{dailyGoalEarned:120,dailyGoalProgress:100});
-  assert.deepEqual(progress(0,70),{dailyGoalEarned:70,dailyGoalProgress:0});
+test("daily objective follows the actual rides, not weekly overhead", () => {
+  const expression = extract(
+    "  const dailyGoalEarned = round2(Math.max(",
+    "  // Prepared once for all home filters:"
+  );
+  const progress = new Function(
+    "dailyGoal", "selectedDayTotals", "selectedDayAirportRideTotal", "round2",
+    compile(expression + "\nreturn {dailyGoalEarned,dailyGoalProgress};")
+  );
+  const run = (goal, gross, fees, currentAirportLevy) =>
+    progress(goal, {gross, fees}, currentAirportLevy,
+      n => Math.round(n * 100) / 100);
+  assert.deepEqual(run(415,0,0,0), {dailyGoalEarned:0,dailyGoalProgress:0});
+  assert.deepEqual(run(415,129.92,16.69,12.88), {
+    dailyGoalEarned:100.35, dailyGoalProgress:100.35 / 415 * 100,
+  });
+  assert.deepEqual(run(100,70,0,0), {dailyGoalEarned:70,dailyGoalProgress:70});
+  assert.deepEqual(run(100,120,0,0), {dailyGoalEarned:120,dailyGoalProgress:100});
+  assert.deepEqual(run(415,0,0,12.88), {dailyGoalEarned:0,dailyGoalProgress:0});
   const goal = extract('<div className="daily-goal">','<div className="mini">');
+  assert.match(goal,/Objectif des courses du/);
   assert.match(goal,/money\(dailyGoalEarned\)/);
   assert.match(goal,/dailyGoalEarned >= dailyGoal/);
-  assert.match(goal,/dailyGoal - dailyGoalEarned/);
-  const accounting = extract("  const dailyNet = round2", "  // An objective is a progress counter");
+  const accounting = extract("  const dailyNet = round2", "  // The course objective");
   assert.match(accounting,/selectedDayCompanyFee - selectedDayExpenseTotal/);
   assert.match(code,/Net après dépenses[\s\S]*?money\(dailyNet\)/);
 });
