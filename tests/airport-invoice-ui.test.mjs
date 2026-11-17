@@ -35,21 +35,25 @@ test("the invoice stays on the same period when the course date changes from Sun
   assert.doesNotMatch(page,/const airportWeek = mondayWeekForDate\(selectedDate\)/);
 });
 
-test("collapsed invoice shows charged airport fees, and Monday ride fees as deferred only",()=>{
+test("invoice displays Monday carry and Tuesday rides as separate amounts",()=>{
   assert.match(page,/const selectedDayCourses = useMemo/);
-  assert.match(page,/selectedDayCourses\.filter\(\(course\) => course\.type === "taxi" && course\.taxiCategory === "aeroport"\)/);
   assert.match(page,/const selectedDayAirportRideTotal = round2\(selectedDayAirportCourses\.length \* settings\.airportFee\)/);
-  assert.match(page,/const selectedDayAirportFeeCount = airportLevyCount\(/);
-  const summary = weeklySummary.slice(weeklySummary.indexOf('<details className="airport-invoice-summary">' ), weeklySummary.indexOf("</summary>"));
-  assert.match(summary,/className="airport-invoice-daily"/);
-  assert.match(summary,/Déduites le/);
-  assert.match(summary,/selectedDayAirportFeeCount/);
+  assert.match(page,/const selectedDayAirportBreakdown = airportLevyDayBreakdown\(/);
+  const summary = weeklySummary.slice(weeklySummary.indexOf('<details className="airport-invoice-summary">'), weeklySummary.indexOf("</summary>"));
+  assert.match(summary,/className="airport-invoice-split"/);
+  assert.match(summary,/Report du lundi/);
+  assert.match(summary,/selectedDayAirportBreakdown\.carriedCount/);
+  assert.match(summary,/selectedDayAirportBreakdown\.carriedTotal/);
+  assert.match(summary,/Courses du mardi/);
+  assert.match(summary,/selectedDayAirportBreakdown\.sameDayCount/);
+  assert.match(summary,/selectedDayAirportBreakdown\.sameDayTotal/);
+  assert.match(summary,/selectedDayAirportBreakdown\.totalCount/);
   assert.match(summary,/money\(selectedDayAirportFeeTotal\)/);
   assert.match(summary,/selectedDayIsMonday && selectedDayAirportCourses\.length > 0/);
   assert.match(summary,/money\(selectedDayAirportRideTotal\).*reportés au mardi/s);
   assert.match(summary,/airport-invoice-deferred/);
   assert.match(css,/\.airport-invoice-daily\s*\{/);
-  assert.match(weeklySummary,/money\(selectedDayAirportFeeTotal\)/);
+  assert.match(css,/\.airport-invoice-split\s*\{/);
   assert.match(weeklySummary,/Les courses aéroport du lundi sont reportées au mardi suivant/);
 });
 
