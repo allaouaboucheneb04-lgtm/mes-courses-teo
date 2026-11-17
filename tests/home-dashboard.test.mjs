@@ -33,6 +33,8 @@ test("dashboard is rendered using live course totals and not screenshot demo val
   assert.match(dashboard,/home-progress-ring/);
   assert.match(dashboard,/money\(periodSummary\.goal\)/);
   assert.match(dashboard,/periodSummary\.net/);
+  assert.match(dashboard,/periodSummary\.goalEarned \/ periodSummary\.goal/);
+  assert.match(dashboard,/Objectif des courses \{money\(periodSummary\.goalEarned\)\}/);
   assert.match(dashboard,/homePeriodBounds\(period, currentDate, customStart, customEnd\)/);
   assert.match(dashboard,/className="home-period-title"/);
   assert.match(dashboard,/aria-expanded=\{periodMenuOpen\}/);
