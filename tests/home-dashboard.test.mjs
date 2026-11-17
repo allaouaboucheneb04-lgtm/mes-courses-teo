@@ -29,7 +29,7 @@ test("new home screen is the default and preserves the other five destinations",
 });
 
 test("dashboard is rendered using live course totals and not screenshot demo values",()=>{
-  assert.match(dashboard,/NET · \{periodLabel\.toLocaleUpperCase/);
+  assert.match(dashboard,/NET AUJOURD’HUI/);
   assert.match(dashboard,/home-progress-ring/);
   assert.match(dashboard,/money\(periodSummary\.goal\)/);
   assert.match(dashboard,/periodSummary\.rideNet/);
