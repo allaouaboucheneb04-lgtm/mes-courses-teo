@@ -114,7 +114,7 @@ export default function HomeDashboard({
     periodRides, periodExpenses, bounds, currentDate, periodSettings
   ), [periodRides, periodExpenses, bounds, currentDate, periodSettings]);
   const percentage = periodSummary.valid && periodSummary.goal > 0
-    ? Math.min(100, Math.max(0, Math.round((periodSummary.net / periodSummary.goal) * 100))) : 0;
+    ? Math.min(100, Math.max(0, Math.round((periodSummary.goalEarned / periodSummary.goal) * 100))) : 0;
   const periodLabel = ({
     day: "Aujourd’hui", week: "Cette semaine", month: "Ce mois",
     year: "Cette année", custom: "Personnalisé",
@@ -218,7 +218,7 @@ export default function HomeDashboard({
             <span className="home-overline">NET · {periodLabel.toLocaleUpperCase("fr-CA")}</span>
             <strong className="home-big-number">{periodSummary.valid ? money(periodSummary.net) : "—"}</strong>
             {goalsEnabled && periodSummary.valid && periodSummary.goal > 0 ? (
-              <p>{period === "day" ? "Objectif" : "Objectif à date"} {money(periodSummary.goal)} <span className="home-target-percent">· {percentage} %</span></p>
+              <p>Objectif des courses {money(periodSummary.goalEarned)} / {money(periodSummary.goal)} <span className="home-target-percent">· {percentage} %</span></p>
             ) : !goalsEnabled ? (
               <button className="home-goal-link" type="button" onClick={onSettings}>
                 <Target size={15} /> Définir un objectif
