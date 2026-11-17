@@ -20,7 +20,7 @@ import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
 import { expenseTotal, weeklyCompanyFeeTotal } from "@/lib/expenses";
-import { airportLevyTotal, airportLevyAccountingDate } from "@/lib/airport-levy";
+import { airportLevyTotal, airportLevyCount, airportLevyAccountingDate } from "@/lib/airport-levy";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
@@ -999,7 +999,11 @@ export default function Home() {
     () => selectedDayCourses.filter((course) => course.type === "taxi" && course.taxiCategory === "aeroport"),
     [selectedDayCourses],
   );
+  const selectedDayIsMonday = new Date(selectedDate + "T12:00:00Z").getUTCDay() === 1;
   const selectedDayAirportRideTotal = round2(selectedDayAirportCourses.length * settings.airportFee);
+  const deferredAirportDate = selectedDayIsMonday
+    ? airportLevyAccountingDate(selectedDate)
+    : null;
   const selectedDayTotals = useMemo(
     () =>
       selectedDayCourses.reduce(
@@ -1016,6 +1020,12 @@ export default function Home() {
     courses,
     (date) => date === selectedDate,
     settings.airportFee,
+  );
+  // Display fees by accounting date, never just by ride date:
+  // on Mondays, the day's airport rides have 0 $ due until Tuesday.
+  const selectedDayAirportFeeCount = airportLevyCount(
+    courses,
+    (accountingDate) => accountingDate === selectedDate,
   );
   const selectedDayCompanyFee =
     new Date(selectedDate + "T12:00").getDay() === 2
@@ -2256,6 +2266,7 @@ export default function Home() {
               <span className="airport-invoice-label">
                 <b>Facture aéroport</b>
                 <small>Lundi–dimanche · {airportWeek.start} au {airportWeek.end}</small>
+                <small>Déjà incluse dans les frais de la semaine</small>
               </span>
               <span className="airport-invoice-total">
                 <b>{weeklyAirportCourses.length} course{weeklyAirportCourses.length !== 1 ? "s" : ""}</b>
@@ -2263,14 +2274,20 @@ export default function Home() {
               </span>
               <span className="airport-invoice-chevron" aria-hidden="true">⌄</span>
               <span className="airport-invoice-daily">
-                <span>Redevance du jour · {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("fr-CA", { day: "numeric", month: "short" })}</span>
-                <b>{selectedDayAirportCourses.length} course{selectedDayAirportCourses.length !== 1 ? "s" : ""} · {money(selectedDayAirportRideTotal)}</b>
+                <span>Déduites le {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("fr-CA", { day: "numeric", month: "short" })}</span>
+                <b>{selectedDayAirportFeeCount} course{selectedDayAirportFeeCount !== 1 ? "s" : ""} · {money(selectedDayAirportFeeTotal)}</b>
               </span>
+              {selectedDayIsMonday && selectedDayAirportCourses.length > 0 && deferredAirportDate && (
+                <span className="airport-invoice-deferred">
+                  {selectedDayAirportCourses.length} course{selectedDayAirportCourses.length !== 1 ? "s" : ""} de ce lundi :
+                  <b> {money(selectedDayAirportRideTotal)} reportés au mardi {new Date(`${deferredAirportDate}T12:00:00`).toLocaleDateString("fr-CA", { day:"numeric", month:"short" })}</b>
+                </span>
+              )}
             </summary>
             <div className="airport-invoice-detail">
-              <p>Facture prévue le lundi <b>{airportWeek.invoice}</b>, pour les courses aéroport du lundi au dimanche.</p>
+              <p>Facture du lundi <b>{airportWeek.invoice}</b>, pour les courses aéroport de la période affichée. Son montant est déjà comptabilisé dans les frais du bilan hebdomadaire, pas déduit une deuxième fois.</p>
               <p>Redevances déduites du bilan de revenus du mardi au lundi : <b>{money(airportFeeTotal)}</b>.</p>
-              <p>La redevance du jour correspond aux courses effectuées à la date sélectionnée. Pour les courses du lundi, elle figure sur la facture aéroport suivante et est déduite de la semaine de revenus commençant le mardi suivant.</p>
+              <p>Les montants « Déduites le » suivent la date comptable, pas la date des courses. Les courses aéroport du lundi sont reportées au mardi suivant, dans la nouvelle semaine de revenus.</p>
               <p>Redevances déduites du revenu le {formatCourseDate(selectedDate)} : <b>{money(selectedDayAirportFeeTotal)}</b>.</p>
             </div>
           </details>
