@@ -116,7 +116,7 @@ try {
       {type:"taxi",date:"2026-11-17",taxiCategory:"aeroport",amount:60,tip:0,serviceDeductions:8},
       {type:"taxi",date:"2026-11-17",taxiCategory:"aeroport",amount:69.92,tip:0,serviceDeductions:8.69},
     ];
-    const day=summarizeHomePeriod(tuesdayRides,[],{start:"2026-11-17",end:"2026-11-17"},"2026-11-17",settings);
+    const day=summarizeHomePeriod(tuesdayRides,[],{start:"2026-11-17",end:"2026-11-17"},"2026-11-17",{...settings,dailyGoals:[100,415,415,300,300,150,150]});
     assert.equal(day.gross,129.92);
     assert.equal(day.airportFees,25.76);
     assert.equal(day.serviceFees,16.69);
