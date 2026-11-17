@@ -128,8 +128,10 @@ try {
 
   await test("home displays 113.23 net today and -112.95 real weekly net with the same courses",()=>{
     const entries=[
-      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:60,tip:0,serviceDeductions:7},
-      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:70,tip:0,serviceDeductions:8},
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:30,tip:0,serviceDeductions:3},
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:35,tip:0,serviceDeductions:4},
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:40,tip:0,serviceDeductions:5},
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:45,tip:0,serviceDeductions:6},
       {type:"taxi",date:"2026-11-17",taxiCategory:"centre-ville",amount:60,tip:0,serviceDeductions:8},
       {type:"taxi",date:"2026-11-17",taxiCategory:"centre-ville",amount:69.92,tip:0,serviceDeductions:8.69},
     ];
