@@ -20,6 +20,7 @@ export type HomePeriodSummary = {
   expenses: number;
   fees: number;
   net: number;
+  rideNet: number;
   goal: number;
   goalEarned: number;
   count: number;
@@ -79,7 +80,7 @@ export function summarizeHomePeriod(
 ): HomePeriodSummary {
   const empty: HomePeriodSummary = {
     valid:false,gross:0,tips:0,serviceFees:0,airportFees:0,
-    companyFees:0,expenses:0,fees:0,net:0,goal:0,goalEarned:0,count:0,
+    companyFees:0,expenses:0,fees:0,net:0,rideNet:0,goal:0,goalEarned:0,count:0,
   };
   if (!bounds || !validDate(bounds.start) || !validDate(bounds.end)
       || !validDate(currentDate) || bounds.start > bounds.end) return empty;
@@ -103,9 +104,8 @@ export function summarizeHomePeriod(
   const directAirportFeeCents = included.filter(ride =>
     ride.type === "taxi" && ride.taxiCategory === "aeroport"
   ).length * Math.round(settings.airportFee * 100);
-  const goalEarned = round2(Math.max(
-    0, gross - serviceFees - directAirportFeeCents / 100,
-  ));
+  const rideNet = round2(gross - serviceFees - directAirportFeeCents / 100);
+  const goalEarned = Math.max(0, rideNet);
   let goalCents = 0;
   if (settings.dailyGoalEnabled && start <= end) {
     const cursor = utcDate(start);
@@ -118,5 +118,5 @@ export function summarizeHomePeriod(
     }
   }
   return {valid:true,gross,tips,serviceFees,airportFees,companyFees,expenses,fees,
-    net:round2(gross-fees),goal:goalCents/100,goalEarned,count:included.length};
+    net:round2(gross-fees),rideNet,goal:goalCents/100,goalEarned,count:included.length};
 }
