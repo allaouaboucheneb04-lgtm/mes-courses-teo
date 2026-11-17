@@ -32,7 +32,7 @@ jobs:
       - name: Vérifier la résolution des conflits de synchronisation
         run: node --test tests/sync-conflict-resolution.test.mjs
       - name: Vérifier les redevances aéroport et le report du lundi
-        run: node --test tests/airport-levy.test.mjs tests/airport-invoice-ui.test.mjs tests/financial-audit.test.mjs
+        run: node --test --test-concurrency=1 tests/airport-levy.test.mjs tests/airport-invoice-ui.test.mjs tests/financial-audit.test.mjs
       - name: Construire le site
         run: npm run build:github
       - name: Vérifier les fichiers publiables
