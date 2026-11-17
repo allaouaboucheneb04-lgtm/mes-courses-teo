@@ -50,3 +50,37 @@ export function airportLevyCount(
     isAirportLevyRide(ride) && includesDate(airportLevyAccountingDate(ride.date))
   ).length;
 }
+
+
+/**
+ * Explain the levy charged on a particular accounting date. Tuesday can include
+ * charges from Monday's airport rides plus Tuesday's own airport rides.
+ * This breakdown is for display only; it does not alter the accounting date.
+ */
+export function airportLevyDayBreakdown(
+  rides: ReadonlyArray<AirportLevyRide>,
+  accountingDate: string,
+  feePerRide: number,
+) {
+  const date = new Date(accountingDate + "T12:00:00Z");
+  const isTuesday = Number.isFinite(date.getTime()) && date.getUTCDay() === 2;
+  const previousMonday = new Date(date);
+  previousMonday.setUTCDate(previousMonday.getUTCDate() - 1);
+  const mondayDate = isTuesday ? previousMonday.toISOString().slice(0, 10) : null;
+  const carriedCount = mondayDate
+    ? rides.filter(ride => isAirportLevyRide(ride) && ride.date === mondayDate).length
+    : 0;
+  const sameDayCount = isTuesday || date.getUTCDay() !== 1
+    ? rides.filter(ride => isAirportLevyRide(ride) && ride.date === accountingDate).length
+    : 0;
+  const cents = Number.isFinite(feePerRide) ? Math.round(feePerRide * 100) : 0;
+  return {
+    mondayDate,
+    carriedCount,
+    carriedTotal: carriedCount * cents / 100,
+    sameDayCount,
+    sameDayTotal: sameDayCount * cents / 100,
+    totalCount: carriedCount + sameDayCount,
+    total: (carriedCount + sameDayCount) * cents / 100,
+  };
+}
