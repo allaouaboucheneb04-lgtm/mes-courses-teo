@@ -78,7 +78,7 @@ test("saved transport adapté fare uses exact minutes before rounding and respec
 });
 
 test("daily objective starts at zero while the accounting net still includes fees", () => {
-  const expression = extract("  const dailyGoalEarned = Math.max(0, dailyNet);", "  // The homepage is driven by");
+  const expression = extract("  const dailyGoalEarned = Math.max(0, dailyNet);", "  // Prepared once for all home filters:");
   const progress = new Function("dailyGoal","dailyNet",compile(expression + "\nreturn {dailyGoalEarned,dailyGoalProgress};"));
   assert.deepEqual(progress(415,-226.18),{dailyGoalEarned:0,dailyGoalProgress:0});
   assert.deepEqual(progress(415,0),{dailyGoalEarned:0,dailyGoalProgress:0});
