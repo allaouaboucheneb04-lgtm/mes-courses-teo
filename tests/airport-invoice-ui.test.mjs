@@ -35,15 +35,19 @@ test("the invoice stays on the same period when the course date changes from Sun
   assert.doesNotMatch(page,/const airportWeek = mondayWeekForDate\(selectedDate\)/);
 });
 
-test("daily airport levy stays visible in the collapsed invoice and reflects rides on the selected date",()=>{
+test("collapsed invoice shows charged airport fees, and Monday ride fees as deferred only",()=>{
   assert.match(page,/const selectedDayCourses = useMemo/);
   assert.match(page,/selectedDayCourses\.filter\(\(course\) => course\.type === "taxi" && course\.taxiCategory === "aeroport"\)/);
   assert.match(page,/const selectedDayAirportRideTotal = round2\(selectedDayAirportCourses\.length \* settings\.airportFee\)/);
+  assert.match(page,/const selectedDayAirportFeeCount = airportLevyCount\(/);
   const summary = weeklySummary.slice(weeklySummary.indexOf('<details className="airport-invoice-summary">' ), weeklySummary.indexOf("</summary>"));
   assert.match(summary,/className="airport-invoice-daily"/);
-  assert.match(summary,/Redevance du jour/);
-  assert.match(summary,/money\(selectedDayAirportRideTotal\)/);
-  assert.match(summary,/selectedDayAirportCourses\.length/);
+  assert.match(summary,/Déduites le/);
+  assert.match(summary,/selectedDayAirportFeeCount/);
+  assert.match(summary,/money\(selectedDayAirportFeeTotal\)/);
+  assert.match(summary,/selectedDayIsMonday && selectedDayAirportCourses\.length > 0/);
+  assert.match(summary,/money\(selectedDayAirportRideTotal\).*reportés au mardi/s);
+  assert.match(summary,/airport-invoice-deferred/);
   assert.match(css,/\.airport-invoice-daily\s*\{/);
   assert.match(weeklySummary,/money\(selectedDayAirportFeeTotal\)/);
   assert.match(weeklySummary,/Pour les courses du lundi/);
@@ -60,10 +64,11 @@ test("the taxi form keeps a short contextual note, immediately followed by the s
 });
 
 test("expanded invoice distinguishes Monday–Sunday billing from Tuesday–Monday accounting",()=>{
-  assert.match(weeklySummary,/Facture prévue le lundi/);
+  assert.match(weeklySummary,/Facture du lundi/);
+  assert.match(weeklySummary,/déjà comptabilisé dans les frais du bilan hebdomadaire/);
   assert.match(weeklySummary,/Redevances déduites du bilan de revenus du mardi au lundi/);
   assert.match(weeklySummary,/money\(airportFeeTotal\)/);
-  assert.match(weeklySummary,/Pour les courses du lundi, elle figure sur la facture aéroport suivante/);
+  assert.match(weeklySummary,/Les courses aéroport du lundi sont reportées au mardi suivant/);
   assert.match(weeklySummary,/le mardi suivant/);
   assert.match(css,/\.airport-invoice-summary/);
   assert.match(css,/\.airport-invoice-summary > summary:focus-visible/);
