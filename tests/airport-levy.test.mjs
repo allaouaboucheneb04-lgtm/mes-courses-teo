@@ -4,7 +4,7 @@ import { createServer } from "vite";
 
 const vite = await createServer({configFile:false,server:{middlewareMode:true,hmr:false}});
 after(() => vite.close());
-const {airportLevyAccountingDate,airportLevyTotal,airportLevyCount} =
+const {airportLevyAccountingDate,airportLevyTotal,airportLevyCount,airportLevyDayBreakdown} =
   await vite.ssrLoadModule("/lib/airport-levy.ts");
 const {comparisonTotals} = await vite.ssrLoadModule("/lib/comparison.ts");
 const {feePeriods} = await vite.ssrLoadModule("/lib/sev.ts");
@@ -88,4 +88,20 @@ test("Monday 16 November: two airport rides are recorded but zero levies deducte
   assert.equal(airportLevyTotal(all,includes("2026-11-17","2026-11-17"),6.44),12.88);
   assert.equal(airportLevyTotal(all,includes("2026-11-10","2026-11-16"),6.44),135.24);
   assert.equal(all.filter(ride=>ride.date==="2026-11-16").length,2);
+});
+
+test("Tuesday 17 November shows Monday carried levies and Tuesday levies separately",()=>{
+  const monday=[airport("2026-11-16"),{...airport("2026-11-16"),id:"monday2"}];
+  const tuesday=[airport("2026-11-17"),{...airport("2026-11-17"),id:"tuesday2"}];
+  const all=[...monday,...tuesday];
+  assert.deepEqual(airportLevyDayBreakdown(all,"2026-11-17",6.44),{
+    mondayDate:"2026-11-16",
+    carriedCount:2,carriedTotal:12.88,
+    sameDayCount:2,sameDayTotal:12.88,
+    totalCount:4,total:25.76,
+  });
+  assert.equal(airportLevyTotal(all,includes("2026-11-17","2026-11-17"),6.44),25.76);
+  assert.equal(airportLevyDayBreakdown(all,"2026-11-16",6.44).total,0);
+  const wednesday=[...all,airport("2026-11-18")];
+  assert.equal(airportLevyDayBreakdown(wednesday,"2026-11-18",6.44).total,6.44);
 });
