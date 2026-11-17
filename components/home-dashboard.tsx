@@ -215,20 +215,20 @@ export default function HomeDashboard({
       <article className="home-today-card">
         <div className="home-today-main">
           <div className="home-today-income">
-            <span className="home-overline">NET · {periodLabel.toLocaleUpperCase("fr-CA")}</span>
-            <strong className="home-big-number">{periodSummary.valid ? money(periodSummary.net) : "—"}</strong>
-            {goalsEnabled && periodSummary.valid && periodSummary.goal > 0 ? (
-              <p>Objectif des courses {money(periodSummary.goalEarned)} / {money(periodSummary.goal)} <span className="home-target-percent">· {percentage} %</span></p>
-            ) : !goalsEnabled ? (
+            <span className="home-overline">{period === "day" ? "NET AUJOURD’HUI" : `NET · ${periodLabel.toLocaleUpperCase("fr-CA")}`}</span>
+            <strong className="home-big-number">{periodSummary.valid ? money(periodSummary.rideNet) : "—"}</strong>
+            <div className="home-week-net-inline">
+              <span>Net réel de la semaine</span>
+              <strong>{money(weekNet)}</strong>
+            </div>
+            {!goalsEnabled && (
               <button className="home-goal-link" type="button" onClick={onSettings}>
                 <Target size={15} /> Définir un objectif
               </button>
-            ) : (
-              <p className="home-goal-empty">Aucun objectif défini pour cette période.</p>
             )}
           </div>
           <div className="home-progress-ring" role="progressbar"
-            aria-label="Progression de l’objectif sur la période choisie"
+            aria-label={`Progression de l’objectif : ${periodSummary.valid ? money(periodSummary.goalEarned) : "—"} sur ${periodSummary.valid ? money(periodSummary.goal) : "—"}`}
             aria-valuemin={0} aria-valuemax={100} aria-valuenow={percentage}>
             <svg viewBox="0 0 100 100" aria-hidden="true">
               <circle cx="50" cy="50" r="40" stroke="#e0ecec" strokeWidth="9" fill="none" />
