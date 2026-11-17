@@ -4754,6 +4754,21 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.airport-invoice-deferred {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  gap: 3px 7px;
+  padding-top: 2px;
+  color: #526b70;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.airport-invoice-deferred b {
+  color: #08666a;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
 .airport-invoice-summary[open] .airport-invoice-chevron { transform: rotate(180deg); }
 .airport-invoice-detail {
   padding: 11px 15px 14px;
