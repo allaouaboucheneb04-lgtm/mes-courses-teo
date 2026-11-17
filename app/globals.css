@@ -5386,3 +5386,28 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .sync-alert-actions { display: grid; grid-template-columns: 1fr; }
   .sync-alert button { width: 100%; }
 }
+
+
+/* Accueil: le net du jour correspond aux courses après leurs frais directs;
+   la ligne secondaire conserve le vrai net comptable de la semaine. */
+.home-week-net-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 8px;
+  margin-top: 8px;
+  color: #6a8085;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.home-week-net-inline strong {
+  color: #2c5359;
+  font-size: 14px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+.home-today-income .home-goal-link { margin-top: 4px; }
+@media (max-width: 760px) {
+  .home-week-net-inline { font-size: 11px; gap: 3px 6px; }
+  .home-week-net-inline strong { font-size: 12px; }
+}
