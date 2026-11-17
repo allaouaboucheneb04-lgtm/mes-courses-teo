@@ -56,6 +56,7 @@ try {
     assert.equal(day.fees,21.41);
     assert.equal(day.net,97.51);
     assert.equal(day.goal,415);
+    assert.equal(day.goalEarned,102.51);
   });
 
   await test("weekly dashboard counts Monday airport levy on Tuesday, even without Monday income",()=>{
@@ -69,6 +70,7 @@ try {
     assert.equal(week.fees,236.27);
     assert.equal(week.net,-37.35);
     assert.equal(week.goal,615); // Tuesday and Wednesday, not future days.
+    assert.equal(week.goalEarned,174.51);
   });
 
   await test("monthly dashboard counts all Tuesdays and ignores future rides or expenses",()=>{
@@ -83,6 +85,7 @@ try {
     assert.equal(month.fees,479.13);
     assert.equal(month.net,-85.21);
     assert.ok(month.goal > 615);
+    assert.equal(month.goalEarned,335.63);
   });
 
   await test("custom boundaries and year include service, company and airport charges by accounting dates",()=>{
@@ -106,11 +109,29 @@ try {
     assert.ok(year.goal > custom.goal);
   });
 
+  await test("Tuesday 17 November goal counts its rides even with a negative accounting net",()=>{
+    const tuesdayRides=[
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:60,tip:0,serviceDeductions:7},
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:70,tip:0,serviceDeductions:8},
+      {type:"taxi",date:"2026-11-17",taxiCategory:"aeroport",amount:60,tip:0,serviceDeductions:8},
+      {type:"taxi",date:"2026-11-17",taxiCategory:"aeroport",amount:69.92,tip:0,serviceDeductions:8.69},
+    ];
+    const day=summarizeHomePeriod(tuesdayRides,[],{start:"2026-11-17",end:"2026-11-17"},"2026-11-17",settings);
+    assert.equal(day.gross,129.92);
+    assert.equal(day.airportFees,25.76);
+    assert.equal(day.serviceFees,16.69);
+    assert.equal(day.companyFees,200.42);
+    assert.equal(day.net,-112.95);
+    assert.equal(day.goalEarned,100.35);
+    assert.equal(Math.round(day.goalEarned/day.goal*100),24);
+  });
+
   await test("invalid custom dates show unavailable figures, not misleading zeros",()=>{
     const invalid=summary("custom","2026-11-12","2026-11-11");
     assert.equal(invalid.valid,false);
     assert.equal(invalid.count,0);
     assert.equal(invalid.goal,0);
+    assert.equal(invalid.goalEarned,0);
   });
 } finally {
   await vite.close();
