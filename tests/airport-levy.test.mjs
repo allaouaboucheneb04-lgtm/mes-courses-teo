@@ -76,3 +76,16 @@ test("change in airport fee settings recalculates dates without modifying stored
   assert.equal(airportLevyTotal(rides,includes("2026-11-10","2026-11-16"),7.25),14.5);
   assert.equal(JSON.stringify(rides),snapshot);
 });
+
+
+test("Monday 16 November: two airport rides are recorded but zero levies deducted until Tuesday 17",()=>{
+  const monday=[airport("2026-11-16"),{...airport("2026-11-16"),id:"monday-2"}];
+  const previousInvoice=Array.from({length:21},(_,index)=>({...airport("2026-11-10"),id:"past-"+index}));
+  const all=[...previousInvoice,...monday];
+  assert.equal(airportLevyCount(all,includes("2026-11-16","2026-11-16")),0);
+  assert.equal(airportLevyTotal(all,includes("2026-11-16","2026-11-16"),6.44),0);
+  assert.equal(airportLevyCount(all,includes("2026-11-17","2026-11-17")),2);
+  assert.equal(airportLevyTotal(all,includes("2026-11-17","2026-11-17"),6.44),12.88);
+  assert.equal(airportLevyTotal(all,includes("2026-11-10","2026-11-16"),6.44),135.24);
+  assert.equal(all.filter(ride=>ride.date==="2026-11-16").length,2);
+});
