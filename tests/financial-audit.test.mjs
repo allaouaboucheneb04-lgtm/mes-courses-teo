@@ -18,7 +18,7 @@ const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
 
 test("Monday airport fee is deducted in next Tuesday's income week, not on Monday", async () => {
   const expression = extract("  const airportFeeTotal = airportLevyTotal(", "  const weeklyCompanyFee");
-  const daily = extract("  const selectedDayAirportFeeTotal = airportLevyTotal(", "  const selectedDayCompanyFee");
+  const daily = extract("  const selectedDayAirportFeeTotal = airportLevyTotal(", "  // Display fees by accounting date");
   const vite = await createServer({configFile:false,server:{middlewareMode:true,hmr:false}});
   try {
     const {airportLevyTotal} = await vite.ssrLoadModule("/lib/airport-levy.ts");
