@@ -126,6 +126,29 @@ try {
     assert.equal(Math.round(day.goalEarned/day.goal*100),24);
   });
 
+  await test("home displays 113.23 net today and -112.95 real weekly net with the same courses",()=>{
+    const entries=[
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:60,tip:0,serviceDeductions:7},
+      {type:"taxi",date:"2026-11-16",taxiCategory:"aeroport",amount:70,tip:0,serviceDeductions:8},
+      {type:"taxi",date:"2026-11-17",taxiCategory:"centre-ville",amount:60,tip:0,serviceDeductions:8},
+      {type:"taxi",date:"2026-11-17",taxiCategory:"centre-ville",amount:69.92,tip:0,serviceDeductions:8.69},
+    ];
+    const today="2026-11-17";
+    const options={...settings,dailyGoals:[100,415,415,300,300,150,150]};
+    const selected=summarizeHomePeriod(entries,[],{start:today,end:today},today,options);
+    const weekly=summarizeHomePeriod(entries,[],{start:today,end:"2026-11-23"},today,options);
+    assert.equal(selected.gross,129.92);
+    assert.equal(selected.rideNet,113.23);
+    assert.equal(selected.goalEarned,113.23);
+    assert.equal(selected.net,-112.95);
+    assert.equal(selected.companyFees,200.42);
+    assert.equal(selected.airportFees,25.76);
+    assert.equal(selected.goal,415);
+    assert.equal(weekly.net,-112.95);
+    assert.equal(weekly.rideNet,113.23);
+    assert.equal(Math.round(selected.goalEarned / selected.goal * 100),27);
+  });
+
   await test("invalid custom dates show unavailable figures, not misleading zeros",()=>{
     const invalid=summary("custom","2026-11-12","2026-11-11");
     assert.equal(invalid.valid,false);
