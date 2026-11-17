@@ -4735,6 +4735,24 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   line-height: 1.15;
 }
 .airport-invoice-chevron { font-size: 23px; line-height: 1; transition: transform .15s ease; }
+.airport-invoice-split {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  color: #557579;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.airport-invoice-split b {
+  color: #096970;
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .airport-invoice-daily {
   display: flex;
   flex: 1 0 100%;
