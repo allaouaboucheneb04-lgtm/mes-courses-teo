@@ -50,7 +50,7 @@ test("collapsed invoice shows charged airport fees, and Monday ride fees as defe
   assert.match(summary,/airport-invoice-deferred/);
   assert.match(css,/\.airport-invoice-daily\s*\{/);
   assert.match(weeklySummary,/money\(selectedDayAirportFeeTotal\)/);
-  assert.match(weeklySummary,/Pour les courses du lundi/);
+  assert.match(weeklySummary,/Les courses aéroport du lundi sont reportées au mardi suivant/);
 });
 
 test("the taxi form keeps a short contextual note, immediately followed by the save action",()=>{
@@ -69,7 +69,7 @@ test("expanded invoice distinguishes Monday–Sunday billing from Tuesday–Mond
   assert.match(weeklySummary,/Redevances déduites du bilan de revenus du mardi au lundi/);
   assert.match(weeklySummary,/money\(airportFeeTotal\)/);
   assert.match(weeklySummary,/Les courses aéroport du lundi sont reportées au mardi suivant/);
-  assert.match(weeklySummary,/le mardi suivant/);
+  assert.match(weeklySummary,/au mardi suivant/);
   assert.match(css,/\.airport-invoice-summary/);
   assert.match(css,/\.airport-invoice-summary > summary:focus-visible/);
   assert.match(css,/@media \(max-width: 760px\)/);
