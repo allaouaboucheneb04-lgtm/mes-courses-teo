@@ -20,7 +20,7 @@ import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
 import { expenseTotal, weeklyCompanyFeeTotal } from "@/lib/expenses";
-import { airportLevyTotal, airportLevyCount, airportLevyAccountingDate } from "@/lib/airport-levy";
+import { airportLevyTotal, airportLevyDayBreakdown, airportLevyAccountingDate } from "@/lib/airport-levy";
 import { isCardPayment, isImportableTeoPayment } from "@/lib/teo-payment";
 import { cardPayrollDifference, resolvePhotoTip } from "@/lib/photo-tip";
 import { parsePhotoDate } from "@/lib/photo-date";
@@ -1023,9 +1023,8 @@ export default function Home() {
   );
   // Display fees by accounting date, never just by ride date:
   // on Mondays, the day's airport rides have 0 $ due until Tuesday.
-  const selectedDayAirportFeeCount = airportLevyCount(
-    courses,
-    (accountingDate) => accountingDate === selectedDate,
+  const selectedDayAirportBreakdown = airportLevyDayBreakdown(
+    courses, selectedDate, settings.airportFee,
   );
   const selectedDayCompanyFee =
     new Date(selectedDate + "T12:00").getDay() === 2
@@ -1040,11 +1039,13 @@ export default function Home() {
   );
   const selectedDayExpenseTotal = expenseTotal(expenses, [selectedDate, selectedDate]);
   const dailyNet = round2(dailyGoalNet - selectedDayCompanyFee - selectedDayExpenseTotal);
-  // A net-income goal must use the same net already shown after company
-  // fees and recorded expenses, not a more optimistic pre-expense subtotal.
-  // An objective is a progress counter, not an accounting balance:
-  // fees may make dailyNet negative, but progress always begins at $0.
-  const dailyGoalEarned = Math.max(0, dailyNet);
+  // The course objective measures what today's rides contributed after their
+  // direct service, perception and airport charges. Weekly company overhead,
+  // recorded expenses, and levies carried from yesterday remain in the REAL
+  // accounting net above, but do not block today's course progress.
+  const dailyGoalEarned = round2(Math.max(
+    0, selectedDayTotals.gross - selectedDayTotals.fees - selectedDayAirportRideTotal,
+  ));
   const dailyGoalProgress = dailyGoal
     ? Math.min(100, (dailyGoalEarned / dailyGoal) * 100)
     : 0;
@@ -2215,7 +2216,7 @@ export default function Home() {
               <div className="daily-goal">
                 <div>
                   <span>
-                    Objectif du {GOAL_DAYS[selectedGoalDay].toLowerCase()}
+                    Objectif des courses du {GOAL_DAYS[selectedGoalDay].toLowerCase()}
                   </span>
                   <b>
                     {money(dailyGoalEarned)} / {money(dailyGoal)}
@@ -2273,9 +2274,21 @@ export default function Home() {
                 <strong>{money(weeklyAirportCourses.length * settings.airportFee)}</strong>
               </span>
               <span className="airport-invoice-chevron" aria-hidden="true">⌄</span>
+              {selectedDayAirportBreakdown.carriedCount > 0 && selectedDayAirportBreakdown.mondayDate && (
+                <>
+                  <span className="airport-invoice-split">
+                    <span>Report du lundi {new Date(`${selectedDayAirportBreakdown.mondayDate}T12:00:00Z`).toLocaleDateString("fr-CA", { day: "numeric", month: "short", timeZone: "UTC" })}</span>
+                    <b>{selectedDayAirportBreakdown.carriedCount} course{selectedDayAirportBreakdown.carriedCount !== 1 ? "s" : ""} · {money(selectedDayAirportBreakdown.carriedTotal)}</b>
+                  </span>
+                  <span className="airport-invoice-split">
+                    <span>Courses du mardi {new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("fr-CA", { day: "numeric", month: "short", timeZone: "UTC" })}</span>
+                    <b>{selectedDayAirportBreakdown.sameDayCount} course{selectedDayAirportBreakdown.sameDayCount !== 1 ? "s" : ""} · {money(selectedDayAirportBreakdown.sameDayTotal)}</b>
+                  </span>
+                </>
+              )}
               <span className="airport-invoice-daily">
-                <span>Déduites le {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("fr-CA", { day: "numeric", month: "short" })}</span>
-                <b>{selectedDayAirportFeeCount} course{selectedDayAirportFeeCount !== 1 ? "s" : ""} · {money(selectedDayAirportFeeTotal)}</b>
+                <span>{selectedDayAirportBreakdown.carriedCount > 0 ? "Total déduit" : "Déduites"} le {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("fr-CA", { day: "numeric", month: "short" })}</span>
+                <b>{selectedDayAirportBreakdown.totalCount} course{selectedDayAirportBreakdown.totalCount !== 1 ? "s" : ""} · {money(selectedDayAirportFeeTotal)}</b>
               </span>
               {selectedDayIsMonday && selectedDayAirportCourses.length > 0 && deferredAirportDate && (
                 <span className="airport-invoice-deferred">
