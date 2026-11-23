@@ -88,12 +88,12 @@ export const inspectionIssues = (inspection: Pick<
   VehicleInspection,
   "defects" | "exteriorDamage" | "interiorDamage" | "exteriorCondition" | "interiorCondition" | "missingEquipment"
 >) =>
-  inspection.defects.length +
-  Number(Boolean(inspection.exteriorDamage.trim())) +
-  Number(Boolean(inspection.interiorDamage.trim())) +
+  (Array.isArray(inspection.defects) ? inspection.defects.length : 0) +
+  Number(Boolean(inspection.exteriorDamage?.trim())) +
+  Number(Boolean(inspection.interiorDamage?.trim())) +
   Number(inspection.exteriorCondition === "a-nettoyer") +
   Number(inspection.interiorCondition === "a-nettoyer") +
-  Number(Boolean(inspection.missingEquipment.trim()));
+  Number(Boolean(inspection.missingEquipment?.trim()));
 
 export function newInspectionDraft(driverName = "", date = "", time = ""): InspectionDraft {
   return {
