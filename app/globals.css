@@ -5411,3 +5411,39 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .home-week-net-inline { font-size: 11px; gap: 3px 6px; }
   .home-week-net-inline strong { font-size: 12px; }
 }
+
+
+/* Détails complets dans l'Historique de vérification sommaire. */
+.inspection-record-actions { flex-wrap: wrap; }
+.inspection-record-actions button { flex: 1 1 140px; }
+.inspection-record-actions button:first-child {
+  color: #fff; background: #00777d; border-color: #00777d;
+}
+.inspection-report-checklist {
+  margin-top: 16px; padding: 14px; border: 1px solid #d7e6e5;
+  border-radius: 13px; background: #fff;
+}
+.inspection-report-checklist h4 { margin: 0 0 6px; font-size: 16px; color: #193d42; }
+.inspection-report-checklist > p {
+  margin: 0 0 12px; color: #5b7479;
+  font-size: 12px; line-height: 1.5;
+}
+.inspection-report-check-group + .inspection-report-check-group { margin-top: 13px; }
+.inspection-report-check-group h5 { font-size: 13px; color: #12575e; margin: 0 0 7px; }
+.inspection-report-check-group ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.inspection-report-check-group li {
+  display: flex; gap: 8px; justify-content: space-between; align-items: baseline;
+  padding: 8px 10px; border-radius: 9px; background: #f4f8f8;
+  color: #24444a; font-size: 12px; line-height: 1.35;
+}
+.inspection-report-check-group li span { min-width: 0; overflow-wrap: anywhere; }
+.inspection-report-check-group li b {
+  flex: 0 0 auto; font-size: 10px; color: #58737a;
+  font-weight: 800; white-space: nowrap;
+}
+.inspection-report-check-group li.flagged { background: #fff0e3; }
+.inspection-report-check-group li.flagged b { color: #a54d20; }
+@media (max-width: 680px) {
+  .inspection-report-checklist { padding: 10px; }
+  .inspection-record-actions button { flex: 1 1 100%; }
+}
