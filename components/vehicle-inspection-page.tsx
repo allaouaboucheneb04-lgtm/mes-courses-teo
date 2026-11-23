@@ -52,6 +52,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [printRecord, setPrintRecord] = useState<VehicleInspection | null>(null);
+  const [reportAutoPrint, setReportAutoPrint] = useState(false);
   const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [browserBle, setBrowserBle] = useState(false);
   const [printingInspectionId, setPrintingInspectionId] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
 
   const printInspection = (record: VehicleInspection) => {
     if (!browserBle) {
+      setReportAutoPrint(true);
       setPrintRecord(record);
       return;
     }
@@ -382,7 +384,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
                         <div><dt>Accessoire gouvernemental</dt><dd>{record.governmentAccessory || "Non indiqué"}</dd></div>
                         <div><dt>Extérieur</dt><dd>{record.exteriorCondition === "propre" ? "Propre" : "À nettoyer"}{record.exteriorDamage ? " · " + record.exteriorDamage : ""}</dd></div>
                         <div><dt>Intérieur</dt><dd>{record.interiorCondition === "propre" ? "Propre" : "À nettoyer"}{record.interiorDamage ? " · " + record.interiorDamage : ""}</dd></div>
-                        <div><dt>Défectuosités cochées</dt><dd>{record.defects.map((key) => inspectionDefectLabels[key] || key).join(" · ") || "Aucune"}</dd></div>
+                        <div><dt>Défectuosités cochées</dt><dd>{(record.defects ?? []).map((key) => inspectionDefectLabels[key] || key).join(" · ") || "Aucune"}</dd></div>
                         <div><dt>Description des défauts</dt><dd>{record.defectDescription || "Non mentionnée"}</dd></div>
                         <div><dt>Dommages extérieurs</dt><dd>{record.exteriorDamage || "Non mentionnés"}</dd></div>
                         <div><dt>Dommages intérieurs</dt><dd>{record.interiorDamage || "Non mentionnés"}</dd></div>
@@ -413,7 +415,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
                       </div>
                     </details>
                     <div className="inspection-record-actions">
-                      <button type="button" onClick={() => setPrintRecord(record)}>Voir le rapport détaillé</button>
+                      <button type="button" onClick={() => { setReportAutoPrint(false); setPrintRecord(record); }}>Voir le rapport détaillé</button>
                       <button type="button" onClick={() => edit(record)}>Corriger</button>
                       <button type="button" disabled={printingInspectionId !== null}
                         onClick={() => printInspection(record)}>
@@ -430,7 +432,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
       {printRecord && (
         <VehicleInspectionReceipt
           record={printRecord}
-          autoPrint
+          autoPrint={reportAutoPrint}
           onClose={() => setPrintRecord(null)}
         />
       )}
