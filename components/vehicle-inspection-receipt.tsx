@@ -1,76 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  inspectionDefectLabels,
-  inspectionIssues,
-  type VehicleInspection,
-} from "@/lib/vehicle-inspection";
+import type { VehicleInspection } from "@/lib/vehicle-inspection";
+import { printableLines, type InspectionReceiptLine as ReceiptLine } from "@/lib/vehicle-inspection-report";
+export { printableLines } from "@/lib/vehicle-inspection-report";
 
 type ReceiptWidth = "58" | "80";
-type ReceiptLine = {
-  text: string;
-  kind?: "title" | "subtitle" | "heading" | "rule" | "bold" | "small";
-};
-
-export function printableLines(record: VehicleInspection): ReceiptLine[] {
-  const defects = record.defects.map((key) => inspectionDefectLabels[key] || key);
-  const issueCount = inspectionIssues(record);
-  const lines: ReceiptLine[] = [
-    { text: "VÉRIFICATION SOMMAIRE", kind: "title" },
-    { text: "Véhicule taxi · avant départ", kind: "subtitle" },
-    { text: "", kind: "rule" },
-    { text: "Date : " + record.date },
-    { text: "Heure : " + record.time },
-    { text: "Chauffeur : " + record.driverName },
-    { text: "Permis taxi : " + record.permitNumber },
-    { text: "Plaque : " + record.plate, kind: "bold" },
-    { text: "Odomètre : " + record.odometer + " km" },
-  ];
-  if (record.governmentAccessory) {
-    lines.push({ text: "Accessoire : " + record.governmentAccessory });
-  }
-  if (record.batteryPercent) {
-    lines.push({ text: "Batterie : " + record.batteryPercent + " %" });
-  }
-  lines.push(
-    { text: "", kind: "rule" },
-    { text: "ÉTAT DE LA VÉRIFICATION", kind: "heading" },
-    {
-      text: issueCount
-        ? issueCount + " point(s) à signaler"
-        : "Aucune anomalie signalée",
-      kind: "bold",
-    },
-    { text: "Anomalies cochées :", kind: "heading" },
-  );
-  if (defects.length) {
-    defects.forEach((defect) => lines.push({ text: "• " + defect }));
-  } else {
-    lines.push({ text: "Aucune case cochée" });
-  }
-  if (record.defectDescription) {
-    lines.push({ text: "Observations : " + record.defectDescription });
-  }
-  lines.push(
-    { text: "", kind: "rule" },
-    { text: "ÉTAT DU VÉHICULE", kind: "heading" },
-    { text: "Extérieur : " + (record.exteriorCondition === "propre" ? "Propre" : "À nettoyer") },
-    { text: "Intérieur : " + (record.interiorCondition === "propre" ? "Propre" : "À nettoyer") },
-  );
-  if (record.exteriorDamage) lines.push({ text: "Dommages ext. : " + record.exteriorDamage });
-  if (record.interiorDamage) lines.push({ text: "Dommages int. : " + record.interiorDamage });
-  if (record.missingEquipment) lines.push({ text: "Équipement absent/abîmé : " + record.missingEquipment });
-  lines.push(
-    { text: "", kind: "rule" },
-    { text: "Confirmation : " + (record.confirmed ? "Vérification effectuée" : "Non confirmée") },
-    { text: "Signature saisie : " + record.signature, kind: "bold" },
-    { text: "", kind: "rule" },
-    { text: "Mes Courses Téo · relevé numérique", kind: "small" },
-    { text: "Ne remplace pas nécessairement le formulaire réglementaire.", kind: "small" },
-  );
-  return lines;
-}
 
 function ReceiptPaper({ lines }: { lines: ReceiptLine[] }) {
   return (
