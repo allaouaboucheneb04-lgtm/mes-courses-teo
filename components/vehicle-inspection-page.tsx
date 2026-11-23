@@ -52,6 +52,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [printRecord, setPrintRecord] = useState<VehicleInspection | null>(null);
+  const [expandedRecordId, setExpandedRecordId] = useState<string | null>(null);
   const [browserBle, setBrowserBle] = useState(false);
   const [printingInspectionId, setPrintingInspectionId] = useState<string | null>(null);
   const [printingMessage, setPrintingMessage] = useState("");
@@ -149,6 +150,7 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
     onSave(record);
     setEditingId(null);
     setError("");
+    setExpandedRecordId(record.id);
     setMode("history");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -368,21 +370,50 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
                       <span>Odomètre : <strong>{Number(record.odometer).toLocaleString("fr-CA")} km</strong></span>
                       {record.batteryPercent && <span>Batterie : <strong>{record.batteryPercent} %</strong></span>}
                     </div>
-                    <details className="inspection-record-details">
-                      <summary>Voir la fiche</summary>
+                    <details className="inspection-record-details" defaultOpen={expandedRecordId === record.id}>
+                      <summary>Voir les détails de la fiche</summary>
                       <dl>
+                        <div><dt>Chauffeur</dt><dd>{record.driverName}</dd></div>
+                        <div><dt>Date et heure</dt><dd>{displayDate(record.date)} · {record.time}</dd></div>
+                        <div><dt>Immatriculation</dt><dd>{record.plate}</dd></div>
+                        <div><dt>Odomètre</dt><dd>{record.odometer} km</dd></div>
+                        {record.batteryPercent && <div><dt>Batterie</dt><dd>{record.batteryPercent} %</dd></div>}
                         <div><dt>Permis</dt><dd>{record.permitNumber}</dd></div>
                         <div><dt>Accessoire gouvernemental</dt><dd>{record.governmentAccessory || "Non indiqué"}</dd></div>
                         <div><dt>Extérieur</dt><dd>{record.exteriorCondition === "propre" ? "Propre" : "À nettoyer"}{record.exteriorDamage ? " · " + record.exteriorDamage : ""}</dd></div>
                         <div><dt>Intérieur</dt><dd>{record.interiorCondition === "propre" ? "Propre" : "À nettoyer"}{record.interiorDamage ? " · " + record.interiorDamage : ""}</dd></div>
                         <div><dt>Défectuosités cochées</dt><dd>{record.defects.map((key) => inspectionDefectLabels[key] || key).join(" · ") || "Aucune"}</dd></div>
-                        <div><dt>Commentaires</dt><dd>{record.defectDescription || "Aucun"}</dd></div>
+                        <div><dt>Description des défauts</dt><dd>{record.defectDescription || "Non mentionnée"}</dd></div>
+                        <div><dt>Dommages extérieurs</dt><dd>{record.exteriorDamage || "Non mentionnés"}</dd></div>
+                        <div><dt>Dommages intérieurs</dt><dd>{record.interiorDamage || "Non mentionnés"}</dd></div>
                         <div><dt>Équipement manquant / endommagé</dt><dd>{record.missingEquipment || "Aucun"}</dd></div>
+                        <div><dt>Vérification confirmée</dt><dd>{record.confirmed ? "Oui" : "Non"}</dd></div>
                         <div><dt>Signataire</dt><dd>{record.signature}</dd></div>
                         <div><dt>Dernière mise à jour</dt><dd>{new Date(record.updatedAt).toLocaleString("fr-CA")}</dd></div>
                       </dl>
+                      <div className="inspection-report-checklist">
+                        <h4>Détail des éléments vérifiés</h4>
+                        <p>Case cochée = anomalie signalée. Case non cochée = aucune anomalie cochée (sans certification mécanique).</p>
+                        {INSPECTION_GROUPS.map((group) => (
+                          <div key={group.title} className="inspection-report-check-group">
+                            <h5>{group.title}</h5>
+                            <ul>
+                              {group.checks.map((check) => {
+                                const flagged = (record.defects ?? []).includes(check.key);
+                                return (
+                                  <li key={check.key} className={flagged ? "flagged" : ""}>
+                                    <span>{check.label}</span>
+                                    <b>{flagged ? "Anomalie" : "Non cochée"}</b>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
                     </details>
                     <div className="inspection-record-actions">
+                      <button type="button" onClick={() => setPrintRecord(record)}>Voir le rapport détaillé</button>
                       <button type="button" onClick={() => edit(record)}>Corriger</button>
                       <button type="button" disabled={printingInspectionId !== null}
                         onClick={() => printInspection(record)}>
