@@ -382,8 +382,8 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
                         {record.batteryPercent && <div><dt>Batterie</dt><dd>{record.batteryPercent} %</dd></div>}
                         <div><dt>Permis</dt><dd>{record.permitNumber}</dd></div>
                         <div><dt>Accessoire gouvernemental</dt><dd>{record.governmentAccessory || "Non indiqué"}</dd></div>
-                        <div><dt>Extérieur</dt><dd>{record.exteriorCondition === "propre" ? "Propre" : "À nettoyer"}{record.exteriorDamage ? " · " + record.exteriorDamage : ""}</dd></div>
-                        <div><dt>Intérieur</dt><dd>{record.interiorCondition === "propre" ? "Propre" : "À nettoyer"}{record.interiorDamage ? " · " + record.interiorDamage : ""}</dd></div>
+                        <div><dt>Extérieur</dt><dd>{record.exteriorCondition === "propre" ? "Propre" : record.exteriorCondition === "a-nettoyer" ? "À nettoyer" : "Non indiqué"}{record.exteriorDamage ? " · " + record.exteriorDamage : ""}</dd></div>
+                        <div><dt>Intérieur</dt><dd>{record.interiorCondition === "propre" ? "Propre" : record.interiorCondition === "a-nettoyer" ? "À nettoyer" : "Non indiqué"}{record.interiorDamage ? " · " + record.interiorDamage : ""}</dd></div>
                         <div><dt>Défectuosités cochées</dt><dd>{(record.defects ?? []).map((key) => inspectionDefectLabels[key] || key).join(" · ") || "Aucune"}</dd></div>
                         <div><dt>Description des défauts</dt><dd>{record.defectDescription || "Non mentionnée"}</dd></div>
                         <div><dt>Dommages extérieurs</dt><dd>{record.exteriorDamage || "Non mentionnés"}</dd></div>
