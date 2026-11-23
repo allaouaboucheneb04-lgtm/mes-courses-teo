@@ -372,7 +372,14 @@ export default function VehicleInspectionPage({ inspections, accountName, onSave
                       <span>Odomètre : <strong>{Number(record.odometer).toLocaleString("fr-CA")} km</strong></span>
                       {record.batteryPercent && <span>Batterie : <strong>{record.batteryPercent} %</strong></span>}
                     </div>
-                    <details className="inspection-record-details" defaultOpen={expandedRecordId === record.id}>
+                    <details className="inspection-record-details"
+                      open={expandedRecordId === record.id}
+                      onToggle={(event) => {
+                        const open = event.currentTarget.open;
+                        setExpandedRecordId((current) =>
+                          open ? record.id : current === record.id ? null : current
+                        );
+                      }}>
                       <summary>Voir les détails de la fiche</summary>
                       <dl>
                         <div><dt>Chauffeur</dt><dd>{record.driverName}</dd></div>
