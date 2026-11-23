@@ -71,7 +71,8 @@ try {
     const receipt=readFileSync(new URL("../components/vehicle-inspection-receipt.tsx",import.meta.url),"utf8");
     const css=readFileSync(new URL("../app/globals.css",import.meta.url),"utf8");
     assert.match(src,/setExpandedRecordId\(record\.id\)/);
-    assert.match(src,/defaultOpen=\{expandedRecordId === record\.id\}/);
+    assert.match(src,/open=\{expandedRecordId === record\.id\}/);
+    assert.match(src,/onToggle=\{\(event\) =>/);
     assert.match(src,/Voir les détails de la fiche/);
     assert.match(src,/INSPECTION_GROUPS\.map\(\(group\) =>/);
     assert.match(src,/group\.checks\.map\(\(check\) =>/);
