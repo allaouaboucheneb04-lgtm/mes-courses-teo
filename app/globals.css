@@ -5500,3 +5500,72 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   font-weight: 750;
   overflow-wrap: anywhere;
 }
+
+
+/* Gestion des modes de paiement personnalisés (Paramètres). */
+.settings-payment-intro, .settings-payment-note, .settings-payment-empty {
+  margin: 0;
+  color: #61777c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.settings-payment-form {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+.settings-payment-form > label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #28535a;
+}
+.settings-payment-entry { display: flex; flex-wrap: wrap; gap: 9px; }
+.settings-payment-entry input {
+  min-width: 170px;
+  min-height: 44px;
+  flex: 1 1 180px;
+  padding: 10px 12px;
+  font: inherit;
+  border: 1px solid #c5d7d9;
+  border-radius: 11px;
+  background: #fff;
+}
+.settings-payment-entry button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  border: 0;
+  border-radius: 11px;
+  padding: 0 18px;
+  font-weight: 800;
+  color: #fff;
+  background: #00767c;
+}
+.settings-payment-error { margin: 0; color: #a33434; font-size: 12px; }
+.settings-payment-list { display: grid; gap: 8px; margin-bottom: 12px; }
+.settings-payment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #f1f8f7;
+  border: 1px solid #d7e7e6;
+  border-radius: 11px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 750;
+}
+.settings-payment-item button {
+  border: 1px solid #e9b8b8;
+  background: #fff;
+  color: #a03232;
+  border-radius: 9px;
+  min-height: 38px;
+  padding: 6px 11px;
+  flex: 0 0 auto;
+}
+.settings-payment-note { margin-top: 12px; }
+@media (max-width: 530px) {
+  .settings-payment-entry { display: grid; grid-template-columns: 1fr; }
+  .settings-payment-entry input, .settings-payment-entry button { width: 100%; }
+}
