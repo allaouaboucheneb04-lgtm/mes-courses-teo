@@ -35,6 +35,8 @@ jobs:
         run: node --test --test-concurrency=1 tests/airport-levy.test.mjs tests/airport-invoice-ui.test.mjs tests/financial-audit.test.mjs tests/home-period.test.mjs tests/home-dashboard.test.mjs
       - name: Vérifier les rapports de vérification sommaire
         run: node --test tests/inspection-report-details.test.mjs
+      - name: Vérifier les filtres combinés et l’import PDF multiple
+        run: node --test tests/combined-filter-multi-pdf.test.mjs
       - name: Construire le site
         run: npm run build:github
       - name: Vérifier les fichiers publiables
