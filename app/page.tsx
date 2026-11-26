@@ -18,6 +18,7 @@ import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/fires
 import { auth, db } from "./firebase";
 import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
 import { matchesHistoryPayment, type HistoryPaymentFilter } from "@/lib/history-payment";
+import { availableCustomPaymentMethods, customPaymentNameError, formatPaymentMethodName, isStandardPaymentMethod, normalizeCustomPaymentMethods, samePaymentMethod } from "@/lib/custom-payments";
 import { matchesCourseActivity, type CourseActivity } from "@/lib/course-activity";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
@@ -131,6 +132,7 @@ type AppSettings = {
   dailyGoalMode: "same" | "custom";
   dailyGoals: number[];
   companyFee: number;
+  customPaymentMethods: string[];
 };
 type PhotoCourse = {
   id: string;
@@ -157,6 +159,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   dailyGoalMode: "same",
   dailyGoals: [250, 250, 250, 250, 250, 250, 250],
   companyFee: 0,
+  customPaymentMethods: [],
 };
 const GOAL_DAYS = [
   "Lundi",
@@ -454,6 +457,8 @@ export default function Home() {
   const [taxiSev, setTaxiSev] = useState(false);
   const [adaptedSev, setAdaptedSev] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [newPaymentName, setNewPaymentName] = useState("");
+  const [newPaymentError, setNewPaymentError] = useState("");
   const [mobilePage, setMobilePage] = useState<
     "home" | "more" | "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics" | "inspection"
   >("home");
@@ -499,6 +504,11 @@ export default function Home() {
     // Calculate live local defaults after hydration, not during server rendering.
     setAdapted((current) => ({ ...current, ...defaultAdaptedTimes() }));
   }, []);
+  const customPaymentMethods = normalizeCustomPaymentMethods(settings.customPaymentMethods);
+  const historyCustomPaymentMethods = availableCustomPaymentMethods(customPaymentMethods, courses);
+  const taxiCustomPaymentMethods = editingId && taxi.payment && !isStandardPaymentMethod(taxi.payment) &&
+    !customPaymentMethods.some(item => samePaymentMethod(item, taxi.payment))
+    ? [...customPaymentMethods, taxi.payment] : customPaymentMethods;
   const [historyType, setHistoryType] = useState<HistoryTypeFilter>(
       "all",
     ),
@@ -531,7 +541,7 @@ export default function Home() {
   const normalizeData = (remote: Partial<DriverData>): DriverData => ({
     courses: Array.isArray(remote.courses) ? remote.courses : [],
     expenses: Array.isArray(remote.expenses) ? remote.expenses : [],
-    settings: { ...DEFAULT_SETTINGS, ...(remote.settings || {}) },
+    settings: { ...DEFAULT_SETTINGS, ...(remote.settings || {}), customPaymentMethods: normalizeCustomPaymentMethods(remote.settings?.customPaymentMethods) },
     payStatements: Array.isArray(remote.payStatements) ? remote.payStatements : [],
     inspections: Array.isArray(remote.inspections) ? remote.inspections : [],
   });
