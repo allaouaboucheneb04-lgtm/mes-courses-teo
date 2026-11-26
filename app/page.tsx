@@ -3811,7 +3811,15 @@ export default function Home() {
               <button
                 type="button"
                 className="reset-settings"
-                onClick={() => setSettings(DEFAULT_SETTINGS)}
+                onClick={() => {
+                  setSettings(DEFAULT_SETTINGS);
+                  if (!editingId) setTaxi(current => ({
+                    ...current,
+                    payment: isStandardPaymentMethod(current.payment) ? current.payment : "Téo / carte",
+                  }));
+                  setNewPaymentName("");
+                  setNewPaymentError("");
+                }}
               >
                 Rétablir tous les réglages d’origine
               </button>
