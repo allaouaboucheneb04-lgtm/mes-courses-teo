@@ -1654,6 +1654,10 @@ export default function Home() {
         setPayRows(last.rows);
         setPayFile(successful.length > 1 ? `${successful.length} PDF importés · dernier : ${last.fileName}` : last.fileName);
         setSelectedStatementId(last.id);
+        setBillSearch("");
+        setBillStatus("all");
+        setBillPeriod("all");
+        setBillActivity("all");
         flash(`${successful.length} fiche${successful.length > 1 ? "s" : ""} de paie enregistrée${successful.length > 1 ? "s" : ""} · consultez-les ci-dessous.`);
         window.setTimeout(() => document.getElementById("pay-statement-analysis")
           ?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
@@ -2846,7 +2850,7 @@ export default function Home() {
                     onOpenStatement={(id) => {
                       const statement = payStatements.find(item => item.id === id);
                       if (!statement) return;
-                      setBillSearch(id); setBillStatus("all"); setBillPeriod("all");
+                      setBillSearch(id); setBillStatus("all"); setBillPeriod("all"); setBillActivity("all");
                       setSelectedStatementId(id); setPayRows(statement.rows); setPayFile(statement.fileName);
                       setPayView("statements");
                       window.setTimeout(() => document.getElementById("pay-statement-analysis")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
