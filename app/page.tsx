@@ -17,6 +17,7 @@ import {
 import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
+import { matchesHistoryPayment, type HistoryPaymentFilter } from "@/lib/history-payment";
 import { matchesCourseActivity, type CourseActivity } from "@/lib/course-activity";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
@@ -43,13 +44,6 @@ import {
   normalizeCouponReference,
 } from "@/lib/coupon-payroll";
 type CouponStatus = "deposited" | "pending" | "fuel";
-type HistoryPaymentFilter =
-  | "all"
-  | "teo-card"
-  | "cash"
-  | "coupon"
-  | "machine"
-  | "adapted";
 type Course = {
   id: string;
   type: "taxi" | "adapte";
@@ -335,19 +329,6 @@ const payrollDifference = (course: Course, row: PayRow) => {
   if (isCouponPayRow(row))
     return Math.abs(course.amount + course.tip - (row.amount + row.tip));
   return cardPayrollDifference(course, row);
-};
-const matchesHistoryPayment = (
-  course: Course,
-  filter: HistoryPaymentFilter,
-) => {
-  if (filter === "all") return true;
-  if (filter === "adapted") return course.type === "adapte";
-  if (course.type !== "taxi") return false;
-  if (filter === "teo-card") return isCardPayment(course.payment);
-  if (filter === "cash")
-    return course.payment === "Espèces" || course.payment === "Comptant";
-  if (filter === "coupon") return course.payment === "Coupon";
-  return course.payment === "Machine crédit" || course.payment === "Autre";
 };
 const round2 = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
@@ -4189,6 +4170,7 @@ export default function Home() {
                     <select aria-label="Mode de paiement" value={historyPayment}
                       onChange={(event) => setHistoryPayment(event.target.value as HistoryPaymentFilter)}>
                       <option value="all">Tous</option>
+                      <option value="teo-adapte">Téo + adapté</option>
                       <option value="teo-card">Téo / carte</option>
                       <option value="cash">Espèces</option>
                       <option value="coupon">Coupon</option>
