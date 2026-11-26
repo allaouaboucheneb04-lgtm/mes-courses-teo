@@ -61,7 +61,7 @@ test("settings UI adds/removes custom methods and course form & history use the 
   assert.match(page,/customPaymentFeeAmount\(gross, course\.payment, settings\.customPaymentFees\)/);
   assert.match(page,/setSettings\(current => \(\{/);
   assert.match(page,/customPaymentNameError\(name, customPaymentMethods\)/);
-  assert.match(page,/Mode de paiement «/);
+  assert.match(page,/Mode «/);
   assert.match(page,/Les courses existantes sont conservées/);
   assert.match(page,/setTaxi\(current =>/);
   assert.match(page,/settings-payment-section/);
