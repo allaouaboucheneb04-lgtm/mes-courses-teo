@@ -451,6 +451,7 @@ export default function Home() {
   const [payRows, setPayRows] = useState<PayRow[]>([]),
     [payFile, setPayFile] = useState(""),
     [payLoading, setPayLoading] = useState(false),
+    [payProgress, setPayProgress] = useState(""),
     [payError, setPayError] = useState(""),
     [payStatements, setPayStatements] = useState<PayStatement[]>([]),
     [selectedStatementId, setSelectedStatementId] = useState("");
@@ -1608,6 +1609,7 @@ export default function Home() {
     if (!files.length || payImportBusyRef.current) return imported;
     payImportBusyRef.current = true;
     setPayLoading(true);
+    setPayProgress("");
     setPayError("");
     const successful: PayStatement[] = [];
     const failures: string[] = [];
@@ -1615,6 +1617,7 @@ export default function Home() {
     let totalBytes = 0;
     try {
       for (const [index, file] of files.entries()) {
+        setPayProgress(`Lecture ${index + 1}/${files.length} : ${file.name}`);
         try {
           if (index >= 20) throw new Error("Maximum 20 PDF par sélection.");
           if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf")
@@ -1661,6 +1664,7 @@ export default function Home() {
     } finally {
       payImportBusyRef.current = false;
       setPayLoading(false);
+      setPayProgress("");
     }
     return imported;
   }
@@ -2886,7 +2890,7 @@ export default function Home() {
                   />
                   <span>
                     {payLoading
-                      ? "Lecture en cours…"
+                      ? (payProgress || "Lecture en cours…")
                       : "Choisir plusieurs fiches PDF Téo"}
                   </span>
                   <small>
@@ -2894,6 +2898,7 @@ export default function Home() {
                       "Jusqu’à 20 PDF par sélection, 20 Mo chacun, 50 Mo au total"}
                   </small>
                 </label>
+                {payLoading && payProgress && <p className="pay-batch-progress" role="status">{payProgress}</p>}
                 {payError && <p className="error-box">{payError}</p>}
               </section>
               {payStatements.length > 0 && (
