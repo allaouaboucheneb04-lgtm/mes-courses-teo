@@ -1296,6 +1296,35 @@ export default function Home() {
     setNotice(t);
     window.setTimeout(() => setNotice(""), 2400);
   };
+  function addCustomPaymentMethod(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = formatPaymentMethodName(newPaymentName);
+    const error = customPaymentNameError(name, customPaymentMethods);
+    if (error) { setNewPaymentError(error); return; }
+    setSettings(current => ({
+      ...current,
+      customPaymentMethods: [...normalizeCustomPaymentMethods(current.customPaymentMethods), name],
+    }));
+    setNewPaymentName("");
+    setNewPaymentError("");
+    flash(`Mode de paiement « ${name} » ajouté.`);
+  }
+  function removeCustomPaymentMethod(name: string) {
+    const count = courses.filter(course =>
+      course.type === "taxi" && samePaymentMethod(course.payment, name)).length;
+    if (!window.confirm(count
+      ? `Retirer « ${name} » des choix de paiement ? Les ${count} course(s) déjà enregistrée(s) conserveront ce mode et resteront consultables dans l’Historique.`
+      : `Retirer le mode de paiement « ${name} » ?`)) return;
+    setSettings(current => ({
+      ...current,
+      customPaymentMethods: normalizeCustomPaymentMethods(current.customPaymentMethods)
+        .filter(item => !samePaymentMethod(item, name)),
+    }));
+    if (!editingId) setTaxi(current =>
+      samePaymentMethod(current.payment, name) ? {...current, payment: "Téo / carte"} : current);
+    setNewPaymentError("");
+    flash("Mode retiré des réglages. Les courses existantes sont conservées.");
+  }
   function resetExpenseForm(date = expenseForm.date || today()) {
     setExpenseEditingId(null);
     setExpenseForm({
