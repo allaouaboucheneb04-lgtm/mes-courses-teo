@@ -58,3 +58,57 @@ export function availableCustomPaymentMethods(
 export function samePaymentMethod(a: string, b: string): boolean {
   return key(a) === key(b);
 }
+
+
+/** The commission is a percentage of gross taxi revenue, including tips. */
+export function customPaymentRateError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!/^\d{1,3}(?:[,.]\d{1,3})?$/.test(trimmed))
+    return "Entrez un pourcentage valide (ex. 2,50).";
+  const rate = Number(trimmed.replace(",", "."));
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100)
+    return "Le pourcentage doit être compris entre 0 et 100 %.";
+  return null;
+}
+export function normalizeCustomPaymentFees(input: unknown): Record<string, number> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const result: Record<string, number> = {};
+  for (const [raw, rate] of Object.entries(input)) {
+    const name = formatPaymentMethodName(raw);
+    if (!name || name.length > 40 || isStandardPaymentMethod(name) ||
+        typeof rate !== "number" || !Number.isFinite(rate) || rate < 0 || rate > 100)
+      continue;
+    const old = Object.keys(result).find(other => samePaymentMethod(other, name));
+    if (old) continue;
+    result[name] = Math.round(rate * 1000) / 1000;
+  }
+  return result;
+}
+/** Missing rates in older saved settings intentionally default to 0%. */
+export function getCustomPaymentRate(
+  payment: string,
+  fees: Readonly<Record<string, number>> | undefined,
+): number {
+  if (!fees || isStandardPaymentMethod(payment)) return 0;
+  for (const [name, rate] of Object.entries(fees)) {
+    if (samePaymentMethod(name, payment) &&
+        typeof rate === "number" && Number.isFinite(rate) && rate >= 0 && rate <= 100)
+      return rate;
+  }
+  return 0;
+}
+/** Update by canonical name, avoiding duplicate keys with different casing. */
+export function setCustomPaymentRate(
+  fees: Readonly<Record<string, number>> | undefined,
+  method: string,
+  rate: number,
+): Record<string, number> {
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) return normalizeCustomPaymentFees(fees);
+  const canonical = formatPaymentMethodName(method);
+  if (!canonical || isStandardPaymentMethod(canonical)) return normalizeCustomPaymentFees(fees);
+  const previous = normalizeCustomPaymentFees(fees);
+  return {
+    ...Object.fromEntries(Object.entries(previous).filter(([name]) => !samePaymentMethod(name, canonical))),
+    [canonical]: Math.round(rate * 1000) / 1000,
+  };
+}
