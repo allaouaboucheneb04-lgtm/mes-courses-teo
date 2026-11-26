@@ -142,6 +142,21 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
         setPeriod("custom");
         setRangeOpen(false);
       }} />
+    {(page === "courses" || page === "taxes") && (
+      <div className="sev-activity-filter">
+        <label>Type de courses
+          <select aria-label="Filtrer par activité Téo et adapté" value={type}
+            onChange={event => setType(event.target.value as SevCategory)}>
+            <option value="all">Toutes les activités</option>
+            <option value="both">Téo + adapté</option>
+            <option value="taxi">Téo / taxi</option>
+            <option value="adapte">Transport adapté</option>
+            <option value="aeroport">Aéroport</option>
+            <option value="centre-ville">Centre-ville</option>
+          </select>
+        </label>
+      </div>
+    )}
     {page === "courses" && (type !== "all" || status !== "all" || payStatus !== "all" || search.trim() || period === "custom") && (
       <div className="sev-active-chips" aria-label="Filtres actifs">
         {type !== "all" && <button type="button" onClick={() => setType("all")}>{categoryLabel} ×</button>}
