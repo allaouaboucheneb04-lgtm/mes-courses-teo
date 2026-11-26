@@ -2936,8 +2936,6 @@ export default function Home() {
                         <option value="both">Téo + adapté</option>
                         <option value="taxi">Téo / taxi</option>
                         <option value="adapte">Transport adapté</option>
-                        <option value="aeroport">Aéroport</option>
-                        <option value="centre-ville">Centre-ville</option>
                       </select>
                     </label>
                     <label>
