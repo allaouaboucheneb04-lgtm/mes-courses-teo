@@ -18,7 +18,7 @@ import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/fires
 import { auth, db } from "./firebase";
 import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
 import { matchesHistoryPayment, type HistoryPaymentFilter } from "@/lib/history-payment";
-import { availableCustomPaymentMethods, customPaymentNameError, customPaymentRateError, formatPaymentMethodName, getCustomPaymentRate, isStandardPaymentMethod, normalizeCustomPaymentFees, normalizeCustomPaymentMethods, samePaymentMethod, setCustomPaymentRate } from "@/lib/custom-payments";
+import { availableCustomPaymentMethods, customPaymentFeeAmount, customPaymentNameError, customPaymentRateError, formatPaymentMethodName, getCustomPaymentRate, isStandardPaymentMethod, normalizeCustomPaymentFees, normalizeCustomPaymentMethods, samePaymentMethod, setCustomPaymentRate } from "@/lib/custom-payments";
 import { matchesCourseActivity, type CourseActivity } from "@/lib/course-activity";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
@@ -347,7 +347,7 @@ const serviceFee = (course: Course, settings: AppSettings) => {
   else if (course.payment === "Machine crédit" || course.payment === "Autre")
     fee = (gross * settings.machineFee) / 100;
   else
-    fee = (gross * getCustomPaymentRate(course.payment, settings.customPaymentFees)) / 100;
+    fee = customPaymentFeeAmount(gross, course.payment, settings.customPaymentFees);
   return round2(fee);
 };
 const dateKey = (date: Date) =>
