@@ -5447,3 +5447,43 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .inspection-report-checklist { padding: 10px; }
   .inspection-record-actions button { flex: 1 1 100%; }
 }
+
+
+/* Les filtres combinés restent utilisables sur petit écran. */
+.sev-activity-filter {
+  display: flex;
+  margin: 8px 0 12px;
+  gap: 8px;
+}
+.sev-activity-filter label {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  max-width: 360px;
+  color: #4c6b72;
+  font-size: 12px;
+  font-weight: 800;
+}
+.sev-activity-filter select {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #c5dddf;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: #fff;
+  color: #0b5c64;
+  font: inherit;
+  font-size: 14px;
+}
+.shared-payroll .shared-payroll-batch {
+  margin: 9px 0 12px;
+  width: 100%;
+  border-radius: 12px;
+  min-height: 44px;
+  background: #00787b;
+  color: white;
+  font-weight: 850;
+}
+.shared-payroll .shared-payroll-batch:disabled { opacity: .6; }
+.pay-import-section > .error-box { white-space: pre-line; overflow-wrap: anywhere; }
