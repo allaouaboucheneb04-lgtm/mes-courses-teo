@@ -18,7 +18,7 @@ import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/fires
 import { auth, db } from "./firebase";
 import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
 import { matchesHistoryPayment, type HistoryPaymentFilter } from "@/lib/history-payment";
-import { availableCustomPaymentMethods, customPaymentNameError, formatPaymentMethodName, isStandardPaymentMethod, normalizeCustomPaymentMethods, samePaymentMethod } from "@/lib/custom-payments";
+import { availableCustomPaymentMethods, customPaymentNameError, customPaymentRateError, formatPaymentMethodName, getCustomPaymentRate, isStandardPaymentMethod, normalizeCustomPaymentFees, normalizeCustomPaymentMethods, samePaymentMethod, setCustomPaymentRate } from "@/lib/custom-payments";
 import { matchesCourseActivity, type CourseActivity } from "@/lib/course-activity";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
@@ -133,6 +133,7 @@ type AppSettings = {
   dailyGoals: number[];
   companyFee: number;
   customPaymentMethods: string[];
+  customPaymentFees: Record<string, number>;
 };
 type PhotoCourse = {
   id: string;
@@ -160,6 +161,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   dailyGoals: [250, 250, 250, 250, 250, 250, 250],
   companyFee: 0,
   customPaymentMethods: [],
+  customPaymentFees: {},
 };
 const GOAL_DAYS = [
   "Lundi",
@@ -344,6 +346,8 @@ const serviceFee = (course: Course, settings: AppSettings) => {
     fee = (gross * settings.cardFee) / 100;
   else if (course.payment === "Machine crédit" || course.payment === "Autre")
     fee = (gross * settings.machineFee) / 100;
+  else
+    fee = (gross * getCustomPaymentRate(course.payment, settings.customPaymentFees)) / 100;
   return round2(fee);
 };
 const dateKey = (date: Date) =>
@@ -458,6 +462,7 @@ export default function Home() {
   const [adaptedSev, setAdaptedSev] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [newPaymentName, setNewPaymentName] = useState("");
+  const [newPaymentRate, setNewPaymentRate] = useState("");
   const [newPaymentError, setNewPaymentError] = useState("");
   const [mobilePage, setMobilePage] = useState<
     "home" | "more" | "add" | "history" | "expenses" | "sev" | "pay" | "settings" | "statistics" | "inspection"
@@ -541,7 +546,7 @@ export default function Home() {
   const normalizeData = (remote: Partial<DriverData>): DriverData => ({
     courses: Array.isArray(remote.courses) ? remote.courses : [],
     expenses: Array.isArray(remote.expenses) ? remote.expenses : [],
-    settings: { ...DEFAULT_SETTINGS, ...(remote.settings || {}), customPaymentMethods: normalizeCustomPaymentMethods(remote.settings?.customPaymentMethods) },
+    settings: { ...DEFAULT_SETTINGS, ...(remote.settings || {}), customPaymentMethods: normalizeCustomPaymentMethods(remote.settings?.customPaymentMethods), customPaymentFees: normalizeCustomPaymentFees(remote.settings?.customPaymentFees) },
     payStatements: Array.isArray(remote.payStatements) ? remote.payStatements : [],
     inspections: Array.isArray(remote.inspections) ? remote.inspections : [],
   });
