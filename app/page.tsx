@@ -454,6 +454,7 @@ export default function Home() {
     [payError, setPayError] = useState(""),
     [payStatements, setPayStatements] = useState<PayStatement[]>([]),
     [selectedStatementId, setSelectedStatementId] = useState("");
+  const payImportBusyRef = useRef(false);
   const [billSearch, setBillSearch] = useState(""),
     [billStatus, setBillStatus] = useState<"all" | "issues" | "clear">(
       "all",
@@ -1530,13 +1531,8 @@ export default function Home() {
       perception: "",
     });
   }
-  async function importPayPdf(file?: File) {
-    if (!file) return;
-    setPayLoading(true);
-    setPayError("");
-    // Do not clear the currently selected statement until parsing succeeds:
-    // a corrupt PDF must not turn its comparison into false missing rides.
-    try {
+  // Parse each PDF separately; never change verification or saved data on failure.
+  async function parsePayStatement(file: File): Promise<PayStatement> {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
       await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
       const doc = await pdfjs.getDocument({
@@ -1600,29 +1596,77 @@ export default function Home() {
         rows,
         rawText: text,
       };
-      setPayRows(rows);
-      setPayFile(file.name);
-      setSelectedStatementId(billId);
-      setPayStatements((current) => [
-        retainBankReceipt(statement, current.find(item => item.id === billId)),
-        ...current.filter((item) => item.id !== billId),
-      ]);
-      flash(`Fiche ${billId} enregistrée avec tous ses détails.`);
-      window.setTimeout(() => {
-        document
-          .getElementById("pay-statement-analysis")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-      return true;
-    } catch (error) {
-      console.error(error);
-      const reason =
-        error instanceof Error ? error.message : "Erreur de lecture inconnue";
-      setPayError(`Impossible de lire cette fiche : ${reason}`);
-      return false;
+
+    return statement;
+  }
+
+  // One batch is committed together. Successful PDFs survive other unreadable
+  // PDFs; duplicate BILL numbers inside the same selection cannot overwrite one
+  // another, and an existing bank receipt is preserved on re-import.
+  async function importPayPdfFiles(files: File[]): Promise<boolean[]> {
+    const imported = files.map(() => false);
+    if (!files.length || payImportBusyRef.current) return imported;
+    payImportBusyRef.current = true;
+    setPayLoading(true);
+    setPayError("");
+    const successful: PayStatement[] = [];
+    const failures: string[] = [];
+    const billIds = new Set<string>();
+    let totalBytes = 0;
+    try {
+      for (const [index, file] of files.entries()) {
+        try {
+          if (index >= 20) throw new Error("Maximum 20 PDF par sélection.");
+          if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf")
+            throw new Error("Ce fichier n’est pas un PDF.");
+          if (file.size > 20 * 1024 * 1024) throw new Error("PDF de plus de 20 Mo.");
+          totalBytes += file.size;
+          if (totalBytes > 50 * 1024 * 1024)
+            throw new Error("Limite de 50 Mo par sélection dépassée.");
+          const statement = await parsePayStatement(file);
+          if (billIds.has(statement.id))
+            throw new Error(`La fiche ${statement.id} figure déjà dans cette sélection.`);
+          billIds.add(statement.id);
+          successful.push(statement);
+          imported[index] = true;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Fichier illisible";
+          failures.push(`${file.name} : ${message}`);
+          console.error("Import de fiche Téo :", file.name, error);
+        }
+      }
+      if (successful.length) {
+        setPayStatements(current => {
+          const byId = new Map(current.map(item => [item.id, item]));
+          for (const statement of successful) {
+            byId.set(statement.id, retainBankReceipt(statement, byId.get(statement.id)));
+          }
+          // Most recently imported bills appear first, without duplicated IDs.
+          return [
+            ...successful.map(item => byId.get(item.id)!),
+            ...current.filter(item => !billIds.has(item.id)),
+          ];
+        });
+        const last = successful[successful.length - 1];
+        setPayRows(last.rows);
+        setPayFile(successful.length > 1 ? `${successful.length} PDF importés · dernier : ${last.fileName}` : last.fileName);
+        setSelectedStatementId(last.id);
+        flash(`${successful.length} fiche${successful.length > 1 ? "s" : ""} de paie enregistrée${successful.length > 1 ? "s" : ""} · consultez-les ci-dessous.`);
+        window.setTimeout(() => document.getElementById("pay-statement-analysis")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+      }
+      if (failures.length) setPayError(
+        `${successful.length} PDF importé${successful.length > 1 ? "s" : ""}, ${failures.length} échec${failures.length > 1 ? "s" : ""} :\n${failures.join("\n")}`
+      );
     } finally {
+      payImportBusyRef.current = false;
       setPayLoading(false);
     }
+    return imported;
+  }
+
+  async function importPayPdf(file?: File): Promise<boolean> {
+    return (await importPayPdfFiles(file ? [file] : []))[0] || false;
   }
   function addTaxi(e: React.FormEvent) {
     e.preventDefault();
@@ -2832,17 +2876,22 @@ export default function Home() {
                     type="file"
                     accept="application/pdf,.pdf"
                     id="pay-pdf-input"
+                    multiple
                     disabled={payLoading || !loaded}
-                    onChange={(e) => {void importPayPdf(e.target.files?.[0]);e.target.value="";}}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      e.target.value = "";
+                      void importPayPdfFiles(files);
+                    }}
                   />
                   <span>
                     {payLoading
                       ? "Lecture en cours…"
-                      : "Choisir la fiche PDF Téo"}
+                      : "Choisir plusieurs fiches PDF Téo"}
                   </span>
                   <small>
                     {payFile ||
-                      "Courses carte, coupons déposés et tournées HOB"}
+                      "Jusqu’à 20 PDF par sélection, 20 Mo chacun, 50 Mo au total"}
                   </small>
                 </label>
                 {payError && <p className="error-box">{payError}</p>}
