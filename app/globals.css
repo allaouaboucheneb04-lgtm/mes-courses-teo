@@ -5569,3 +5569,51 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
   .settings-payment-entry { display: grid; grid-template-columns: 1fr; }
   .settings-payment-entry input, .settings-payment-entry button { width: 100%; }
 }
+
+
+/* Taux personnalisés, éditables sans quitter Paramètres. */
+.settings-payment-new-rate {
+  display: grid;
+  flex: 0 1 140px;
+  gap: 4px;
+  min-width: 110px;
+  color: #355c62;
+  font-size: 12px;
+  font-weight: 750;
+}
+.settings-payment-new-rate input { min-width: 0; width: 100%; box-sizing: border-box; }
+.settings-payment-method-name { min-width: 0; flex: 1 1 120px; }
+.settings-payment-rate {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 1 170px;
+  min-width: 118px;
+  font-size: 12px;
+  color: #526a70;
+}
+.settings-payment-rate input {
+  width: 82px;
+  min-height: 40px;
+  padding: 7px;
+  border: 1px solid #c2d9d9;
+  border-radius: 9px;
+  background: white;
+  font: inherit;
+  font-size: 14px;
+  text-align: right;
+  color: #134d53;
+}
+.custom-payment-fee-preview {
+  display: block;
+  margin: 0 0 8px;
+  color: #0e6670;
+  font-size: 12px;
+  font-weight: 650;
+}
+@media (max-width: 530px) {
+  .settings-payment-new-rate { width: 100%; }
+  .settings-payment-item { flex-wrap: wrap; }
+  .settings-payment-method-name { flex-basis: 100%; }
+  .settings-payment-rate { flex: 1 1 auto; }
+}
