@@ -1304,15 +1304,19 @@ export default function Home() {
   function addCustomPaymentMethod(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = formatPaymentMethodName(newPaymentName);
-    const error = customPaymentNameError(name, customPaymentMethods);
+    const error = customPaymentNameError(name, customPaymentMethods) ||
+      customPaymentRateError(newPaymentRate);
     if (error) { setNewPaymentError(error); return; }
+    const rate = Number(newPaymentRate.replace(",", "."));
     setSettings(current => ({
       ...current,
       customPaymentMethods: [...normalizeCustomPaymentMethods(current.customPaymentMethods), name],
+      customPaymentFees: setCustomPaymentRate(current.customPaymentFees, name, rate),
     }));
     setNewPaymentName("");
+    setNewPaymentRate("");
     setNewPaymentError("");
-    flash(`Mode de paiement « ${name} » ajouté.`);
+    flash(`Mode « ${name} » ajouté avec ${rate.toLocaleString("fr-CA")} % de frais.`);
   }
   function removeCustomPaymentMethod(name: string) {
     const count = courses.filter(course =>
@@ -3823,6 +3827,7 @@ export default function Home() {
                     payment: isStandardPaymentMethod(current.payment) ? current.payment : "Téo / carte",
                   }));
                   setNewPaymentName("");
+                  setNewPaymentRate("");
                   setNewPaymentError("");
                 }}
               >
