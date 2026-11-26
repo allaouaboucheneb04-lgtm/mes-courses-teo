@@ -2642,6 +2642,9 @@ export default function Home() {
                   <option>Espèces</option>
                   <option>Coupon</option>
                   <option>Machine crédit</option>
+                  {taxiCustomPaymentMethods.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
                 </select>
               </label>
               {taxi.payment === "Coupon" && (
@@ -3551,6 +3554,36 @@ export default function Home() {
                 </label>
                 {!settings.airportEnabled && <p>Activez « Courses Aéroport » ci-dessus pour choisir Aéroport par défaut.</p>}
               </div></details>
+              <details className="settings-section settings-payment-section settings-disclosure">
+                <summary><span><b>Modes de paiement</b><small>Ajoutez vos propres méthodes pour les courses taxi et les filtres.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary>
+                <div className="settings-panel-body">
+                  <p className="settings-payment-intro">Les modes existants (Téo / carte, espèces, coupon et machine crédit) restent disponibles.</p>
+                  <form className="settings-payment-form" onSubmit={addCustomPaymentMethod}>
+                    <label htmlFor="custom-payment-name">Nouvelle méthode de paiement</label>
+                    <div className="settings-payment-entry">
+                      <input id="custom-payment-name" type="text" value={newPaymentName}
+                        onChange={event => {setNewPaymentName(event.target.value);setNewPaymentError("");}}
+                        maxLength={40} autoComplete="off" placeholder="Ex. Virement Interac" />
+                      <button type="submit">Ajouter</button>
+                    </div>
+                    {newPaymentError && <p className="settings-payment-error" role="alert">{newPaymentError}</p>}
+                  </form>
+                  {customPaymentMethods.length > 0 ? (
+                    <div className="settings-payment-list" aria-label="Modes de paiement personnalisés">
+                      {customPaymentMethods.map(name => (
+                        <div key={name} className="settings-payment-item">
+                          <span>{name}</span>
+                          <button type="button" aria-label={`Retirer ${name}`}
+                            onClick={() => removeCustomPaymentMethod(name)}>Retirer</button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="settings-payment-empty">Aucune méthode personnalisée pour le moment.</p>
+                  )}
+                  <p className="settings-payment-note">Les nouveaux modes sont disponibles dans Ajouter une course et dans le filtre Paiement de l’Historique. Aucun frais de service automatique n’est appliqué à ces modes personnalisés. Les courses enregistrées sont conservées même si vous retirez un mode.</p>
+                </div>
+              </details>
               <details className="settings-section settings-goal-section settings-disclosure"><summary><span><b>Objectif quotidien</b><small>Suivez votre progression dans le résumé.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
                 <div className="settings-toggle-heading">
                   
@@ -4215,6 +4248,9 @@ export default function Home() {
                       <option value="coupon">Coupon</option>
                       <option value="machine">Machine crédit</option>
                       <option value="adapted">Transport adapté</option>
+                      {historyCustomPaymentMethods.map(name => (
+                        <option key={name} value={`custom:${name}`}>{name}</option>
+                      ))}
                     </select>
                   </label>
                 </div>
