@@ -1,7 +1,8 @@
 /** Pure, testable filters for the SEV and Téo payroll views.
  * A SEV declaration and Téo payroll verification are independent statuses. */
 export type SevPeriod = "week" | "previous" | "month" | "custom" | "all";
-export type SevCategory = "all" | "taxi" | "aeroport" | "centre-ville" | "adapte";
+import { matchesCourseActivity, type CourseActivity } from "./course-activity";
+export type SevCategory = CourseActivity;
 export type SevDeclarationStatus = "all" | "pending" | "added";
 export type SevPayrollStatus = "all" | "verified" | "unverified";
 
@@ -46,13 +47,7 @@ export function matchesSevPeriod(ride: SevFilterRide, filters: SevFilters): bool
 }
 
 export function matchesSevCategory(ride: SevFilterRide, category: SevCategory): boolean {
-  if (category === "all") return true;
-  if (category === "adapte") return ride.type === "adapte";
-  if (ride.type !== "taxi") return false;
-  if (category === "taxi") return true;
-  // Legacy taxi rides without a saved category have always appeared as centre-ville.
-  if (category === "centre-ville") return ride.taxiCategory !== "aeroport";
-  return ride.taxiCategory === "aeroport";
+  return matchesCourseActivity(ride, category);
 }
 
 const normalizeText = (value: string) => value
