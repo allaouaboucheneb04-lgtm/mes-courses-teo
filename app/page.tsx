@@ -2860,7 +2860,7 @@ export default function Home() {
                     <span aria-hidden="true">→</span>
                   </button>
               <section className="pay-import-section">
-                <SharedPayroll key={user.uid} email={user.email || "Compte chauffeur"} disabled={!loaded || payLoading} onImport={importPayPdf} />
+                <SharedPayroll key={user.uid} email={user.email || "Compte chauffeur"} disabled={!loaded || payLoading} onImport={importPayPdf} onImportBatch={importPayPdfFiles} />
                 <div className="pay-section-title">
                   <span>1</span>
                   <div>
