@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { matchesCourseActivity, type CourseActivity } from "@/lib/course-activity";
 import { summarizePayroll, trackingRange, courseAge, isLongUnverified, bankReceiptStatus, expectedBankAmount, validBankReceipt, type TrackingPeriod, type BankReceipt, type PayrollBankStatement, type PayrollSummaryCourse } from "../lib/payroll-summary";
 
 type OverviewCourse = PayrollSummaryCourse & {
@@ -56,6 +57,7 @@ export default function PayrollOverview({ courses, statements, today, onEdit, on
   onBankReceipt: (id: string, receipt: BankReceipt | null) => void;
 }) {
   const [period, setPeriod] = useState<TrackingPeriod>("all");
+  const [activity, setActivity] = useState<CourseActivity>("all");
   const [start, setStart] = useState(today.slice(0, 7) + "-01");
   const [end, setEnd] = useState(today);
   const [status, setStatus] = useState<"unverified" | "verified" | "all" | "received" | "waiting">("unverified");
@@ -63,7 +65,7 @@ export default function PayrollOverview({ courses, statements, today, onEdit, on
   const [onlyLate, setOnlyLate] = useState(false);
   const [limit, setLimit] = useState(20);
   const range = trackingRange(period, today, start, end);
-  const filtered = useMemo(() => range.valid ? courses.filter(course => (!range.start || course.date >= range.start) && (!range.end || course.date <= range.end)) : [], [courses, range.start, range.end, range.valid]);
+  const filtered = useMemo(() => range.valid ? courses.filter(course => matchesCourseActivity(course, activity) && (!range.start || course.date >= range.start) && (!range.end || course.date <= range.end)) : [], [courses, range.start, range.end, range.valid, activity]);
   const summary = useMemo(() => summarizePayroll(filtered), [filtered]);
   const billsById = new Map(statements.map(statement => [statement.id, statement]));
   const getBankStatus = (course: OverviewCourse) => bankReceiptStatus(course.verified ? billsById.get(course.verifiedBillId || "") : undefined);
@@ -86,6 +88,15 @@ export default function PayrollOverview({ courses, statements, today, onEdit, on
       <div className="payroll-filter-grid">
         <label>Période des courses<select value={period} onChange={event => { setPeriod(event.target.value as TrackingPeriod); setLimit(20); }}>
           <option value="all">Toutes les dates</option><option value="week">Cette semaine</option><option value="last-week">Semaine passée</option><option value="month">Ce mois</option><option value="custom">Dates personnalisées</option>
+        </select></label>
+        <label>Activité<select aria-label="Type de courses de paie" value={activity}
+          onChange={event => {setActivity(event.target.value as CourseActivity);setLimit(20);}}>
+          <option value="all">Toutes</option>
+          <option value="both">Téo + adapté</option>
+          <option value="taxi">Téo / taxi</option>
+          <option value="adapte">Transport adapté</option>
+          <option value="aeroport">Aéroport</option>
+          <option value="centre-ville">Centre-ville</option>
         </select></label>
         <label>État à afficher<select value={onlyLate ? "late" : status} onChange={event => {
           setLimit(20); setOnlyLate(event.target.value === "late");
