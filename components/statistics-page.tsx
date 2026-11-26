@@ -4,6 +4,7 @@ import DateRangePicker from "@/components/date-range-picker";
 import {comparisonTotals,periodDates,previousAnchor,periodGoal,percentageChange,type ComparisonRide} from "@/lib/comparison";
 import {statisticsPeriodDates,statisticsGraphGroups,type StatisticsPeriod} from "@/lib/statistics-period";
 import {airportLevyAccountingDate,isAirportLevyRide} from "@/lib/airport-levy";
+import {matchesCourseActivity,type CourseActivity} from "@/lib/course-activity";
 
 const money = (n:number) => n.toLocaleString("fr-CA",{style:"currency",currency:"CAD"});
 const formatDate = (d:string) => new Date(d+"T12:00:00").toLocaleDateString("fr-CA",{day:"numeric",month:"short",year:"numeric"});
@@ -11,7 +12,7 @@ const label = (d:string) => new Date(d+"T12:00:00").toLocaleDateString("fr-CA",{
 const range = (dates:string[]) => dates.length ? dates.length===1 ? label(dates[0]) : label(dates[0])+" → "+label(dates.at(-1)!) : "—";
 const shortRange = (dates:string[]) => dates.length ? dates.length===1 ? formatDate(dates[0]) : formatDate(dates[0])+" – "+formatDate(dates.at(-1)!) : "Aucune course";
 type Metric = "net"|"gross"|"count"|"tips";
-type Category = "all"|"taxi"|"aeroport"|"centre-ville"|"adapte";
+type Category = CourseActivity;
 const metricLabels:Record<Metric,string> = {net:"Revenu net",gross:"Revenu brut",count:"Courses / tournées",tips:"Pourboires connus"};
 
 export default function StatisticsPage({courses,today,dailyGoals,goalsEnabled,onSettings}:{
@@ -26,13 +27,7 @@ export default function StatisticsPage({courses,today,dailyGoals,goalsEnabled,on
  const [type,setType] = useState<Category>("all");
  const [elapsed,setElapsed] = useState(true);
 
- const filtered = courses.filter(ride =>
-  type==="all" ||
-  (type==="taxi" && ride.type==="taxi") ||
-  (type==="adapte" && ride.type==="adapte") ||
-  (type==="aeroport" && ride.type==="taxi" && ride.taxiCategory==="aeroport") ||
-  (type==="centre-ville" && ride.type==="taxi" && ride.taxiCategory!=="aeroport")
- );
+ const filtered = courses.filter(ride => matchesCourseActivity(ride, type));
  // Include fee-only Tuesdays in the all-time calendar, even if no ride
  // was made that Tuesday. Monday airport fees post on the next Tuesday.
  const activityDates = filtered.flatMap(ride => isAirportLevyRide(ride)
@@ -104,7 +99,7 @@ export default function StatisticsPage({courses,today,dailyGoals,goalsEnabled,on
     </label>
     <label>Activité
      <select aria-label="Type d’activité" value={type} onChange={event=>setType(event.target.value as Category)}>
-      <option value="all">Toutes</option><option value="taxi">Taxi</option>
+      <option value="all">Toutes</option><option value="both">Téo + adapté</option><option value="taxi">Téo / taxi</option>
       <option value="aeroport">Aéroport</option><option value="centre-ville">Centre-ville</option>
       <option value="adapte">Transport adapté</option>
      </select>
