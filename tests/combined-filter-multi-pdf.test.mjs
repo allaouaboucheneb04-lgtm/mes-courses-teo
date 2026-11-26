@@ -8,6 +8,7 @@ const vite=await createServer({configFile:false,server:{middlewareMode:true,hmr:
 after(()=>vite.close());
 const {matchesCourseActivity}=await vite.ssrLoadModule("/lib/course-activity.ts");
 const {matchesHistoryType}=await vite.ssrLoadModule("/lib/history-search.ts");
+const {matchesHistoryPayment}=await vite.ssrLoadModule("/lib/history-payment.ts");
 const {matchesSevCategory,filterSevRides}=await vite.ssrLoadModule("/lib/sev-filtering.ts");
 const page=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
 const stats=readFileSync(new URL("../components/statistics-page.tsx",import.meta.url),"utf8");
@@ -48,6 +49,32 @@ test("all course category filter UIs include Téo + adapté",()=>{
  assert.match(payroll,/matchesCourseActivity\(course, activity\)/);
  assert.match(sev,/matchesSevCategory\(ride, type\)/);
 });
+
+test("History payment selector combines only Téo/card and adapted, excluding cash, machine and coupons",()=>{
+ const payments=[
+  {type:"taxi",payment:"Téo / carte",id:"teo"},
+  {type:"taxi",payment:"Compte",id:"compte"},
+  {type:"taxi",payment:"Carte",id:"carte"},
+  {type:"adapte",payment:"Transport adapté",id:"adapte"},
+  {type:"taxi",payment:"Espèces",id:"cash"},
+  {type:"taxi",payment:"Comptant",id:"comptant"},
+  {type:"taxi",payment:"Coupon",id:"coupon"},
+  {type:"taxi",payment:"Machine crédit",id:"machine"},
+ ];
+ const ids=filter=>payments.filter(course=>matchesHistoryPayment(course,filter)).map(course=>course.id);
+ assert.deepEqual(ids("teo-adapte"),["teo","compte","carte","adapte"]);
+ assert.deepEqual(ids("teo-card"),["teo","compte","carte"]);
+ assert.deepEqual(ids("adapted"),["adapte"]);
+ assert.equal(ids("all").length,8);
+ const history=page.slice(page.indexOf('<section className="history" id="history">'));
+ const paymentField=history.slice(history.indexOf('aria-label="Mode de paiement"'),history.indexOf('</select>',history.indexOf('aria-label="Mode de paiement"')));
+ assert.match(paymentField,/<option value="teo-adapte">Téo \+ adapté<\/option>/);
+ assert.match(page,/matchesHistoryPayment\(c, historyPayment\)/);
+ assert.match(page,/matchesHistoryPayment\(course, historyPayment\)/);
+ assert.match(page,/setHistoryPayment\("all"\)/);
+ assert.equal(payments.filter(c=>matchesHistoryPayment(c,"teo-adapte") && matchesHistoryType(c,"all")).length,4);
+});
+
 test("PDF chooser accepts multiple and captures FileList before resetting input",()=>{
  const chooser=page.slice(page.indexOf('id="pay-pdf-input"')-110,page.indexOf('id="pay-pdf-input"')+380);
  assert.match(chooser,/multiple/);
