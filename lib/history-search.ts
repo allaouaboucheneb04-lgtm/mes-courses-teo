@@ -1,4 +1,5 @@
-export type HistoryTypeFilter = "all" | "taxi" | "aeroport" | "centre-ville" | "adapte";
+import { matchesCourseActivity, type CourseActivity } from "./course-activity";
+export type HistoryTypeFilter = CourseActivity;
 type SearchableCourse = {
   type: "taxi" | "adapte";
   date?: string;
@@ -13,9 +14,7 @@ type SearchableCourse = {
   payment: string;
 };
 export function matchesHistoryType(course: SearchableCourse, filter: HistoryTypeFilter) {
-  if (filter === "all") return true;
-  if (filter === "taxi" || filter === "adapte") return course.type === filter;
-  return course.type === "taxi" && (course.taxiCategory || "centre-ville") === filter;
+  return matchesCourseActivity(course, filter);
 }
 export function matchesHistorySearch(course: SearchableCourse, search: string) {
   const query = search.trim().toUpperCase();
