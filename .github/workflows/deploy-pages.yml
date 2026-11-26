@@ -37,6 +37,8 @@ jobs:
         run: node --test tests/inspection-report-details.test.mjs
       - name: Vérifier les filtres combinés et l’import PDF multiple
         run: node --test tests/combined-filter-multi-pdf.test.mjs
+      - name: Vérifier les modes de paiement personnalisés
+        run: node --test tests/custom-payments.test.mjs
       - name: Construire le site
         run: npm run build:github
       - name: Vérifier les fichiers publiables
