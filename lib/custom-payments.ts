@@ -112,3 +112,14 @@ export function setCustomPaymentRate(
     [canonical]: Math.round(rate * 1000) / 1000,
   };
 }
+
+
+/** Compute a single service deduction; other taxes and levies are separate. */
+export function customPaymentFeeAmount(
+  gross: number, payment: string,
+  fees: Readonly<Record<string, number>> | undefined,
+): number {
+  if (!Number.isFinite(gross) || gross <= 0) return 0;
+  const rate = getCustomPaymentRate(payment, fees);
+  return Math.round(((gross * rate) / 100 + Number.EPSILON) * 100) / 100;
+}
