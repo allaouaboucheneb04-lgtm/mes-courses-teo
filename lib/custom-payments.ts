@@ -107,9 +107,10 @@ export function setCustomPaymentRate(
   const canonical = formatPaymentMethodName(method);
   if (!canonical || isStandardPaymentMethod(canonical)) return normalizeCustomPaymentFees(fees);
   const previous = normalizeCustomPaymentFees(fees);
+  const existing = Object.keys(previous).find(name => samePaymentMethod(name, canonical));
   return {
     ...Object.fromEntries(Object.entries(previous).filter(([name]) => !samePaymentMethod(name, canonical))),
-    [canonical]: Math.round(rate * 1000) / 1000,
+    [existing || canonical]: Math.round(rate * 1000) / 1000,
   };
 }
 
