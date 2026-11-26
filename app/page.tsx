@@ -17,6 +17,7 @@ import {
 import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { matchesHistoryType, matchesHistorySearch, type HistoryTypeFilter } from "@/lib/history-search";
+import { matchesCourseActivity, type CourseActivity } from "@/lib/course-activity";
 import { getPayrollCourseDates } from "@/lib/payroll-dates";
 import { extractCardPayrollRows } from "@/lib/card-payroll";
 import { expenseTotal, weeklyCompanyFeeTotal } from "@/lib/expenses";
@@ -457,6 +458,7 @@ export default function Home() {
     [billStatus, setBillStatus] = useState<"all" | "issues" | "clear">(
       "all",
     ),
+    [billActivity, setBillActivity] = useState<CourseActivity>("all"),
     [billPeriod, setBillPeriod] = useState<
       "all" | "last-week" | "month" | "custom"
     >("all"),
@@ -1251,12 +1253,14 @@ export default function Home() {
         !bounds ||
         courseDates.some((date) => date >= bounds[0] && date <= bounds[1]);
       const hasIssues = (statementWarnings[statement.id] || 0) > 0;
+      const matchesActivity = billActivity === "all" ||
+        statement.rows.some(row => matchesCourseActivity(row, billActivity));
       const matchesStatus =
         billStatus === "all" ||
         (billStatus === "issues" && hasIssues) ||
         (billStatus === "clear" && !hasIssues);
 
-      return matchesSearch && matchesPeriod && matchesStatus;
+      return matchesSearch && matchesPeriod && matchesStatus && matchesActivity;
     }).sort((left, right) => {
       const leftDate = getPayrollCourseDates(left.rows).sort().at(-1) || left.invoiceDate || "";
       const rightDate = getPayrollCourseDates(right.rows).sort().at(-1) || right.invoiceDate || "";
@@ -1265,6 +1269,7 @@ export default function Home() {
   }, [
     billCustomEnd,
     billCustomStart,
+    billActivity,
     billPeriod,
     billSearch,
     billStatus,
@@ -2866,6 +2871,18 @@ export default function Home() {
                       />
                     </label>
                     <label>
+                      <span>Activité des fiches</span>
+                      <select aria-label="Filtrer les fiches par activité" value={billActivity}
+                        onChange={event => {setBillActivity(event.target.value as CourseActivity);closeSelectedPayStatement();}}>
+                        <option value="all">Toutes les activités</option>
+                        <option value="both">Téo + adapté</option>
+                        <option value="taxi">Téo / taxi</option>
+                        <option value="adapte">Transport adapté</option>
+                        <option value="aeroport">Aéroport</option>
+                        <option value="centre-ville">Centre-ville</option>
+                      </select>
+                    </label>
+                    <label>
                       <span>État</span>
                       <select
                         value={billStatus}
@@ -4105,7 +4122,8 @@ export default function Home() {
                     <select aria-label="Catégorie de course" value={historyType}
                       onChange={(event) => setHistoryType(event.target.value as HistoryTypeFilter)}>
                       <option value="all">Toutes</option>
-                      <option value="taxi">Taxi</option>
+                      <option value="both">Téo + adapté</option>
+                      <option value="taxi">Téo / taxi</option>
                       <option value="aeroport">Aéroport</option>
                       <option value="centre-ville">Centre-ville</option>
                       <option value="adapte">Adapté</option>
