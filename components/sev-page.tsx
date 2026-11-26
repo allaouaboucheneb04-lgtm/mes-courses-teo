@@ -45,7 +45,7 @@ export default function SevPage({ courses, expenses, companyFee, onFiscalChange,
     ? categoryBaseRows
     : categoryBaseRows.filter(ride => matchesSevCategory(ride, type));
   const categoryLabel = {
-    all: "Toutes les catégories", taxi: "Toutes les courses taxi",
+    all: "Toutes les catégories", both: "Téo + adapté", taxi: "Toutes les courses taxi",
     aeroport: "Aéroport", "centre-ville": "Centre-ville", adapte: "Transport adapté",
   }[type];
   const declarationLabel = {
