@@ -2656,6 +2656,11 @@ export default function Home() {
                   ))}
                 </select>
               </label>
+              {!isStandardPaymentMethod(taxi.payment) && (
+                <small className="custom-payment-fee-preview">
+                  Frais « {taxi.payment} » : {getCustomPaymentRate(taxi.payment, settings.customPaymentFees).toLocaleString("fr-CA")} % du brut de la course (pourboire compris).
+                </small>
+              )}
               {taxi.payment === "Coupon" && (
                 <section className="coupon-fields">
                   <div className="two coupon-identifiers">
@@ -3572,7 +3577,13 @@ export default function Home() {
                     <div className="settings-payment-entry">
                       <input id="custom-payment-name" type="text" value={newPaymentName}
                         onChange={event => {setNewPaymentName(event.target.value);setNewPaymentError("");}}
-                        maxLength={40} autoComplete="off" placeholder="Ex. Virement Interac" />
+                        maxLength={40} autoComplete="off" placeholder="Ex. Virement Interac" required />
+                      <label className="settings-payment-new-rate">
+                        <span>Frais (%)</span>
+                        <input type="text" inputMode="decimal" value={newPaymentRate}
+                          onChange={event => {setNewPaymentRate(event.target.value);setNewPaymentError("");}}
+                          placeholder="Ex. 2,50" aria-label="Pourcentage de frais de la nouvelle méthode" required />
+                      </label>
                       <button type="submit">Ajouter</button>
                     </div>
                     {newPaymentError && <p className="settings-payment-error" role="alert">{newPaymentError}</p>}
@@ -3581,7 +3592,19 @@ export default function Home() {
                     <div className="settings-payment-list" aria-label="Modes de paiement personnalisés">
                       {customPaymentMethods.map(name => (
                         <div key={name} className="settings-payment-item">
-                          <span>{name}</span>
+                          <span className="settings-payment-method-name">{name}</span>
+                          <label className="settings-payment-rate">
+                            <span>Frais (%)</span>
+                            <SettingsNumberInput decimals={3}
+                              value={getCustomPaymentRate(name, settings.customPaymentFees)}
+                              onValue={rate => {
+                                if (rate < 0 || rate > 100) return;
+                                setSettings(current => ({
+                                  ...current,
+                                  customPaymentFees: setCustomPaymentRate(current.customPaymentFees, name, rate),
+                                }));
+                              }} />
+                          </label>
                           <button type="button" aria-label={`Retirer ${name}`}
                             onClick={() => removeCustomPaymentMethod(name)}>Retirer</button>
                         </div>
@@ -3590,7 +3613,7 @@ export default function Home() {
                   ) : (
                     <p className="settings-payment-empty">Aucune méthode personnalisée pour le moment.</p>
                   )}
-                  <p className="settings-payment-note">Les nouveaux modes sont disponibles dans Ajouter une course et dans le filtre Paiement de l’Historique. Aucun frais de service automatique n’est appliqué à ces modes personnalisés. Les courses enregistrées sont conservées même si vous retirez un mode.</p>
+                  <p className="settings-payment-note">Le pourcentage de chaque mode est déduit automatiquement du brut de la course taxi, pourboire compris, dans les bilans et statistiques. Les modes déjà créés commencent à 0 % tant que vous ne leur attribuez pas un taux. Modifier un taux recalcule aussi le net historique, sans changer les montants bruts. Retirer un mode conserve ses anciennes courses et son dernier taux.</p>
                 </div>
               </details>
               <details className="settings-section settings-goal-section settings-disclosure"><summary><span><b>Objectif quotidien</b><small>Suivez votre progression dans le résumé.</small></span><span className="settings-chevron" aria-hidden="true">⌄</span></summary><div className="settings-panel-body">
