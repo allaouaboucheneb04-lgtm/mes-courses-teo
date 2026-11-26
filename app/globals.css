@@ -5487,3 +5487,16 @@ body:has(.photo-save-bar) .shell { padding-bottom: 210px; }
 }
 .shared-payroll .shared-payroll-batch:disabled { opacity: .6; }
 .pay-import-section > .error-box { white-space: pre-line; overflow-wrap: anywhere; }
+
+
+.pay-batch-progress {
+  margin: 8px 0;
+  padding: 9px 12px;
+  border: 1px solid #b9dedc;
+  border-radius: 10px;
+  background: #eef9f7;
+  color: #00676e;
+  font-size: 12px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
